@@ -1,0 +1,12 @@
+{
+  "name": "panda-brand",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Panda's logo (SVG sources) and the script that renders every app's icons from it",
+  "scripts": {
+    "icons": "node make-icons.cjs"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2"
+  }
+}

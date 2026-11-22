@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 9 362 362">
+  <defs>
+    <linearGradient id="panda-play" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc21a"/>
+      <stop offset="1" stop-color="#ff6a00"/>
+    </linearGradient>
+  </defs>
+  <g id="play">
+    <path d="M118 44 L368 190 L118 336 Z" fill="none" stroke="url(#panda-play)" stroke-width="34" stroke-linejoin="round"/>
+  </g>
+  <g id="panda">
+    <circle cx="76" cy="148" r="35" fill="#0d0d0f" stroke="#f4f1ea" stroke-width="7"/>
+    <circle cx="224" cy="130" r="35" fill="#0d0d0f" stroke="#f4f1ea" stroke-width="7"/>
+    <ellipse cx="150" cy="232" rx="106" ry="96" fill="#f4f1ea"/>
+    <ellipse cx="106" cy="230" rx="36" ry="25" transform="rotate(-38 106 230)" fill="#0d0d0f"/>
+    <ellipse cx="194" cy="230" rx="36" ry="25" transform="rotate(38 194 230)" fill="#0d0d0f"/>
+    <path d="M134 268 Q150 261 166 268 Q162 280 150 285 Q138 280 134 268 Z" fill="#0d0d0f"/>
+  </g>
+</svg>

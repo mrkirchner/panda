@@ -1,0 +1,180 @@
+# Push a tag vX.Y.Z (the version in Cargo.toml) to build every package, test the Linux upgrade
+# path and publish a GitHub Release with them, plus the Docker image on ghcr.io. Run it by hand
+# (Actions > Release > Run workflow) to build and test without publishing.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  NFPM_VERSION: 2.41.1
+
+jobs:
+  ui:
+    name: Admin UI and TV app
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.8.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Version matches the tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          [[ "v$version" == "$GITHUB_REF_NAME" ]] || { echo "tag $GITHUB_REF_NAME, Cargo.toml $version"; exit 1; }
+      - run: cd clients/web && pnpm install --frozen-lockfile && pnpm build
+      - run: cd clients/tv && pnpm install --frozen-lockfile && pnpm build:server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui
+          path: |
+            clients/web/dist
+            clients/tv/dist/server
+          retention-days: 1
+
+  linux:
+    name: Linux packages
+    needs: ui
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: ui, path: clients }
+      - uses: dtolnay/rust-toolchain@stable
+        with: { targets: "x86_64-unknown-linux-musl,aarch64-unknown-linux-musl" }
+      - uses: Swatinem/rust-cache@v2
+      - name: Tools (zig, cargo-zigbuild, nfpm)
+        run: |
+          pip install ziglang cargo-zigbuild
+          curl -fsSL -o nfpm.deb "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_amd64.deb"
+          sudo dpkg -i nfpm.deb && rm nfpm.deb
+      - run: PANDA_SKIP_UI=1 scripts/package-linux.sh amd64
+      - run: PANDA_SKIP_UI=1 scripts/package-linux.sh arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            target/dist/*.deb
+            target/dist/*.rpm
+            target/dist/*.tar.gz
+
+  test-linux:
+    name: Upgrade test (Ubuntu, Fedora)
+    needs: linux
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: linux, path: dist }
+      - name: Previous release's .deb
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          mkdir -p old
+          gh release download --repo "$GITHUB_REPOSITORY" --pattern '*_amd64.deb' --dir old 2>/dev/null \
+            || echo "no earlier release: installing this one twice"
+      - name: Install, upgrade, remove, reinstall, purge (.deb)
+        run: packaging/linux/test-upgrade.sh dist/*_amd64.deb $(ls old/*.deb 2>/dev/null | head -1)
+      - name: Install and remove (.rpm, Fedora)
+        run: |
+          docker run --rm -v "$PWD/dist:/dist:ro" fedora:41 sh -euxc '
+            dnf install -y /dist/*.x86_64.rpm
+            getent passwd panda
+            panda --version
+            /usr/lib/panda/ffmpeg/ffmpeg -hide_banner -version | head -1
+            dnf remove -y panda
+            test -d /var/lib/panda'
+
+  macos:
+    name: macOS packages
+    needs: ui
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: ui, path: clients }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Panda.pkg, Homebrew tarball and formula, standalone package
+        env:
+          PANDA_SKIP_UI: "1"
+          PANDA_RELEASE_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}
+          PANDA_HOMEPAGE: https://github.com/${{ github.repository }}
+        run: |
+          scripts/package-macos.sh
+          scripts/package-mac-standalone.sh
+          scripts/package-mac-pkg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: |
+            target/dist/*.pkg
+            target/dist/*.tar.gz
+            target/dist/panda.rb
+
+  docker:
+    name: Docker image
+    needs: test-linux
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { name: linux, path: dist }
+      - name: Build context
+        run: |
+          for arch in amd64 arm64; do
+            mkdir -p "ctx/linux-$arch" && tar -xzf dist/panda-*-linux-$arch.tar.gz -C "ctx/linux-$arch"
+          done
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/panda" >>"$GITHUB_ENV"
+          echo "VERSION=${GITHUB_REF_NAME#v}" >>"$GITHUB_ENV"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ctx
+          file: packaging/docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.licenses=Apache-2.0
+
+  release:
+    name: GitHub Release
+    needs: [test-linux, macos, docker]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: linux, path: dist }
+      - uses: actions/download-artifact@v4
+        with: { name: macos, path: dist }
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          cd dist
+          sha256sum *.pkg *.deb *.rpm *.tar.gz >SHA256SUMS
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "Panda ${GITHUB_REF_NAME#v}" \
+            --generate-notes *.pkg *.deb *.rpm *.tar.gz panda.rb SHA256SUMS

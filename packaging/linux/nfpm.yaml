@@ -1,0 +1,49 @@
+# .deb and .rpm for Linux (https://nfpm.goreleaser.com). scripts/package-linux.sh sets the
+# variables and stages the files in target/dist/stage-linux/panda.
+name: panda
+arch: ${PANDA_ARCH}
+platform: linux
+version: ${PANDA_VERSION}
+release: 1
+section: video
+priority: optional
+maintainer: Panda <panda@users.noreply.github.com>
+description: |
+  Self-hosted media server with a TV app and Sonarr/Radarr requests.
+  Bundles jellyfin-ffmpeg and runs as a systemd service (panda.service).
+vendor: Panda
+homepage: ${PANDA_HOMEPAGE}
+license: Apache-2.0
+
+contents:
+  - src: target/dist/stage-linux/panda/panda
+    dst: /usr/bin/panda
+    file_info: { mode: 0755 }
+  - src: target/dist/stage-linux/panda/ffmpeg/ffmpeg
+    dst: /usr/lib/panda/ffmpeg/ffmpeg
+    file_info: { mode: 0755 }
+  - src: target/dist/stage-linux/panda/ffmpeg/ffprobe
+    dst: /usr/lib/panda/ffmpeg/ffprobe
+    file_info: { mode: 0755 }
+  - src: packaging/linux/panda.service
+    dst: /usr/lib/systemd/system/panda.service
+  - src: config/panda.example.toml
+    dst: /usr/share/doc/panda/panda.example.toml
+  - src: LICENSE
+    dst: /usr/share/doc/panda/LICENSE
+  - src: NOTICE
+    dst: /usr/share/doc/panda/NOTICE
+  - src: LEGAL.md
+    dst: /usr/share/doc/panda/LEGAL.md
+
+scripts:
+  postinstall: packaging/linux/postinstall.sh
+  preremove: packaging/linux/preremove.sh
+  postremove: packaging/linux/postremove.sh
+
+# useradd/groupadd/usermod for the service user.
+overrides:
+  deb:
+    depends: [passwd, ca-certificates]
+  rpm:
+    depends: [shadow-utils, ca-certificates]

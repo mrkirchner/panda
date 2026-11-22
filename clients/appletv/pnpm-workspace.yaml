@@ -1,0 +1,16 @@
+# Its own pnpm root (pnpm stops at the nearest pnpm-workspace.yaml), with a flat node_modules:
+# the NativeScript CLI finds plugins by walking node_modules, and @nativescript/canvas resolves
+# its SwiftPM header shim through node_modules/@nativescript/canvas/... from the project root.
+nodeLinker: hoisted
+onlyBuiltDependencies:
+  - '@nativescript/core'
+  - '@nativescript/webpack'
+  - nativescript
+overrides:
+  # @nativescript/webpack 5.0.39-tvos.0 needs webpack internals that 5.113 moved (WorkerDependency).
+  webpack: 5.111.0
+  # Keep every canvas package on the same alpha (the polyfill's '*' would pick 2.x, no tvOS).
+  '@nativescript/canvas': 3.0.0-alpha.10
+  # canvas-svg's xcframework has no tvOS slice and nothing here draws SVG through it.
+  '@nativescript/canvas-svg': file:./stubs/canvas-svg
+  '@nativescript/canvas-media': 3.0.0-alpha.10

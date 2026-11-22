@@ -1,0 +1,60 @@
+# Copy to ./panda.toml (git-ignored) or point $PANDA_CONFIG at it.
+#
+# Only [server], [ffmpeg] and [transcoding] are read on every start. [tmdb], [radarr], [sonarr] and
+# [[libraries]] are imported ONCE into the database (secrets encrypted with data/secret.key),
+# then managed in the admin UI. After the first start, delete the secrets from this file.
+
+[server]
+bind = "0.0.0.0:8096"
+data_dir = "data"
+# Sonarr/Radarr webhook URL: http://panda:8096/webhooks/arr?token=<this>
+webhook_token = "change-me"
+# Behind your own reverse proxy (Caddy, nginx, Cloudflare Tunnel): trust X-Forwarded-For/Proto.
+# Never enable this when Panda is reachable directly, or clients can spoof their IP.
+trust_proxy = false
+# Force the cookie Secure flag (default: automatic when the request arrived over HTTPS).
+# secure_cookies = true
+
+[ffmpeg]
+# Leave unset to auto-detect /usr/lib/jellyfin-ffmpeg/ffmpeg, then $PATH.
+# ffmpeg_path = "/usr/lib/jellyfin-ffmpeg/ffmpeg"
+# ffprobe_path = "/usr/lib/jellyfin-ffmpeg/ffprobe"
+
+[transcoding]
+# Simultaneous video encodes (direct play and remuxes are never limited).
+# max_hardware = 4   # Apple media engine / GPU encodes
+# max_software = 2   # CPU encodes (default: one per 4 cores)
+# throttle_ahead_secs = 120  # pause ffmpeg this far ahead of the viewer
+# keep_behind_secs = 120     # delete segments this far behind the viewer
+
+[scanning]
+# New files in a library's folders show up within this many minutes (0 = off; Sonarr/Radarr
+# webhooks and "Scan now" in the admin UI are always immediate).
+# interval_minutes = 15
+
+[tmdb]
+# themoviedb.org -> Settings -> API -> "API Read Access Token" (the long eyJ... value).
+# Or leave empty and set $PANDA_TMDB_TOKEN.
+read_access_token = ""
+
+[[libraries]]
+name = "Movies"
+kind = "movies"
+path = "/media/movies"
+
+[[libraries]]
+name = "TV Shows"
+kind = "shows"
+path = "/media/tv"
+
+[radarr]
+url = "http://localhost:7878"
+api_key = ""
+quality_profile_id = 1
+root_folder = "/media/movies"
+
+[sonarr]
+url = "http://localhost:8989"
+api_key = ""
+quality_profile_id = 1
+root_folder = "/media/tv"

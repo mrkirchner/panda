@@ -1,0 +1,30 @@
+# Installed by the panda .deb/.rpm. Change settings with `sudo systemctl edit panda`, e.g.
+#   [Service]
+#   Environment=PANDA_BIND=0.0.0.0:9000
+# Settings, database and artwork: /var/lib/panda (panda.toml goes there). Rebuildable caches:
+# /var/cache/panda. Both are kept when the package is upgraded or removed (purge deletes them).
+# Panda runs as the `panda` user (in the video and render groups, for hardware encoding): it
+# needs read access to your library folders (e.g. `sudo usermod -aG <media group> panda`).
+[Unit]
+Description=Panda media server
+Wants=network-online.target
+After=network-online.target remote-fs.target
+
+[Service]
+Type=simple
+User=panda
+Group=panda
+Environment=PANDA_DATA_DIR=/var/lib/panda
+Environment=PANDA_CACHE_DIR=/var/cache/panda
+Environment=PANDA_FFMPEG=/usr/lib/panda/ffmpeg/ffmpeg
+WorkingDirectory=/var/lib/panda
+ExecStart=/usr/bin/panda
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

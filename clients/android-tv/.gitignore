@@ -1,0 +1,6 @@
+.gradle/
+build/
+app/build/
+local.properties
+# The built TV client is copied in at package time.
+app/src/main/assets/www/

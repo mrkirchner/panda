@@ -1,0 +1,9 @@
+#!/bin/sh
+# Started by the LaunchAgent (/Library/LaunchAgents/local.panda.server.plist) in the signed-in
+# user's session: Panda keeps its data in that user's Library, like every other Mac install.
+data="$HOME/Library/Application Support/Panda"
+logs="$HOME/Library/Logs/Panda"
+mkdir -p "$data" "$logs"
+cd "$data" || exit 1
+export PANDA_FFMPEG=/Applications/Panda/ffmpeg/ffmpeg
+exec /Applications/Panda/bin/panda >>"$logs/panda.log" 2>&1

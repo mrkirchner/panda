@@ -1,0 +1,7 @@
+# The jellyfin-ffmpeg build every Panda package bundles (portable, GPL). One place to bump:
+# the Homebrew formula, the Mac package, the Linux packages and the Docker image read it.
+# .github/workflows/jellyfin-ffmpeg.yml checks weekly for a newer release and opens a PR.
+version 8.1.3-2
+macarm64 d898cc819e7c4e9219d6410ddbdaada0838f14bec6ff89e283639915394cb43f
+linux64 1df84d04c4322902dba81c290508cdf3d89524d210b9fe03154bea6c4e3bfbb6
+linuxarm64 6522585818059cc886363fb1dee86ac9b8579fec3b914337fb92974ef9eb9884

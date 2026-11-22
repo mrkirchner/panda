@@ -1,0 +1,54 @@
+{
+  "name": "panda-tv",
+  "version": "0.1.0",
+  "description": "Panda 10-foot TV client (SolidJS + Lightning 3)",
+  "type": "module",
+  "scripts": {
+    "start": "vite --open --host --force",
+    "start:prod": "vite --open --host --force --mode production",
+    "build": "vite build --sourcemap=true",
+    "build:analyze": "vite-bundle-visualizer",
+    "build:server": "VITE_SERVED_BY_PANDA=1 vite build --mode production --base /tv/ --outDir dist/server",
+    "preview": "vite preview --open --port 8080",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit",
+    "build:lg": "TARGET_DEVICE=lg vite build --mode production",
+    "build:tizen": "TARGET_DEVICE=tizen vite build --mode production",
+    "package:lg": "node scripts/package.mjs lg",
+    "package:tizen": "node scripts/package.mjs tizen",
+    "build:android": "TARGET_DEVICE=android vite build --mode production",
+    "package:android": "node scripts/package.mjs android"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@solidjs/router": "^0.16.3",
+    "@solidtv/renderer": "2.0.10",
+    "@solidtv/solid": "1.7.0-0",
+    "lodash-es": "^4.17.21",
+    "shaka-player": "^4.16.11",
+    "solid-js": "^1.9.10"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@lightningtv/vite-hex-transform": "^1.1.0",
+    "@vitejs/plugin-legacy": "^6.1.1",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.49.0",
+    "vite": "^6.4.1",
+    "vite-bundle-visualizer": "^1.2.1",
+    "vite-plugin-cross-origin-isolation": "^0.1.6",
+    "vite-plugin-solid": "^2.11.10",
+    "vitest": "^3.2.4"
+  },
+  "packageManager": "pnpm@10.8.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  }
+}

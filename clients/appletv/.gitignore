@@ -1,0 +1,6 @@
+hooks/
+node_modules/
+platforms/
+sim-out/
+# Your Apple developer team ID (scripts/run-device.sh).
+team.local

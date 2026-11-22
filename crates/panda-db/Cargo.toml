@@ -1,0 +1,22 @@
+[package]
+name = "panda-db"
+description = "SQLite persistence and migrations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono.workspace = true
+panda-library.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+tempfile.workspace = true
+
+[lints]
+workspace = true

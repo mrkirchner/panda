@@ -1,0 +1,100 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "Apache-2.0"
+publish = false
+
+# Every third-party version lives here. Crates opt in with `foo.workspace = true`.
+[workspace.dependencies]
+mdns-sd = "0.13"
+gethostname = "1.0"
+# Internal crates
+panda-arr = { path = "crates/panda-arr" }
+panda-auth = { path = "crates/panda-auth" }
+panda-db = { path = "crates/panda-db" }
+panda-library = { path = "crates/panda-library" }
+panda-media = { path = "crates/panda-media" }
+panda-metadata = { path = "crates/panda-metadata" }
+
+# Async / HTTP
+axum = "0.8.9"
+lettre = { version = "0.11.24", default-features = false, features = ["smtp-transport", "builder", "hostname", "tokio1-rustls", "aws-lc-rs", "webpki-roots"] }
+notify = { version = "8", default-features = false, features = ["macos_fsevent"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "rustls", "query"] }
+tokio = { version = "1.54.1", default-features = false }
+tower = { version = "0.5", features = ["util"] }
+miniz_oxide = "0.9"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+rust-embed = { version = "8.14", features = ["interpolate-folder-path", "mime-guess"] }
+tower-http = { version = "0.7.1", features = ["fs", "trace", "cors", "compression-gzip", "compression-br", "set-header"] }
+
+# Data
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sqlx = { version = "0.9.1", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "migrate", "chrono"] }
+toml = "1.2.1"
+url = "2.5.8"
+uuid = { version = "1.29.3", features = ["v4", "serde"] }
+
+# Filesystem / parsing
+regex = "1.13.2"
+strsim = "0.11"
+unicode-normalization = "0.1"
+walkdir = "2.5.0"
+which = "8.0.6"
+nix = { version = "0.32.0", default-features = false, features = ["signal"] }
+
+# Runtime
+mimalloc = "0.1"
+
+# Security
+argon2 = "0.6.0"
+base64 = "0.23.1"
+chacha20poly1305 = "0.11.0"
+getrandom = "0.4.3"
+hmac = "0.13.0"
+sha2 = "0.11.1"
+subtle = "2.6.1"
+
+# Errors / observability
+anyhow = "1.0.104"
+thiserror = "2.0.21"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+# Dev
+tempfile = "3.27.0"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Pedantic lints that are noise for an application codebase.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+module_name_repetitions = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+must_use_candidate = "allow"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "debuginfo"
+
+# Proc macros and build scripts run inside the compiler. Stripping them corrupts the
+# dylibs on macOS ("mis-aligned LINKEDIT string pool").
+[profile.release.build-override]
+strip = false

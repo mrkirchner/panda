@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <style>
+      html,
+      body,
+      * {
+        padding: 0;
+        margin: 0;
+      }
+      /* The app is a fixed 1920x1080 canvas; never let arrow keys scroll the document. */
+      html,
+      body {
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+      }
+      /* The canvas has a fixed size (1080p when the window fits it, else 720p): centered
+         across a wider window, kept at the top. */
+      body {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      /* Background on <html> only: it paints beneath everything. A body background would
+         cover the video element, which sits under the (transparent) Lightning canvas. */
+      html {
+        background: #000;
+      }
+      /* Layering: video (z 0) < Lightning canvas (z 1, UI + subtitles + controls). */
+      canvas {
+        position: relative;
+        z-index: 1;
+      }
+    </style>
+    <meta charset="UTF-8" />
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="module" src="src/index.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "frameworks": ["TVServices.framework"],
+  "targetBuildConfigurationProperties": {
+    "SDKROOT": "appletvos",
+    "SUPPORTED_PLATFORMS": "\"appletvos appletvsimulator\"",
+    "TARGETED_DEVICE_FAMILY": "3",
+    "TVOS_DEPLOYMENT_TARGET": "16.0",
+    "SWIFT_VERSION": "5.0",
+    "PRODUCT_NAME": "TopShelf",
+    "INFOPLIST_FILE": "\"$(SRCROOT)/../../App_Resources/tvOS/extensions/TopShelf/Info.plist\"",
+    "CODE_SIGN_ENTITLEMENTS": "\"$(SRCROOT)/../../App_Resources/tvOS/extensions/TopShelf/TopShelf.entitlements\"",
+    "GENERATE_INFOPLIST_FILE": "NO",
+    "SKIP_INSTALL": "YES",
+    "APPLICATION_EXTENSION_API_ONLY": "YES",
+    "LD_RUNPATH_SEARCH_PATHS": "\"$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks\"",
+    "CLANG_ENABLE_MODULES": "YES"
+  }
+}

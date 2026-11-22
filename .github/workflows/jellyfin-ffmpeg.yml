@@ -1,0 +1,58 @@
+# Weekly: is there a newer jellyfin-ffmpeg than packaging/jellyfin-ffmpeg.txt pins? If so, download
+# its portable builds, checksum them and open a pull request that bumps the pin.
+name: jellyfin-ffmpeg update
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Latest release
+        id: latest
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          latest=$(gh release view --repo jellyfin/jellyfin-ffmpeg --json tagName -q .tagName)
+          current=$(awk '$1 == "version" { print $2 }' packaging/jellyfin-ffmpeg.txt)
+          echo "current $current, latest ${latest#v}"
+          echo "version=${latest#v}" >>"$GITHUB_OUTPUT"
+          [[ "${latest#v}" != "$current" ]] && echo "newer=1" >>"$GITHUB_OUTPUT" || true
+      - name: Checksums
+        if: steps.latest.outputs.newer
+        env: { VERSION: "${{ steps.latest.outputs.version }}" }
+        run: |
+          {
+            sed -n '/^#/p' packaging/jellyfin-ffmpeg.txt
+            echo "version $VERSION"
+            for platform in macarm64 linux64 linuxarm64; do
+              url="https://github.com/jellyfin/jellyfin-ffmpeg/releases/download/v$VERSION/jellyfin-ffmpeg_${VERSION}_portable_${platform}-gpl.tar.xz"
+              echo "$platform $(curl -fsSL --retry 3 "$url" | sha256sum | cut -d' ' -f1)"
+            done
+          } >pin.txt
+          mv pin.txt packaging/jellyfin-ffmpeg.txt
+          cat packaging/jellyfin-ffmpeg.txt
+      - name: Pull request
+        if: steps.latest.outputs.newer
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          VERSION: "${{ steps.latest.outputs.version }}"
+        run: |
+          branch="jellyfin-ffmpeg-$VERSION"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "a pull request for $VERSION is already open"; exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git commit -am "Bundle jellyfin-ffmpeg $VERSION"
+          git push origin "$branch"
+          gh pr create --title "Bundle jellyfin-ffmpeg $VERSION" --body \
+            "jellyfin-ffmpeg [v$VERSION](https://github.com/jellyfin/jellyfin-ffmpeg/releases/tag/v$VERSION) is out. This bumps the build every package bundles (checksums computed from the release files). Try \`panda bench\` with it before releasing."

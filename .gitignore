@@ -1,0 +1,21 @@
+/target
+/data
+panda.toml
+.DS_Store
+*.db
+*.db-shm
+*.db-wal
+
+# IDEs
+.idea/
+.vscode/
+
+# Local and secret files: never commit these.
+.env.local
+.env.*.local
+*.local
+.claude/settings.local.json
+*.pem
+*.p12
+*.key
+*.mobileprovision

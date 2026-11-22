@@ -1,0 +1,40 @@
+#!/bin/bash
+# Runs as root after Panda.pkg installs or upgrades /Applications/Panda. Starts (or restarts)
+# Panda for the signed-in user and opens its page. Never touches the user's data.
+label="local.panda.server"
+plist="/Library/LaunchAgents/$label.plist"
+chown root:wheel "$plist" && chmod 644 "$plist"
+
+user=$(stat -f %Su /dev/console)
+if [[ -z "$user" || "$user" == root || "$user" == loginwindow ]]; then
+  exit 0  # nobody signed in: the agent starts at their next login
+fi
+uid=$(id -u "$user")
+home=$(dscl . -read "/Users/$user" NFSHomeDirectory | awk '{print $2}')
+
+# The earlier per-user install (install.sh): same data folder, so just replace it.
+old="$home/Library/LaunchAgents/$label.plist"
+if [[ -f "$old" ]]; then
+  launchctl bootout "gui/$uid/$label" 2>/dev/null
+  rm -f "$old"
+  rm -rf "$home/Applications/Panda"
+fi
+
+launchctl bootout "gui/$uid/$label" 2>/dev/null
+for _ in 1 2 3 4 5 6 7 8 9 10; do  # let the old one release the port
+  lsof -iTCP:8096 -sTCP:LISTEN >/dev/null 2>&1 || break
+  sleep 0.5
+done
+launchctl bootstrap "gui/$uid" "$plist" || exit 0
+
+url="http://localhost:8096"
+for _ in $(seq 1 30); do
+  if curl -fsS "$url/health" >/dev/null 2>&1; then
+    token="$home/Library/Application Support/Panda/setup-token"
+    [[ -f "$token" ]] && url="$url/setup?token=$(cat "$token")"
+    launchctl asuser "$uid" sudo -u "$user" open "$url"
+    break
+  fi
+  sleep 1
+done
+exit 0

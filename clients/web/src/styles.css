@@ -1,0 +1,433 @@
+:root {
+    /* The TV app's palette (clients/tv/src/theme.ts): near-black with warm whites and a
+       champagne-gold accent; a warm off-white in light mode. Gold is for buttons and marks;
+       links use a deeper gold that reads on light backgrounds. */
+    --bg: #f6f4ef;
+    --surface: #ffffff;
+    --surface-2: #efece5;
+    --border: #e2ddd3;
+    --text: #1a1814;
+    --muted: #6b665c;
+    --accent: #d4ae6a;
+    --accent-text: #141210;
+    --link: #8a6420;
+    --danger: #c9433a;
+    --ok: #2e8a5c;
+    --warn: #a86b00;
+    --radius: 12px;
+    --shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 4px 16px rgb(0 0 0 / 4%);
+    font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0d0d0f;
+        --surface: #1a1a1d;
+        --surface-2: #242427;
+        --border: #2f2f33;
+        --text: #f4f1ea;
+        --muted: #a39e95;
+        --accent: #d4ae6a;
+        --link: #d4ae6a;
+        --danger: #ff6b5b;
+        --ok: #4cc38a;
+        --warn: #f5a524;
+        --shadow: none;
+    }
+}
+
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    min-height: 100vh;
+}
+a {
+    color: var(--link);
+}
+h1 {
+    font-size: 1.6rem;
+    margin: 0 0 1rem;
+}
+h2 {
+    font-size: 1.15rem;
+    margin: 0 0 0.75rem;
+}
+code,
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+}
+
+/* Shell */
+.shell {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    min-height: 100vh;
+}
+.sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 1.25rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-weight: 700;
+    font-size: 1.25rem;
+    padding: 0 0.75rem 1rem;
+}
+.brand img {
+    border-radius: 7px;
+}
+.sidebar a {
+    color: var(--text);
+    text-decoration: none;
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+}
+.sidebar a:hover {
+    background: var(--surface-2);
+}
+.sidebar a[data-active] {
+    background: var(--surface-2);
+    font-weight: 600;
+}
+.sidebar .spacer {
+    flex: 1;
+}
+.sidebar .who {
+    padding: 0.5rem 0.75rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+main {
+    padding: 2rem;
+    max-width: 1100px;
+    width: 100%;
+}
+.center {
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+.center > .card {
+    width: min(420px, 100%);
+}
+
+@media (max-width: 760px) {
+    .shell {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .sidebar .spacer,
+    .brand {
+        display: none;
+    }
+    main {
+        padding: 1rem;
+    }
+}
+
+/* Building blocks */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+.grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.stat {
+    font-size: 1.8rem;
+    font-weight: 700;
+}
+.muted {
+    color: var(--muted);
+}
+.row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+/* Fields side by side: line up their labels and inputs from the top (hints sit underneath). */
+.row:has(> label) {
+    align-items: flex-start;
+}
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-weight: 500;
+}
+label .hint {
+    /* Under the field, so fields side by side line up whether or not they have a hint. */
+    order: 1;
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+input,
+select {
+    font: inherit;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background-color: var(--surface);
+    color: var(--text);
+    min-width: 0;
+}
+select {
+    /* Our own arrow, inset from the edge (the native one sits flush against it). */
+    appearance: none;
+    padding-right: 2.2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23a39e95' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+}
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+}
+button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-text);
+}
+button.danger {
+    color: var(--danger);
+}
+button:disabled {
+    opacity: 0.55;
+    cursor: progress;
+}
+button.link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--link);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th,
+td {
+    text-align: left;
+    padding: 0.55rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+}
+th {
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.table-wrap {
+    overflow-x: auto;
+}
+.badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+.badge.ok {
+    color: var(--ok);
+}
+.badge.warn {
+    color: var(--warn);
+}
+.badge.danger {
+    color: var(--danger);
+}
+.notice {
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+}
+.notice.error {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+.notice.ok {
+    border-color: var(--ok);
+    color: var(--ok);
+}
+.code-big {
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 1.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+.secret {
+    word-break: break-all;
+    padding: 0.6rem;
+    background: var(--surface-2);
+    border-radius: 8px;
+}
+.folders {
+    max-height: 260px;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.folders button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: none;
+}
+.folders button:hover {
+    background: var(--surface-2);
+}
+
+/* A checkbox and its label on one line. */
+label.check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: normal;
+}
+label.check input {
+    width: auto;
+    margin: 0;
+}
+
+label.check input {
+    accent-color: var(--accent);
+}
+
+/* Settings sections: underlined tabs (gold marks the selected one), a status badge on each. */
+.tabs {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--border);
+    margin: 1rem 0 1.25rem;
+}
+.tabs .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    margin-bottom: -1px;
+    padding: 0.6rem 0.8rem;
+    color: var(--muted);
+}
+.tabs .tab:hover {
+    color: var(--text);
+}
+.tabs .tab[data-active] {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+}
+.section-intro {
+    margin: 0 0 1.25rem;
+}
+
+/* Metadata source order: numbered rows with up/down buttons. */
+.order-list {
+    margin: 0.5rem 0 0;
+    padding-left: 1.5rem;
+}
+.order-list li {
+    padding: 0.25rem 0;
+}
+.order-list li > * {
+    vertical-align: middle;
+    margin-right: 0.5rem;
+}
+.order-actions button {
+    padding: 0.15rem 0.55rem;
+    margin-right: 0.25rem;
+}
+
+/* A provider's "What to use" switches. */
+.switches {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.9rem 0.75rem;
+    margin: 0 0 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+}
+.switches legend {
+    padding: 0 0.35rem;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+.switches:disabled {
+    opacity: 0.6;
+}
+/* An arrow that can't move further isn't busy: no progress cursor. */
+.order-actions button:disabled {
+    cursor: default;
+}
+
+/* A running job's output (the stream capacity test). */
+pre.log {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) / 2);
+  padding: 0.75rem 1rem;
+  max-height: 18rem;
+  overflow: auto;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+}
