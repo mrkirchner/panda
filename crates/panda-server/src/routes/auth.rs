@@ -608,15 +608,11 @@ async fn device_login(
 /// set up), TMDB extras (cast, suggestions, discovery), and email (links sent, or shown to
 /// share). Booleans only, never settings.
 async fn features(State(state): State<AppState>) -> ApiResult<Json<serde_json::Value>> {
-    let i = state.integrations();
-    let mail = crate::services::settings::read_mail(&state).await?.is_some();
-    Ok(Json(json!({
-        "request_movies": !i.radarrs().is_empty(),
-        "request_shows": !i.sonarrs().is_empty(),
-        "tmdb": i.tmdb.is_some(),
-        "mail": mail,
-        "subtitle_search": i.bazarr.is_some(),
-    })))
+    // What the outside services turn on (request_movies, request_shows, subtitle_search, mail),
+    // from their Spec (services/external.rs), and whether TMDB is set up.
+    let mut flags = crate::services::external::features(&state).await?;
+    flags.insert("tmdb".into(), json!(state.integrations().tmdb.is_some()));
+    Ok(Json(serde_json::Value::Object(flags)))
 }
 
 /// What a TV app finding servers needs to know this is one: that it's Panda, the computer's
@@ -684,7 +680,14 @@ pub(crate) async fn new_sign_in_link(
         .map(|b| b.trim().trim_end_matches('/'))
         .filter(|b| b.starts_with("http://") || b.starts_with("https://"));
     let mut sent = false;
-    if let (Some(mail), Some(base)) = (crate::services::settings::read_mail(state).await?, base) {
+    if let (Some(mail), Some(base)) = (
+        crate::services::external::read::<crate::services::mail::MailConfig>(
+            state,
+            crate::services::external::Service::Mail,
+        )
+        .await?,
+        base,
+    ) {
         let name = user.display_name.clone().unwrap_or_else(|| user.username.clone());
         let body = format!(
             "Hi {name},\n\nYou can now sign in to Panda with this email address. Choose your \

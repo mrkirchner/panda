@@ -6,7 +6,6 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
-use panda_arr::{Radarr, Sonarr};
 use panda_auth::{password, token};
 use panda_db::{Invite, Library, Role, Session, User};
 use panda_library::LibraryKind;
@@ -15,9 +14,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::auth::CurrentUser;
+use crate::config::ArrConfig;
 use crate::error::{ApiError, ApiResult};
+use crate::services::external::{self, Service, ServiceConfig};
+use crate::services::mail::MailConfig;
 use crate::services::scanner;
-use crate::services::settings::{self, ArrInput, RADARR, RADARR_4K, SONARR, SONARR_4K, TMDB_TOKEN, now};
+use crate::services::settings::{self, TMDB_TOKEN, now};
 use crate::state::AppState;
 
 const INVITE_MAX_DAYS: i64 = 30;
@@ -33,12 +35,10 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/settings/storage", get(get_storage).put(put_storage))
         .route("/settings/cleanup", put(put_cleanup))
         .route("/settings/cleanup/run", post(run_cleanup))
-        .route("/settings/mail", put(put_mail).delete(delete_mail))
-        .route("/settings/bazarr", put(put_bazarr).delete(delete_bazarr))
         .route("/settings/transcoding", put(put_transcoding))
         .route("/bench", get(get_bench).post(start_bench))
         .route("/settings/mail/test", post(test_mail))
-        .route("/settings/{service}", put(put_arr).delete(delete_arr))
+        .route("/settings/{service}", put(put_service).delete(delete_service))
         .route("/settings/{service}/probe", post(probe_arr))
         .route("/users", get(list_users))
         .route("/users/{id}", axum::routing::patch(update_user).delete(delete_user))
@@ -230,33 +230,9 @@ async fn providers_changed(state: &AppState) -> ApiResult<()> {
     Ok(())
 }
 
-fn arr_key(service: &str) -> ApiResult<&'static str> {
-    match service {
-        "radarr" => Ok(RADARR),
-        "radarr_4k" => Ok(RADARR_4K),
-        "sonarr" => Ok(SONARR),
-        "sonarr_4k" => Ok(SONARR_4K),
-        _ => Err(ApiError::NotFound),
-    }
-}
-
-#[derive(Serialize)]
-struct ArrProbe {
-    version: String,
-    quality_profiles: Vec<panda_arr::QualityProfile>,
-    root_folders: Vec<panda_arr::RootFolder>,
-}
-
-async fn probe(key: &str, url: &str, api_key: String) -> ApiResult<ArrProbe> {
-    Ok(if key == RADARR || key == RADARR_4K {
-        let c = Radarr::new(url, api_key)?;
-        let (s, q, r) = tokio::try_join!(c.status(), c.quality_profiles(), c.root_folders())?;
-        ArrProbe { version: s.version, quality_profiles: q, root_folders: r }
-    } else {
-        let c = Sonarr::new(url, api_key)?;
-        let (s, q, r) = tokio::try_join!(c.status(), c.quality_profiles(), c.root_folders())?;
-        ArrProbe { version: s.version, quality_profiles: q, root_folders: r }
-    })
+/// An outside service by its route name (`radarr`, `sonarr_4k`, `bazarr`, `mail`).
+fn service(id: &str) -> ApiResult<Service> {
+    Service::from_id(id).ok_or(ApiError::NotFound)
 }
 
 #[derive(Deserialize)]
@@ -266,44 +242,52 @@ struct ProbeInput {
     api_key: Option<String>,
 }
 
-/// Test a connection and list quality profiles + root folders (for the setup form).
+/// Test a Radarr/Sonarr connection and list quality profiles + root folders (for the setup form).
 async fn probe_arr(
     State(state): State<AppState>,
-    Path(service): Path<String>,
+    Path(id): Path<String>,
     Json(body): Json<ProbeInput>,
-) -> ApiResult<Json<ArrProbe>> {
-    let key = arr_key(&service)?;
-    let cfg = settings::merge_arr(
-        &state,
-        key,
-        ArrInput { url: body.url, api_key: body.api_key, quality_profile_id: 0, root_folder: String::new() },
-    )
-    .await?;
-    Ok(Json(probe(key, &cfg.url, cfg.api_key).await?))
+) -> ApiResult<Json<external::ArrProbe>> {
+    let service = service(&id)?;
+    if matches!(service, Service::Bazarr | Service::Mail) {
+        return Err(ApiError::NotFound);
+    }
+    let cfg = ArrConfig::merge(
+        external::ArrInput {
+            url: body.url,
+            api_key: body.api_key,
+            quality_profile_id: 0,
+            root_folder: String::new(),
+        },
+        external::read::<ArrConfig>(&state, service).await?,
+    )?;
+    Ok(Json(external::probe_arr(service, &cfg.url, cfg.api_key).await?))
 }
 
-async fn put_arr(
+/// Set up an outside service (services/external.rs): checked against it before it's saved.
+/// No content, or what the service said about itself (Bazarr's version).
+async fn put_service(
     State(state): State<AppState>,
-    Path(service): Path<String>,
-    Json(body): Json<ArrInput>,
-) -> ApiResult<StatusCode> {
-    let key = arr_key(&service)?;
-    let cfg = settings::merge_arr(&state, key, body).await?;
-    let p = probe(key, &cfg.url, cfg.api_key.clone()).await?;
-    if !p.quality_profiles.iter().any(|q| q.id == cfg.quality_profile_id) {
-        return Err(ApiError::Validation("quality_profile_id doesn't exist on that server".into()));
-    }
-    if !p.root_folders.iter().any(|r| r.path == cfg.root_folder) {
-        return Err(ApiError::Validation("root_folder doesn't exist on that server".into()));
-    }
-    settings::write_arr(&state, key, &cfg).await?;
-    reload(&state).await?;
-    Ok(StatusCode::NO_CONTENT)
+    Path(id): Path<String>,
+    Json(body): Json<Value>,
+) -> ApiResult<axum::response::Response> {
+    use axum::response::IntoResponse;
+    let service = service(&id)?;
+    let answer = match service {
+        Service::Radarr | Service::Radarr4k | Service::Sonarr | Service::Sonarr4k => {
+            external::save::<ArrConfig>(&state, service, body).await?
+        }
+        Service::Bazarr => external::save::<external::BazarrConfig>(&state, service, body).await?,
+        Service::Mail => external::save::<MailConfig>(&state, service, body).await?,
+    };
+    Ok(match answer {
+        Some(v) => Json(v).into_response(),
+        None => StatusCode::NO_CONTENT.into_response(),
+    })
 }
 
-async fn delete_arr(State(state): State<AppState>, Path(service): Path<String>) -> ApiResult<StatusCode> {
-    state.db.delete_setting(arr_key(&service)?).await?;
-    reload(&state).await?;
+async fn delete_service(State(state): State<AppState>, Path(id): Path<String>) -> ApiResult<StatusCode> {
+    external::remove(&state, service(&id)?).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -354,93 +338,15 @@ async fn run_cleanup(State(state): State<AppState>) -> ApiResult<Json<Value>> {
 }
 
 #[derive(Deserialize)]
-struct MailInput {
-    host: String,
-    port: u16,
-    security: crate::services::mail::Security,
-    #[serde(default)]
-    username: String,
-    /// Omit to keep the stored one.
-    password: Option<String>,
-    from: String,
-}
-
-/// Connect and sign in to the mail server before saving (encrypted, with its password).
-async fn put_mail(State(state): State<AppState>, Json(body): Json<MailInput>) -> ApiResult<StatusCode> {
-    let host = body.host.trim().to_string();
-    if host.is_empty() || body.port == 0 {
-        return Err(ApiError::Validation("host and port are required".into()));
-    }
-    let password = match body.password.filter(|p| !p.is_empty()) {
-        Some(p) => p,
-        None => settings::read_mail(&state).await?.map(|m| m.password).unwrap_or_default(),
-    };
-    let cfg = crate::services::mail::MailConfig {
-        host,
-        port: body.port,
-        security: body.security,
-        username: body.username.trim().to_string(),
-        password,
-        from: body.from.trim().to_string(),
-    };
-    cfg.check().await?;
-    settings::write_mail(&state, &cfg).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-async fn delete_mail(State(state): State<AppState>) -> ApiResult<StatusCode> {
-    state.db.delete_setting(settings::MAIL).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Deserialize)]
 struct MailTest {
     to: String,
 }
 
 /// Send a test email with the saved settings.
 async fn test_mail(State(state): State<AppState>, Json(body): Json<MailTest>) -> ApiResult<StatusCode> {
-    let cfg = settings::read_mail(&state).await?.ok_or(ApiError::NotConfigured("mail"))?;
+    let cfg =
+        external::read::<MailConfig>(&state, Service::Mail).await?.ok_or(ApiError::NotConfigured("mail"))?;
     cfg.send(body.to.trim(), "Panda test email", "Email from your Panda server works.".into()).await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Deserialize)]
-struct BazarrInput {
-    url: String,
-    /// Omit (or leave empty) to keep the stored key.
-    api_key: Option<String>,
-}
-
-/// Save Bazarr after checking it answers with that address and key (never saved otherwise).
-async fn put_bazarr(
-    State(state): State<AppState>,
-    Json(body): Json<BazarrInput>,
-) -> ApiResult<Json<serde_json::Value>> {
-    let url = body.url.trim().trim_end_matches('/').to_string();
-    if url.is_empty() {
-        return Err(ApiError::Validation("Bazarr's address is required".into()));
-    }
-    let api_key = match body.api_key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty()) {
-        Some(k) => k,
-        None => settings::read_bazarr(&state).await?.map(|b| b.api_key).unwrap_or_default(),
-    };
-    if api_key.is_empty() {
-        return Err(ApiError::Validation("Bazarr's API key is required".into()));
-    }
-    let client = panda_arr::Bazarr::new(&url, api_key.clone())?;
-    let status = client
-        .status()
-        .await
-        .map_err(|e| ApiError::Validation(format!("Bazarr didn't answer with that address and key: {e}")))?;
-    settings::write_bazarr(&state, &settings::BazarrConfig { url, api_key }).await?;
-    reload(&state).await?;
-    Ok(Json(serde_json::json!({ "version": status.bazarr_version })))
-}
-
-async fn delete_bazarr(State(state): State<AppState>) -> ApiResult<StatusCode> {
-    state.db.delete_setting(settings::BAZARR).await?;
-    reload(&state).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -673,7 +579,9 @@ async fn create_invite(
     let mut sent = false;
     if let Some(to) = body.email.as_deref().map(str::trim).filter(|e| !e.is_empty()) {
         let to = super::auth::valid_email(to)?;
-        let mail = settings::read_mail(&state).await?.ok_or(ApiError::NotConfigured("mail"))?;
+        let mail = external::read::<MailConfig>(&state, Service::Mail)
+            .await?
+            .ok_or(ApiError::NotConfigured("mail"))?;
         let base = body
             .base_url
             .as_deref()

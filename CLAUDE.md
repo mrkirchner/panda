@@ -72,8 +72,16 @@
   Radarr/Sonarr; suggestions need TMDB + the server; emails need mail, else links are returned
   to share) and refuses before saving anything. `/api/features` tells apps what's set up;
   clients follow the server's flags rather than their own rules. Outgoing mail: SMTP settings
-  (`settings::MAIL`, encrypted), `services/mail.rs`; invites and sign-in links can be emailed.
-- Bazarr (optional, `settings::BAZARR`, encrypted; admin `PUT/DELETE /api/admin/settings/bazarr`,
+  (`Service::Mail`, encrypted), `services/mail.rs`; invites and sign-in links can be emailed.
+- Outside services (Radarr/Sonarr HD and 4K, Bazarr, mail): `services/external.rs`, a `Service`
+  with its `Spec` (setting id = route name = encryption context, never renamed; the
+  `/api/features` flags it turns on; whether `Integrations` are rebuilt) and a `ServiceConfig`
+  (admin input where a left-out secret keeps the stored one, `check` against the service before
+  anything is saved, a view with secrets only as "is it set"). One `PUT/DELETE
+  /api/admin/settings/{id}` serves them all. A new one: variant + `Spec` + config type, its arm
+  in `routes/admin.rs` `put_service`, its `SettingsView` field and admin card; add it to the
+  services loop in `security.rs`. Metadata providers have their own `Spec` (below).
+- Bazarr (optional, `Service::Bazarr`, encrypted; admin `PUT/DELETE /api/admin/settings/bazarr`,
   checked against Bazarr before saving; `/api/features` `subtitle_search`): `POST
   /api/items/{id}/subtitles/find {language}` asks it to search and download subtitles for that
   file, found in Bazarr by file name (it mounts the share elsewhere: `panda_arr::bazarr::tail`),

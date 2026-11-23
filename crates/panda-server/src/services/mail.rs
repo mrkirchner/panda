@@ -1,5 +1,5 @@
 //! Sending email (sign-in links) through the admin's own mail server (SMTP). Settings live in
-//! the encrypted store (`settings::MAIL`, the password with them); nothing is sent without them.
+//! the encrypted store (`external::Service::Mail`, the password with them); nothing is sent without them.
 
 use lettre::message::Mailbox;
 use lettre::transport::smtp::authentication::Credentials;

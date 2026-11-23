@@ -221,6 +221,18 @@ async fn users_are_invite_only_and_cannot_reach_admin() {
         sam.post("/api/admin/settings/mail/test", json!({ "to": "x@example.com" })).await.status,
         StatusCode::FORBIDDEN
     );
+    // Every outside service (services/external.rs) is admin-only, set up or removed; a name
+    // that isn't one is unknown even to the admin (never read as some other setting).
+    for service in ["radarr", "radarr_4k", "sonarr", "sonarr_4k", "bazarr", "mail"] {
+        let path = format!("/api/admin/settings/{service}");
+        assert_eq!(sam.send("PUT", &path, Some(json!({}))).await.status, StatusCode::FORBIDDEN, "{service}");
+        assert_eq!(sam.send("DELETE", &path, None).await.status, StatusCode::FORBIDDEN, "{service}");
+    }
+    for name in ["tmdb.read_access_token", "secret.key", "nope"] {
+        let path = format!("/api/admin/settings/{name}");
+        assert_eq!(admin.send("PUT", &path, Some(json!({}))).await.status, StatusCode::NOT_FOUND, "{name}");
+        assert_eq!(admin.send("DELETE", &path, None).await.status, StatusCode::NOT_FOUND, "{name}");
+    }
     let cleanup = json!({ "movies": true, "shows": true });
     assert_eq!(
         sam.send("PUT", "/api/admin/settings/cleanup", Some(cleanup)).await.status,
@@ -1535,7 +1547,8 @@ async fn the_web_app_is_framed_by_nothing_and_runs_no_inline_scripts() {
             assert_eq!(res.status, StatusCode::NOT_FOUND, "{path}");
             continue;
         }
-        let csp = res.headers.get(header::CONTENT_SECURITY_POLICY).and_then(|v| v.to_str().ok()).unwrap_or("");
+        let csp =
+            res.headers.get(header::CONTENT_SECURITY_POLICY).and_then(|v| v.to_str().ok()).unwrap_or("");
         assert!(csp.contains("frame-ancestors 'none'"), "{path}: {csp}");
         assert!(csp.contains("script-src 'self';"), "{path} must not allow inline scripts: {csp}");
         assert_eq!(res.headers.get(header::CACHE_CONTROL).unwrap(), "no-cache", "{path}");

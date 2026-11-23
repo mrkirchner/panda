@@ -6,6 +6,7 @@ pub(crate) mod bitmap_subs;
 pub(crate) mod cache;
 pub(crate) mod clips;
 pub(crate) mod discovery;
+pub(crate) mod external;
 pub(crate) mod images;
 pub(crate) mod library_health;
 pub(crate) mod library_watch;

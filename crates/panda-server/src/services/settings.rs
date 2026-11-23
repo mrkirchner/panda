@@ -6,41 +6,15 @@ use std::sync::Arc;
 
 use panda_arr::{AddDefaults, Radarr, Sonarr};
 use panda_metadata::Tmdb;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::config::ArrConfig;
 use crate::error::{ApiError, ApiResult};
+use crate::services::external::{self, ArrView, BazarrConfig, BazarrView, MailView, Service};
+use crate::services::mail::MailConfig;
 use crate::state::{AppState, Arr, Integrations};
 
 pub(crate) const TMDB_TOKEN: &str = "tmdb.read_access_token";
-pub(crate) const RADARR: &str = "radarr";
-pub(crate) const SONARR: &str = "sonarr";
-/// Optional second servers for 4K copies; requests go to every server of their kind.
-pub(crate) const RADARR_4K: &str = "radarr_4k";
-pub(crate) const SONARR_4K: &str = "sonarr_4k";
-/// Outgoing mail (SMTP), stored whole as one encrypted JSON blob (it holds the password).
-pub(crate) const MAIL: &str = "mail";
-/// Bazarr (subtitles): its address and API key, encrypted like the other secrets.
-pub(crate) const BAZARR: &str = "bazarr";
-
-/// How Panda reaches Bazarr.
-#[derive(Debug, Clone, Serialize, serde::Deserialize)]
-pub(crate) struct BazarrConfig {
-    pub url: String,
-    pub api_key: String,
-}
-
-pub(crate) async fn read_bazarr(state: &AppState) -> ApiResult<Option<BazarrConfig>> {
-    match read_secret(state, BAZARR).await? {
-        Some(json) => Ok(Some(serde_json::from_str(&json).map_err(|e| ApiError::Internal(e.to_string()))?)),
-        None => Ok(None),
-    }
-}
-
-pub(crate) async fn write_bazarr(state: &AppState, cfg: &BazarrConfig) -> ApiResult<()> {
-    let json = serde_json::to_string(cfg).map_err(|e| ApiError::Internal(e.to_string()))?;
-    write_secret(state, BAZARR, &json).await
-}
 /// An extra metadata provider's setting: its key (encrypted) for one that needs a key
 /// (`omdb.api_key`), else whether it's on (plain `true`/`false`, keyed by its id: `tvmaze`).
 pub(crate) fn provider_setting(p: panda_metadata::Provider) -> String {
@@ -95,18 +69,6 @@ pub(crate) async fn metadata_order(state: &AppState) -> panda_metadata::Order {
     read_json::<panda_metadata::Order>(state, METADATA_ORDER).await.normalized()
 }
 
-pub(crate) async fn read_mail(state: &AppState) -> ApiResult<Option<crate::services::mail::MailConfig>> {
-    match read_secret(state, MAIL).await? {
-        Some(json) => Ok(Some(serde_json::from_str(&json).map_err(|e| ApiError::Internal(e.to_string()))?)),
-        None => Ok(None),
-    }
-}
-
-pub(crate) async fn write_mail(state: &AppState, cfg: &crate::services::mail::MailConfig) -> ApiResult<()> {
-    let json = serde_json::to_string(cfg).map_err(|e| ApiError::Internal(e.to_string()))?;
-    write_secret(state, MAIL, &json).await
-}
-
 pub(crate) fn now() -> i64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs() as i64)
 }
@@ -127,19 +89,6 @@ pub(crate) async fn write_secret(state: &AppState, key: &str, value: &str) -> Ap
     Ok(())
 }
 
-pub(crate) async fn read_arr(state: &AppState, key: &str) -> ApiResult<Option<ArrConfig>> {
-    match read_secret(state, key).await? {
-        Some(json) => Ok(Some(serde_json::from_str(&json).map_err(|e| ApiError::Internal(e.to_string()))?)),
-        None => Ok(None),
-    }
-}
-
-/// Sonarr/Radarr settings are stored whole as one encrypted JSON blob (it contains the API key).
-pub(crate) async fn write_arr(state: &AppState, key: &str, cfg: &ArrConfig) -> ApiResult<()> {
-    let json = serde_json::to_string(cfg).map_err(|e| ApiError::Internal(e.to_string()))?;
-    write_secret(state, key, &json).await
-}
-
 /// One-time move of secrets from panda.toml into the encrypted store.
 pub(crate) async fn import_from_config(state: &AppState) -> anyhow::Result<()> {
     let cfg = &state.config;
@@ -151,12 +100,12 @@ pub(crate) async fn import_from_config(state: &AppState) -> anyhow::Result<()> {
         write_secret(state, TMDB_TOKEN, token).await?;
         imported.push("[tmdb]");
     }
-    for (key, value) in [(RADARR, &cfg.radarr), (SONARR, &cfg.sonarr)] {
+    for (service, value) in [(Service::Radarr, &cfg.radarr), (Service::Sonarr, &cfg.sonarr)] {
         if let Some(arr) = value
-            && state.db.setting(key).await?.is_none()
+            && state.db.setting(service.id()).await?.is_none()
         {
-            write_arr(state, key, arr).await?;
-            imported.push(key);
+            external::write(state, service, arr).await?;
+            imported.push(service.id());
         }
     }
     if !imported.is_empty() {
@@ -177,16 +126,16 @@ pub(crate) async fn build_integrations(state: &AppState) -> anyhow::Result<Integ
     };
     let arr =
         |c: ArrConfig| AddDefaults { quality_profile_id: c.quality_profile_id, root_folder: c.root_folder };
-    let radarr_at = async |key| -> anyhow::Result<Option<Arc<Arr<Radarr>>>> {
-        Ok(match read_arr(state, key).await.map_err(|e| anyhow::anyhow!("{e}"))? {
+    let radarr_at = async |service| -> anyhow::Result<Option<Arc<Arr<Radarr>>>> {
+        Ok(match external::read::<ArrConfig>(state, service).await.map_err(|e| anyhow::anyhow!("{e}"))? {
             Some(c) => {
                 Some(Arc::new(Arr { client: Radarr::new(&c.url, c.api_key.clone())?, defaults: arr(c) }))
             }
             None => None,
         })
     };
-    let sonarr_at = async |key| -> anyhow::Result<Option<Arc<Arr<Sonarr>>>> {
-        Ok(match read_arr(state, key).await.map_err(|e| anyhow::anyhow!("{e}"))? {
+    let sonarr_at = async |service| -> anyhow::Result<Option<Arc<Arr<Sonarr>>>> {
+        Ok(match external::read::<ArrConfig>(state, service).await.map_err(|e| anyhow::anyhow!("{e}"))? {
             Some(c) => {
                 Some(Arc::new(Arr { client: Sonarr::new(&c.url, c.api_key.clone())?, defaults: arr(c) }))
             }
@@ -198,11 +147,14 @@ pub(crate) async fn build_integrations(state: &AppState) -> anyhow::Result<Integ
         extras: build_extras(state).await.map_err(|e| anyhow::anyhow!("{e}"))?,
         order: metadata_order(state).await,
         switches: provider_switches(state).await,
-        radarr: radarr_at(RADARR).await?,
-        radarr_4k: radarr_at(RADARR_4K).await?,
-        sonarr: sonarr_at(SONARR).await?,
-        sonarr_4k: sonarr_at(SONARR_4K).await?,
-        bazarr: match read_bazarr(state).await.map_err(|e| anyhow::anyhow!("{e}"))? {
+        radarr: radarr_at(Service::Radarr).await?,
+        radarr_4k: radarr_at(Service::Radarr4k).await?,
+        sonarr: sonarr_at(Service::Sonarr).await?,
+        sonarr_4k: sonarr_at(Service::Sonarr4k).await?,
+        bazarr: match external::read::<BazarrConfig>(state, Service::Bazarr)
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))?
+        {
             Some(c) => Some(Arc::new(panda_arr::Bazarr::new(&c.url, c.api_key)?)),
             None => None,
         },
@@ -228,24 +180,6 @@ pub(crate) struct SettingsView {
     pub bazarr: Option<BazarrView>,
     /// Weekly removal of finished titles from Radarr/Sonarr.
     pub cleanup: crate::services::arr_cleanup::CleanupSettings,
-}
-
-/// Bazarr as the admin UI sees it.
-#[derive(Debug, Serialize)]
-pub(crate) struct BazarrView {
-    pub url: String,
-    pub api_key_set: bool,
-}
-
-/// Mail settings as the admin UI sees them (the password only as "is it set").
-#[derive(Debug, Serialize)]
-pub(crate) struct MailView {
-    pub host: String,
-    pub port: u16,
-    pub security: crate::services::mail::Security,
-    pub username: String,
-    pub password_set: bool,
-    pub from: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -284,25 +218,6 @@ pub(crate) struct OptionView {
 pub(crate) struct FieldView {
     pub id: panda_metadata::Field,
     pub label: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-pub(crate) struct ArrView {
-    pub url: String,
-    pub api_key_set: bool,
-    pub quality_profile_id: i64,
-    pub root_folder: String,
-}
-
-impl From<ArrConfig> for ArrView {
-    fn from(c: ArrConfig) -> Self {
-        Self {
-            api_key_set: !c.api_key.is_empty(),
-            url: c.url,
-            quality_profile_id: c.quality_profile_id,
-            root_folder: c.root_folder,
-        }
-    }
 }
 
 pub(crate) async fn view(state: &AppState) -> ApiResult<SettingsView> {
@@ -346,50 +261,12 @@ pub(crate) async fn view(state: &AppState) -> ApiResult<SettingsView> {
                 })
                 .collect()
         },
-        radarr: read_arr(state, RADARR).await?.map(ArrView::from),
-        radarr_4k: read_arr(state, RADARR_4K).await?.map(ArrView::from),
-        sonarr: read_arr(state, SONARR).await?.map(ArrView::from),
-        sonarr_4k: read_arr(state, SONARR_4K).await?.map(ArrView::from),
+        radarr: external::view::<ArrConfig>(state, Service::Radarr).await?,
+        radarr_4k: external::view::<ArrConfig>(state, Service::Radarr4k).await?,
+        sonarr: external::view::<ArrConfig>(state, Service::Sonarr).await?,
+        sonarr_4k: external::view::<ArrConfig>(state, Service::Sonarr4k).await?,
         cleanup: crate::services::arr_cleanup::read(state).await,
-        bazarr: read_bazarr(state)
-            .await?
-            .map(|b| BazarrView { api_key_set: !b.api_key.is_empty(), url: b.url }),
-        mail: read_mail(state).await?.map(|m| MailView {
-            password_set: !m.password.is_empty(),
-            host: m.host,
-            port: m.port,
-            security: m.security,
-            username: m.username,
-            from: m.from,
-        }),
-    })
-}
-
-/// Admin input for Sonarr/Radarr. Omit `api_key` to keep the stored one.
-#[derive(Debug, Deserialize)]
-pub(crate) struct ArrInput {
-    pub url: String,
-    pub api_key: Option<String>,
-    pub quality_profile_id: i64,
-    pub root_folder: String,
-}
-
-pub(crate) async fn merge_arr(state: &AppState, key: &str, input: ArrInput) -> ApiResult<ArrConfig> {
-    let url = input.url.trim().trim_end_matches('/').to_string();
-    if !(url.starts_with("http://") || url.starts_with("https://")) {
-        return Err(ApiError::Validation("url must start with http:// or https://".into()));
-    }
-    let api_key = match input.api_key.map(|k| k.trim().to_string()).filter(|k| !k.is_empty()) {
-        Some(k) => k,
-        None => read_arr(state, key)
-            .await?
-            .map(|c| c.api_key)
-            .ok_or_else(|| ApiError::Validation("api_key is required".into()))?,
-    };
-    Ok(ArrConfig {
-        url,
-        api_key,
-        quality_profile_id: input.quality_profile_id,
-        root_folder: input.root_folder,
+        bazarr: external::view::<BazarrConfig>(state, Service::Bazarr).await?,
+        mail: external::view::<MailConfig>(state, Service::Mail).await?,
     })
 }
