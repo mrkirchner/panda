@@ -12,10 +12,12 @@ What it shares instead of copying:
 
 Screens (`app/screens`): Connect (servers found by Bonjour, or an address), Sign in (username or
 email and password, `/api/auth/device/login`: the phone becomes one of the account's devices),
-Who's watching, then a tab bar (`app/tabs.tsx`): Home (as on the TV: featured titles to swipe,
+Who's watching, then a tab bar (`app/tabs.tsx`; iOS-size labels, set in app.css): Home (as on the TV: featured titles to swipe,
 Continue Watching, My List, holiday and themed rows, recently added, genre tiles, a spotlight,
 top picks), Movies and Shows (`/api/browse/{kind}`: Featured, Top 10, Recently added, a row per
-genre, and "All" as a poster grid), Search (`/api/find`, top picks before typing). Genre pages
+genre, and "All" as a poster grid), Search (`/api/find`; before typing, top picks and the TV's Trending / "Popular on <service>"
+rows, requestable), My List (your requests with progress and Cancel, then saved titles). Home's
+profile button: Edit profile, Switch profile, Sign out. Genre pages
 are laid out like Movies. A movie's page and a show's, as on the TV: logo, facts, ratings, Play or
 Resume, My List / Watched / Versions / More seasons, episodes, film series, More Like This, Cast &
 Crew, Information and Languages. People's pages, and pages for titles you don't have with
@@ -31,7 +33,9 @@ Picture on top; back/forward 10 s and play/pause in the middle; the scrubber wit
 preview frames while dragging, the times, Subtitles, Audio and Quality (the TV's options, Auto
 measures the connection) at the bottom. Landscape on phones. The server plans the stream for
 this device (`app/profile.ts`). Progress is saved every 10 s and on close; the player closes at
-the end.
+the end. In the background the sound keeps playing (the layer lets go of the player unless Picture
+in Picture took it), with Now Playing on the lock screen and Control Center (play/pause, skip,
+scrub).
 
 Subtitles and audio (`app/subtitles.ts`): native menus from the control bar. Subtitles, loaded as the TV loads them: built-in
 text tracks in 10-minute windows (`?from=`), subtitle files whole, image (PGS) tracks from the

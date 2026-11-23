@@ -28,7 +28,8 @@ const pinMessage = (e: unknown) => {
   return m.includes("Too many") ? t("Too many tries. Wait a few minutes.") : m.includes("wrong") ? t("Wrong PIN") : m;
 };
 
-export function editProfileScreen() {
+/** `done`: where Done goes (Who's watching, or back to where it was opened from Home). */
+export function editProfileScreen(done: () => void = goProfiles) {
   const [error, setError] = createSignal("");
   const [hasPin, setHasPin] = createSignal(false);
   const [note, setNote] = createSignal("");
@@ -186,7 +187,7 @@ export function editProfileScreen() {
           <Show when={error()}>
             <label class="error mt10" textWrap={true} text={error()} />
           </Show>
-          <button class="primary" text={t("Done")} on:tap={goProfiles} />
+          <button class="primary" text={t("Done")} on:tap={done} />
           <Show when={!me()!.primary}>
             <button class="secondary danger" text={t("Delete profile")} on:tap={() => void remove()} />
           </Show>

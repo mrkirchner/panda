@@ -1,8 +1,11 @@
 // Where to go after launch, sign-in, or a profile switch.
 import { api, landingPath, resetSession } from "@tv/api/client";
-import { getDeviceSecret, setUnauthorizedHandler } from "@tv/api/session";
+import { currentUser, getDeviceSecret, setDeviceSecret, setToken, setUnauthorizedHandler } from "@tv/api/session";
+import { Dialogs } from "@nativescript/core";
 import { t } from "@tv/i18n";
-import { open } from "./nav";
+import { back, open } from "./nav";
+import { MyList } from "./screens/MyList";
+import { editProfileScreen } from "./screens/EditProfile";
 import { Home } from "./screens/Home";
 import { browseScreen } from "./screens/Browse";
 import { Search } from "./screens/Search";
@@ -10,9 +13,28 @@ import { showTabs } from "./tabs";
 import { Profiles } from "./screens/Profiles";
 import { SignIn } from "./screens/SignIn";
 
+/** Home's profile button: edit this profile, switch, or sign this phone out. */
+async function profileMenu() {
+  const edit = t("Edit profile");
+  const change = t("Switch profile");
+  const out = t("Sign out of this phone");
+  const pick = await Dialogs.action({
+    title: currentUser()?.name ?? "",
+    cancelButtonText: t("Cancel"),
+    actions: getDeviceSecret() ? [edit, change, out] : [edit, out],
+  });
+  if (pick === edit) open(() => editProfileScreen(back), { title: t("Edit profile") });
+  else if (pick === change) goProfiles();
+  else if (pick === out) {
+    setToken(null);
+    setDeviceSecret(null);
+    goSignIn();
+  }
+}
+
 /** Signed in: the tab bar, starting on Home. */
 export function goHome() {
-  const profiles = getDeviceSecret() ? [{ text: t("Profiles"), tap: goProfiles }] : [];
+  const profiles = [{ text: t("Profile"), icon: "person.crop.circle", tap: () => void profileMenu() }];
   showTabs([
     { title: "Home", icon: "house.fill", screen: () => <Home />, opts: { title: "Panda", actions: profiles } },
     {
@@ -28,6 +50,7 @@ export function goHome() {
       opts: { title: t("Shows") },
     },
     { title: "Search", icon: "magnifyingglass", screen: () => <Search />, opts: { title: t("Search") } },
+    { title: "My List", icon: "bookmark", screen: () => <MyList />, opts: { title: t("My List") } },
   ]);
 }
 

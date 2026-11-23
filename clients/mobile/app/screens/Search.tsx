@@ -2,7 +2,7 @@
 // top picks.
 import type { SearchBar } from "@nativescript/core";
 import { api } from "@tv/api/client";
-import type { Discover, FindResults, Person } from "@tv/api/types";
+import type { Discover, DiscoverSet, FindResults, Person } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
 import { load } from "../data";
@@ -19,6 +19,8 @@ export const setStartQuery = (q: string) => (startQuery = q);
 
 export function Search() {
   const picks = load(() => api.find({ picks: true, more: false }));
+  /** Trending and "Popular on <service>" (TMDB), minus what you have: requestable. */
+  const discover = load(() => api.discover().catch(() => [] as DiscoverSet[]));
   const [query, setQuery] = createSignal("");
   const [results, setResults] = createSignal<FindResults | null>(null);
   const [busy, setBusy] = createSignal(false);
@@ -94,6 +96,11 @@ export function Search() {
                 {s => <Poster image={s.poster} title={s.meta_title ?? s.series} onTap={() => openSeries(s.series)} />}
               </For>
             </Row>
+          </Show>
+          <Show when={!query().trim()}>
+            <For each={discover.value() ?? []}>
+              {set => <MoreRow title={t(set.title)} items={set.items.map(suggestion => ({ suggestion }))} />}
+            </For>
           </Show>
           <Show when={query().trim()}>
             <MoreRow title={t("Not in your library")} items={more().map(suggestion => ({ suggestion }))} />

@@ -21,7 +21,7 @@ export interface ScreenOptions {
   /** Start a new history (after sign-in or switching profile): Back can't return here. */
   clear?: boolean;
   /** Buttons on the right of the navigation bar. */
-  actions?: { text: string; tap: () => void }[];
+  actions?: { text: string; icon?: string; tap: () => void }[];
 }
 
 /** A native page showing `screen`, disposed when it's gone from `frame`. */
@@ -33,6 +33,7 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
   for (const a of opts.actions ?? []) {
     const item = new ActionItem();
     item.text = a.text;
+    if (a.icon) item.icon = `sys://${a.icon}`;
     item.ios.position = "right";
     item.on("tap", a.tap);
     page.actionBar.actionItems.addItem(item);

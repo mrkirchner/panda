@@ -9,8 +9,12 @@
 // the times, and Subtitles, Audio and Quality at the bottom. A tap shows or hides them; they
 // hide by themselves while playing. Progress goes to the server every few seconds and when
 // the player closes, so resume and Continue Watching follow you between the phone and the TVs.
-import { ImageSource, Utils } from "@nativescript/core";
-import { absolute, api } from "@tv/api/client";
+//
+// In the background (locked, or another app) the sound keeps playing, or the picture goes to
+// Picture in Picture; the lock screen and Control Center show it with play/pause, skip and the
+// scrubber (Now Playing).
+import { Application, ImageSource, Utils } from "@nativescript/core";
+import { absolute, api, imageUrl } from "@tv/api/client";
 import type { AudioTrack, Item, Playback, SubtitleTrack } from "@tv/api/types";
 import { formatTime } from "@tv/format";
 import { t } from "@tv/i18n";
@@ -151,6 +155,9 @@ class PlayerSession {
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
   private previewTimer: ReturnType<typeof setTimeout> | undefined;
   private observer: unknown = null;
+  private readonly remoteTargets: { command: MPRemoteCommand; token: unknown }[] = [];
+  private artwork: MPMediaItemArtwork | null = null;
+  private readonly appEvents: [string, (...a: unknown[]) => void][] = [];
 
   // Views
   private readonly vc = new PlayerController();
@@ -301,6 +308,7 @@ class PlayerSession {
           i.kind === "episode"
             ? `${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}  ${i.episode_title ?? ""}`.trim()
             : (i.meta_title ?? i.title);
+        this.loadArtwork(i.backdrop ?? i.poster);
       },
       () => {},
     );
@@ -321,7 +329,82 @@ class PlayerSession {
       setInterval(() => {
         if (this.player.rate !== 0) void this.save();
       }, SAVE_EVERY_MS),
+      setInterval(() => this.updateNowPlaying(), 1000),
     );
+    this.startBackground();
+    this.startRemoteCommands();
+  }
+
+  // ---- In the background, and on the lock screen ----
+
+  private startBackground() {
+    // Leaving the app: the sound goes on without the picture (iOS pauses a player still drawing
+    // into a layer), unless Picture in Picture took the picture along.
+    const away = () => {
+      if (!this.pip?.pictureInPictureActive) this.layer.player = null;
+    };
+    const back = () => {
+      this.layer.player = this.player;
+    };
+    this.appEvents.push([Application.backgroundEvent, away], [Application.foregroundEvent, back]);
+    for (const [name, fn] of this.appEvents) Application.on(name, fn);
+  }
+
+  private startRemoteCommands() {
+    const center = MPRemoteCommandCenter.sharedCommandCenter();
+    const on = (command: MPRemoteCommand, fn: (e: MPRemoteCommandEvent) => void) => {
+      command.enabled = true;
+      const token = command.addTargetWithHandler(e => {
+        fn(e);
+        this.updateNowPlaying();
+        return MPRemoteCommandHandlerStatus.Success;
+      });
+      this.remoteTargets.push({ command, token });
+    };
+    on(center.playCommand, () => this.player.play());
+    on(center.pauseCommand, () => this.player.pause());
+    on(center.togglePlayPauseCommand, () => (this.player.rate !== 0 ? this.player.pause() : this.player.play()));
+    center.skipForwardCommand.preferredIntervals = NSArray.arrayWithObject(SKIP_SECS) as NSArray<number>;
+    center.skipBackwardCommand.preferredIntervals = NSArray.arrayWithObject(SKIP_SECS) as NSArray<number>;
+    on(center.skipForwardCommand, () => this.seekTo(this.position() + SKIP_SECS));
+    on(center.skipBackwardCommand, () => this.seekTo(this.position() - SKIP_SECS));
+    on(center.changePlaybackPositionCommand, e =>
+      this.seekTo((e as MPChangePlaybackPositionCommandEvent).positionTime),
+    );
+  }
+
+  private loadArtwork(key: string | null) {
+    const url = imageUrl(key);
+    if (!url) return;
+    ImageSource.fromUrl(url).then(
+      src => {
+        const image = src.ios as UIImage;
+        this.artwork = MPMediaItemArtwork.alloc().initWithBoundsSizeRequestHandler(image.size, () => image);
+        this.updateNowPlaying();
+      },
+      () => {},
+    );
+  }
+
+  /** What the lock screen and Control Center show: title, show, artwork, where it's at. */
+  private updateNowPlaying() {
+    if (this.closed) return;
+    const info = NSMutableDictionary.new<string, unknown>();
+    const i = this.info;
+    info.setObjectForKey(
+      i ? (i.kind === "episode" ? (i.episode_title ?? i.title) : (i.meta_title ?? i.title)) : "Panda",
+      MPMediaItemPropertyTitle,
+    );
+    if (i?.kind === "episode") {
+      info.setObjectForKey(`${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}`.trim(), MPMediaItemPropertyArtist);
+    }
+    const dur = this.duration();
+    if (dur > 0) info.setObjectForKey(dur, MPMediaItemPropertyPlaybackDuration);
+    info.setObjectForKey(this.position(), MPNowPlayingInfoPropertyElapsedPlaybackTime);
+    info.setObjectForKey(this.player.rate, MPNowPlayingInfoPropertyPlaybackRate);
+    info.setObjectForKey(MPNowPlayingInfoMediaType.Video, MPNowPlayingInfoPropertyMediaType);
+    if (this.artwork) info.setObjectForKey(this.artwork, MPMediaItemPropertyArtwork);
+    MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = info as unknown as NSDictionary<string, unknown>;
   }
 
   private close() {
@@ -334,6 +417,9 @@ class PlayerSession {
     clearTimeout(this.previewTimer);
     this.subs?.close();
     if (this.observer) this.player.removeTimeObserver(this.observer);
+    for (const [name, fn] of this.appEvents) Application.off(name, fn);
+    for (const { command, token } of this.remoteTargets) command.removeTarget(token);
+    MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = null;
     this.pip?.stopPictureInPicture();
     this.player.pause();
     this.player.replaceCurrentItemWithPlayerItem(null);

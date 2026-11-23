@@ -371,7 +371,9 @@
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The
   timeline is the file's length; seeks go through the TV's `planSeek` (restart outside the
   stream). Subtitles drawn over `layer.videoRect` (`app/subtitles.ts`, the TV's windowed/file/PGS
-  loading and `@tv/playback` parsers); Subtitles/Audio/Quality are native action sheets. A build
+  loading and `@tv/playback` parsers); Subtitles/Audio/Quality are native action sheets. Background:
+  the AVPlayerLayer drops the player on `backgroundEvent` (else iOS pauses it), Now Playing +
+  remote commands (`MPNowPlayingInfoCenter`, `MPRemoteCommandCenter`), all removed on close. A build
   whose Xcode step was cut short can be unsigned or stale: `scripts/run-sim.sh` refuses an
   unsigned app.
 - Solid 2 refuses signal writes while a component is being built (REACTIVE_WRITE_IN_OWNED_SCOPE, a

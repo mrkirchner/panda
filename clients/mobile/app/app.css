@@ -137,7 +137,8 @@ ActionBar {
 .grid-poster { border-radius: 8; }
 .search { background-color: #0d0d0f; color: #f4f1ea; }
 .search-note { margin: 16 16 0 16; }
-.tabs { background-color: #0d0d0f; selected-tab-text-color: #d4ae6a; tab-text-color: #a39e95; }
+/* iOS tab bar sizes: NativeScript would draw the labels at body size (17). */
+.tabs { background-color: #0d0d0f; selected-tab-text-color: #d4ae6a; tab-text-color: #a39e95; tab-text-font-size: 10; }
 
 /* Title pages */
 .logo { height: 70; horizontal-align: left; margin-bottom: 4; }
@@ -176,3 +177,5 @@ ActionBar {
 .danger { color: #ff6b5b; }
 .pick-cell { width: 96; height: 96; margin: 6; }
 .pick-art { width: 88; height: 88; border-radius: 44; background-color: #242427; }
+.request-poster { width: 60; height: 90; border-radius: 6; background-color: #1a1a1d; }
+.cancel-link { vertical-align: middle; margin-left: 8; }
