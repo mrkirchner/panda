@@ -6,7 +6,7 @@ import { useParams } from "@solidjs/router";
 import { api, imageUrl } from "@tv/api/client";
 import type { Discover, Item, SeriesSummary } from "@tv/api/types";
 import { longDate, tmdbRating } from "@tv/format";
-import { t } from "@tv/i18n";
+import { t, tn } from "@tv/i18n";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { DetailArt, GhostRow, Logo, Progress } from "../components/cards";
 import { Icon } from "../components/icons";
@@ -70,7 +70,7 @@ function SeriesView(props: { name: string }) {
       setNote(
         get.length === 1
           ? t("Requested season {n}.", { n: get[0] })
-          : t("Requested {n} seasons.", { n: get.length }),
+          : tn(get.length, "Requested {n} season.", "Requested {n} seasons."),
       );
     } catch (e) {
       setNote(message(e));

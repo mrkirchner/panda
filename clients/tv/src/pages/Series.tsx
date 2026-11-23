@@ -92,7 +92,7 @@ function SeriesView() {
       setMoreNote(
         seasons.length === 1
           ? t("Requested season {n}.", { n: seasons[0]! })
-          : t("Requested {n} seasons.", { n: seasons.length }),
+          : tn(seasons.length, "Requested {n} season.", "Requested {n} seasons."),
       );
     } catch (e) {
       setMoreNote((e as Error).message);

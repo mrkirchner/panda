@@ -6,7 +6,7 @@ import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Preview } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
-import { t } from "@tv/i18n";
+import { t, tn } from "@tv/i18n";
 import { Show, createSignal } from "solid-js";
 import { facts, load, longDate, refreshAll, runtime } from "../data";
 import { bestProgress, discoverStatus, refreshRequests, requestFor } from "../requests";
@@ -101,7 +101,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
                 textWrap={true}
                 text={facts([
                   p()!.year,
-                  p()!.seasons ? t("{n} seasons", { n: p()!.seasons! }) : runtime((p()!.runtime_mins ?? 0) * 60),
+                  p()!.seasons ? tn(p()!.seasons!, "{n} season", "{n} seasons") : runtime((p()!.runtime_mins ?? 0) * 60),
                   p()!.details.certification,
                   (p()!.genres ?? "").split(/,\s*/).slice(0, 3).join(", "),
                   p()!.details.next_episode

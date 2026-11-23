@@ -5,7 +5,7 @@ import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Discover, Item, SeriesSummary } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
-import { t } from "@tv/i18n";
+import { t, tn } from "@tv/i18n";
 import { For, Show, createMemo, createSignal } from "solid-js";
 import { facts, load, longDate, runtime } from "../data";
 import { features } from "../features";
@@ -90,7 +90,7 @@ export function seriesScreen(name: string) {
       setNote(
         seasonsToGet.length === 1
           ? t("Requested season {n}.", { n: seasonsToGet[0] })
-          : t("Requested {n} seasons.", { n: seasonsToGet.length }),
+          : tn(seasonsToGet.length, "Requested {n} season.", "Requested {n} seasons."),
       );
     } catch (e) {
       setNote(e instanceof Error ? e.message : String(e));
@@ -143,7 +143,7 @@ export function seriesScreen(name: string) {
             textWrap={true}
             text={facts([
               show.value()?.year,
-              seasons().length ? t("{n} seasons", { n: seasons().length }) : null,
+              seasons().length ? tn(seasons().length, "{n} season", "{n} seasons") : null,
               details.value()?.certification,
               details.value()?.status,
             ])}

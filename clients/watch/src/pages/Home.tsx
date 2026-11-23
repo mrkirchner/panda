@@ -3,7 +3,7 @@
 // genres, recently added shows, a spotlight, top picks, and today's themes.
 import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, MyRequest, ThemedRow } from "@tv/api/types";
-import { t, tServer } from "@tv/i18n";
+import { t, tn, tServer } from "@tv/i18n";
 import { For, Show, createMemo } from "solid-js";
 import {
   Banner,
@@ -100,7 +100,7 @@ export default function Home() {
       title: s.meta_title ?? s.series,
       poster: s.poster,
       backdrop: s.backdrop,
-      meta: facts([s.year, t("{n} seasons", { n: s.seasons }), genres(s.genres, 1)]),
+      meta: facts([s.year, tn(s.seasons, "{n} season", "{n} seasons"), genres(s.genres, 1)]),
       clip: { kind: "series" as const, name: s.series },
       href: href(paths.series(s.series)),
     })),

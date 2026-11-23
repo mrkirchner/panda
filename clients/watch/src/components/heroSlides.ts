@@ -3,7 +3,7 @@
 import { api } from "@tv/api/client";
 import type { Featured, Spot, Title } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
-import { t } from "@tv/i18n";
+import { t, tn } from "@tv/i18n";
 import { facts, genres, message, runtime } from "../data";
 import { href, paths } from "../nav";
 import { play, playShow, resumeAt } from "../player/launch";
@@ -40,7 +40,7 @@ export function featuredSlide(f: Featured | Title): HeroSlide {
     logo: feat.logo ?? null,
     backdrop: s.backdrop,
     reason: t(feat.reason),
-    facts: facts([s.year, t("{n} seasons", { n: s.seasons }), genres(s.genres)]),
+    facts: facts([s.year, tn(s.seasons, "{n} season", "{n} seasons"), genres(s.genres)]),
     overview: s.overview,
     ratings: feat.ratings?.length ? feat.ratings : tmdbRating(s.rating),
     clip: { kind: "series", name: s.series },

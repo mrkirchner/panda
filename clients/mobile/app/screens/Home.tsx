@@ -3,7 +3,7 @@
 // shows, a spotlight, top picks, and today's themes.
 import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/api/types";
-import { t, tServer } from "@tv/i18n";
+import { t, tn, tServer } from "@tv/i18n";
 import { For, Show, createMemo } from "solid-js";
 import { facts, load, runtime } from "../data";
 import { platform } from "../platform";
@@ -80,7 +80,7 @@ export function Home() {
               title: s.meta_title ?? s.series,
               poster: s.poster,
               backdrop: s.backdrop,
-              meta: facts([s.year, t("{n} seasons", { n: s.seasons }), (s.genres ?? "").split(/,\s*/)[0]]),
+              meta: facts([s.year, tn(s.seasons, "{n} season", "{n} seasons"), (s.genres ?? "").split(/,\s*/)[0]]),
               clip: { kind: "series" as const, name: s.series },
               open: () => openSeries(s.series),
             })) : []));

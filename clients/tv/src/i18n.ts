@@ -75,6 +75,7 @@ const ES: Record<string, string> = {
   "Get which seasons?": "¿Qué temporadas quieres?",
   "More seasons": "Más temporadas",
   "Requested season {n}.": "Temporada {n} solicitada.",
+  "Requested {n} season.": "{n} temporada solicitada.",
   "Requested {n} seasons.": "{n} temporadas solicitadas.",
   "Sign-in": "Inicio de sesión",
   "Turn off sign-in": "Desactivar el inicio de sesión",

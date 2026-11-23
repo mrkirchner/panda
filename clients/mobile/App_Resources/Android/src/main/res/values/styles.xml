@@ -28,6 +28,17 @@
         <item name="android:windowBackground">@color/panda_background</item>
         <item name="android:statusBarColor">@color/panda_background</item>
         <item name="android:navigationBarColor">@color/panda_background</item>
+        <!-- Dialogs and action menus in Panda's colours, not the stock grey. -->
+        <item name="alertDialogTheme">@style/PandaDialog</item>
+        <item name="android:alertDialogTheme">@style/PandaDialog</item>
+    </style>
+
+    <style name="PandaDialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/panda_dialog_bg</item>
+        <item name="colorAccent">@color/ns_accent</item>
+        <item name="android:textColorPrimary">@color/panda_text</item>
+        <item name="android:textColorSecondary">@color/panda_text_dim</item>
+        <item name="android:textColorAlertDialogListItem">@color/panda_text</item>
     </style>
 
     <style name="AppTheme" parent="AppThemeBase">
