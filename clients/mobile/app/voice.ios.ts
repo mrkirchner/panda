@@ -3,6 +3,7 @@
 // Recognition runs on Apple's speech service in the profile's language (else the phone's).
 import { Utils } from "@nativescript/core";
 import { lang } from "@tv/i18n";
+import type { VoiceEvents } from "@tv/platform/types";
 
 /** Stop this long after the last new words. */
 const SILENCE_MS = 1500;
@@ -11,14 +12,6 @@ const NOTHING_SAID_MS = 5000;
 /** And never listen longer than this. */
 const MAX_MS = 15_000;
 
-export type VoiceEvents = {
-  /** The words so far (they change while you speak). */
-  onText: (text: string) => void;
-  /** Listening started / stopped. */
-  onListening: (on: boolean) => void;
-  /** Not allowed or not available, said plainly. */
-  onError: (message: string) => void;
-};
 
 let stopCurrent: (() => void) | null = null;
 export const isListening = () => stopCurrent !== null;

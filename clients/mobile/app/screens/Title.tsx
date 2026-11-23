@@ -9,9 +9,11 @@ import { t } from "@tv/i18n";
 import { Show, createMemo } from "solid-js";
 import { facts, gb, load, longDate, refreshAll, runtime } from "../data";
 import { myListToggle } from "../myList";
-import { play } from "../player";
+import { platform } from "../platform";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "./sections";
 import { ClipArt, GhostRow, Logo } from "./cards";
+
+const { play } = platform.player;
 
 export function titleScreen(id: string) {
   const data = load(() => api.title(id), { live: true });

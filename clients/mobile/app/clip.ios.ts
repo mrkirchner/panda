@@ -7,8 +7,8 @@ import { Application, type View } from "@nativescript/core";
 import { api } from "@tv/api/client";
 import { currentUser } from "@tv/api/session";
 import { refreshAll } from "./data";
+import type { ClipSource } from "./platformTypes";
 
-export type ClipSource = { kind: "title"; id: string } | { kind: "series"; name: string };
 
 /** "Quiet": well under the volume a title plays at (the TV's). */
 const QUIET = 0.2;

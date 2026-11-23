@@ -7,7 +7,7 @@ import { languageName } from "@tv/format";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { Poster, Row } from "./cards";
-import { symbol } from "../symbols";
+import { platform } from "../platform";
 import { openPerson, openPreview, openSeries, openSpot, openTitle } from "./links";
 
 /** TMDB's logo is 273.42 x 35.52 (images/tmdb.svg). */
@@ -56,7 +56,7 @@ export function Action(props: { icon: string; label: string; onTap: () => void; 
   return (
     <stacklayout class="action" on:tap={props.onTap}>
       <gridlayout class={props.on ? "action-circle on" : "action-circle"}>
-        <image loadMode="async" class="action-icon" src={symbol(props.icon)} tintColor={props.on ? "#141210" : "#f4f1ea"} />
+        <image loadMode="async" class="action-icon" src={platform.icon(props.icon)} tintColor={props.on ? "#141210" : "#f4f1ea"} />
       </gridlayout>
       <label class="action-label" text={props.label} textWrap={true} />
     </stacklayout>

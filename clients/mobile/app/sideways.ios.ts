@@ -1,14 +1,8 @@
 // The focus row's sideways swipe on iPhone: a pan recognizer that only starts on a mostly
 // sideways swipe (so the page still scrolls vertically), reporting the finger's travel.
 import type { View } from "@nativescript/core";
+import type { SwipeHandlers } from "./platformTypes";
 
-export interface SwipeHandlers {
-  began: () => void;
-  /** The finger has moved `tx` points sideways from where it started. */
-  moved: (tx: number) => void;
-  /** Let go after `tx` points, moving at `vx` points/s. */
-  released: (tx: number, vx: number) => void;
-}
 
 /** Lets the page scroll vertically: the row's pan only starts on a mostly sideways swipe. */
 const Sideways = (NSObject as unknown as {

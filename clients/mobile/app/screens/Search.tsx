@@ -1,7 +1,6 @@
 // Search the library (`/api/find`): movies and shows as you type. Before typing, the library's
 // top picks.
 import { Dialogs, type SearchBar } from "@nativescript/core";
-import { isListening, startListening, stopListening } from "../voice";
 import { onTabShown } from "../tabs";
 import { api } from "@tv/api/client";
 import type { Discover, DiscoverSet, FindResults, Person } from "@tv/api/types";
@@ -18,7 +17,7 @@ const fold = (x: string) =>
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { load } from "../data";
 import { GhostRow, Poster, Row } from "./cards";
-import { symbol } from "../symbols";
+import { platform } from "../platform";
 import { openSeries, openTitle } from "./links";
 import { MoreRow, PeopleRow } from "./sections";
 
@@ -113,9 +112,9 @@ export function Search() {
   let bar: SearchBar | undefined;
   const [listening, setListening] = createSignal(false);
   const voice = () => {
-    if (isListening()) return stopListening();
+    if (platform.voice.isListening()) return platform.voice.stop();
     bar?.dismissSoftInput();
-    return startListening({
+    return platform.voice.start({
       onText: text => {
         if (bar) bar.text = text;
         search(text);
@@ -131,7 +130,7 @@ export function Search() {
   });
   onCleanup(() => {
     onTabShown.delete("Search");
-    stopListening();
+    platform.voice.stop();
     clearTimeout(timer);
     clearTimeout(heldTimer);
   });
@@ -178,7 +177,7 @@ export function Search() {
       />
         {/* Voice search, as the TV's Voice key: the words fill the bar as you speak. */}
         <gridlayout col={1} class={listening() ? "mic on" : "mic"} on:tap={() => void voice()}>
-          <image class="mic-icon" src={symbol("mic.fill")} tintColor={listening() ? "#141210" : "#f4f1ea"} />
+          <image class="mic-icon" src={platform.icon("mic.fill")} tintColor={listening() ? "#141210" : "#f4f1ea"} />
         </gridlayout>
       </gridlayout>
       <scrollview>

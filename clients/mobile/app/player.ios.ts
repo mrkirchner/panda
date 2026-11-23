@@ -33,10 +33,11 @@ import {
   trackLabels,
 } from "@tv/playback/subtitles";
 import { previewUrl } from "@tv/playback/trickplay";
-import { phoneProfile } from "./profile";
-import { setPlayerOpen } from "./clip";
+import { phoneProfile } from "./profile.ios";
+import { setPlayerOpen } from "./clip.ios";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 import { audioChoice, read, write } from "@tv/platform/settings";
+import type { PlayTarget } from "./platformTypes";
 
 /** How often progress is saved while playing. */
 const SAVE_EVERY_MS = 10_000;
@@ -49,7 +50,6 @@ const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
 
 /** A movie (`version`: one of its files, else the server picks) or one file (an episode). */
-export type PlayTarget = { kind: "title"; id: string; version?: number } | { kind: "item"; id: number };
 
 const seconds = (time: CMTime) => {
   const s = CMTimeGetSeconds(time);

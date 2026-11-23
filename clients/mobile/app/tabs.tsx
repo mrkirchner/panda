@@ -3,7 +3,7 @@
 import { Frame, Page, TabView, TabViewItem, type SelectedIndexChangedEventData } from "@nativescript/core";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { t } from "@tv/i18n";
-import { symbol } from "./symbols";
+import { platform } from "./platform";
 import { makePage, releaseFrame, setBeforeRootReset, setCurrentFrame, showRoot, type ScreenOptions } from "./nav";
 
 interface Tab {
@@ -40,7 +40,7 @@ export function showTabs(tabs: Tab[]): void {
     const item = new TabViewItem();
     item.title = t(tab.title);
     item.textTransform = "none";
-    item.iconSource = symbol(tab.icon);
+    item.iconSource = platform.icon(tab.icon);
     item.view = frame;
     return item;
   });

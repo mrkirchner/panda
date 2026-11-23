@@ -32,13 +32,14 @@ import { DEFAULT_STALLS, StallMonitor, stepDownBudget } from "@tv/playback/stall
 import { clampTiming, describeTiming, saveTiming, savedTiming, shortTiming, trackLabels } from "@tv/playback/subtitles";
 import { previewUrl } from "@tv/playback/trickplay";
 import { Show, createSignal } from "solid-js";
-import { setPlayerOpen } from "./clip";
+import { setPlayerOpen } from "./clip.android";
 import { rootFrame } from "./nav";
 import { features } from "./features";
 import { STATE_BUFFERING, STATE_ENDED, coverTexture, listen, mediaItem, newPlayer, type Exo } from "./media3.android";
-import { phoneProfile } from "./profile";
+import { phoneProfile } from "./profile.android";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 import { audioChoice, read, write } from "@tv/platform/settings";
+import type { PlayTarget } from "./platformTypes";
 
 const SAVE_EVERY_MS = 10_000;
 const CONTROLS_HIDE_MS = 4000;
@@ -47,7 +48,6 @@ const KEEP_BEHIND_SECS = 90;
 const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
 
-export type PlayTarget = { kind: "title"; id: string; version?: number } | { kind: "item"; id: number };
 
 let current: AndroidPlayer | null = null;
 

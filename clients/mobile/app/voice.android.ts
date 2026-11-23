@@ -3,19 +3,12 @@
 // they're heard, and stops on a pause or a second tap. The microphone is asked for the first time.
 import { AndroidApplication, Application, Utils } from "@nativescript/core";
 import { lang } from "@tv/i18n";
+import type { VoiceEvents } from "@tv/platform/types";
 
 /** And never listen longer than this. */
 const MAX_MS = 15_000;
 const MIC_REQUEST = 7311;
 
-export type VoiceEvents = {
-  /** The words so far (they change while you speak). */
-  onText: (text: string) => void;
-  /** Listening started / stopped. */
-  onListening: (on: boolean) => void;
-  /** Not allowed or not available, said plainly. */
-  onError: (message: string) => void;
-};
 
 let stopCurrent: (() => void) | null = null;
 export const isListening = () => stopCurrent !== null;

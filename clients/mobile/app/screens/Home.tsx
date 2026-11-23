@@ -6,7 +6,7 @@ import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/a
 import { t, tServer } from "@tv/i18n";
 import { For, Show, createMemo } from "solid-js";
 import { facts, load, runtime } from "../data";
-import { play } from "../player";
+import { platform } from "../platform";
 import { Banner, ExpandRow, GenreTile, GhostHero, GhostRow, Poster, Row, WideCard } from "./cards";
 import { Hero } from "./Hero";
 import { featuredSlide } from "./heroSlides";
@@ -16,6 +16,8 @@ import { OfflineBanner } from "../offline";
 import { MoreRow } from "./sections";
 import { Dialogs } from "@nativescript/core";
 import type { MyRequest } from "@tv/api/types";
+
+const { play } = platform.player;
 
 /** Continue Watching: play from where you were, then land on its page (as the TV does). */
 function resume(e: ContinueEntry) {

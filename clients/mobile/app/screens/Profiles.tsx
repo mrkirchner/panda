@@ -8,7 +8,7 @@ import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
 import { Avatar } from "../avatar";
-import { symbol } from "../symbols";
+import { platform } from "../platform";
 import { load } from "../data";
 import { open } from "../nav";
 import { goHome, goSignIn } from "../session";
@@ -109,7 +109,7 @@ export function Profiles() {
           <Show when={!editing() && (data.value()?.profiles.length ?? MAX_PROFILES) < MAX_PROFILES}>
             <stacklayout class="profile-cell" on:tap={() => void add()}>
               <gridlayout class="add-tile">
-                <image loadMode="async" class="add-icon" src={symbol("plus")} tintColor="#f4f1ea" />
+                <image loadMode="async" class="add-icon" src={platform.icon("plus")} tintColor="#f4f1ea" />
               </gridlayout>
               <label class="body center mt8" text={t("Add profile")} />
             </stacklayout>

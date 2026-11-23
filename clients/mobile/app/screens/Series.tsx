@@ -10,10 +10,12 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import { facts, load, longDate, runtime } from "../data";
 import { features } from "../features";
 import { myListToggle } from "../myList";
-import { play } from "../player";
+import { platform } from "../platform";
 import { ClipArt, GhostRow, Logo, Progress } from "./cards";
 import { pickSeasons } from "./SeasonPicker";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
+
+const { play } = platform.player;
 
 /** Episode order, Specials (season 0) last, as the TV lists them. */
 export function sortEpisodes(eps: Item[]): Item[] {

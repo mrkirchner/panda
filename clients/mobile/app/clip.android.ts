@@ -8,8 +8,8 @@ import { api } from "@tv/api/client";
 import { currentUser } from "@tv/api/session";
 import { refreshAll } from "./data";
 import { STATE_BUFFERING, STATE_ENDED, coverTexture, listen, mediaItem, newPlayer, type Exo } from "./media3.android";
+import type { ClipSource } from "./platformTypes";
 
-export type ClipSource = { kind: "title"; id: string } | { kind: "series"; name: string };
 
 /** "Quiet": well under the volume a title plays at (the TV's). */
 const QUIET = 0.2;

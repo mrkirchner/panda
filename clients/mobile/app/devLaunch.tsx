@@ -16,7 +16,9 @@ import { ListView, ScrollView, type View } from "@nativescript/core";
 import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
-import { devSeek, play } from "./player";
+import { platform } from "./platform";
+
+const { devSeek, play } = platform.player;
 import { selectTab } from "./tabs";
 import { devDrag, devExpand, devScrollRow } from "./screens/cards";
 import { devType, setStartQuery } from "./screens/Search";

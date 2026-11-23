@@ -6,10 +6,12 @@ import type { Featured, Spot, Title } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
 import { t } from "@tv/i18n";
 import { facts, runtime } from "../data";
-import { play } from "../player";
+import { platform } from "../platform";
 import type { HeroSlide } from "./Hero";
 import { openSeries, openSpot, openTitle } from "./links";
 import { nextUp, sortEpisodes } from "./Series";
+
+const { play } = platform.player;
 
 const genres = (g: string | null | undefined) =>
   (g ?? "")

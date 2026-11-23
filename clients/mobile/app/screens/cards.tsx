@@ -7,8 +7,8 @@ import { genreTint } from "@tv/theme";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Screen, type ContentView, type ScrollView, type View } from "@nativescript/core";
-import { playClip, type ClipSource } from "../clip";
-import { attachSideways } from "../sideways";
+import { platform } from "../platform";
+import type { ClipSource } from "../platformTypes";
 
 export function Row(props: {
   title: string;
@@ -149,7 +149,7 @@ export function ClipArt(props: { image: string | null | undefined; clip: ClipSou
   let host: ContentView | undefined;
   let clip: { stop: () => void } | null = null;
   const timer = setTimeout(() => {
-    if (host) clip = playClip(host, props.clip, undefined, undefined, props.inSheet ?? false);
+    if (host) clip = platform.clips.play(host, props.clip, undefined, undefined, props.inSheet ?? false);
   }, CLIP_DELAY_MS);
   onCleanup(() => {
     clearTimeout(timer);
@@ -302,7 +302,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
     clipTimer = setTimeout(() => {
       const host = hosts[next];
       const item = props.items[next];
-      if (host && item && focus === next) clip = playClip(host, item.clip);
+      if (host && item && focus === next) clip = platform.clips.play(host, item.clip);
     }, EXPAND_CLIP_MS);
   };
   const tap = (i: number) => (i === focus ? props.items[i]?.open() : goTo(i));
@@ -323,7 +323,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   let detachSwipe: (() => void) | null = null;
   const attachPan = (row: View) => {
     if (detachSwipe) return;
-    detachSwipe = attachSideways(row, {
+    detachSwipe = platform.gestures.sideways(row, {
       began: () => clearInterval(settling),
       moved: drag,
       released: release,

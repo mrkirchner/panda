@@ -5,8 +5,7 @@
 // the page: it's disposed once the page is gone (popped by Back, or dropped by a cleared history).
 import { ActionItem, Frame, type GridLayout, type NavigatedData, Page, NavigationButton } from "@nativescript/core";
 import { render } from "@nativescript-community/solid-js";
-import { setSheetOpen } from "./clip";
-import { symbol } from "./symbols";
+import { platform } from "./platform";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 
 let root: Frame | null = null;
@@ -35,7 +34,7 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
   for (const a of opts.actions ?? []) {
     const item = new ActionItem();
     item.text = a.text;
-    if (a.icon) item.icon = symbol(a.icon);
+    if (a.icon) item.icon = platform.icon(a.icon);
     if (a.view) {
       // A view of its own (the profile's avatar): taps go to it, not to the item.
       const host = document.createElement("gridlayout") as unknown as GridLayout;
@@ -143,13 +142,13 @@ export function openSheet(screen: () => JSX.Element, onClosed?: () => void): voi
     }
   });
   closeSheet = () => host.closeModal();
-  setSheetOpen(true);
+  platform.clips.setSheetOpen(true);
   page.showModal(host, {
     fullscreen: false,
     animated: true,
     closeCallback: () => {
       closeSheet = null;
-      setSheetOpen(false);
+      platform.clips.setSheetOpen(false);
       onClosed?.();
       dispose();
     },

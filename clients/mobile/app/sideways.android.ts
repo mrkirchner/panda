@@ -2,14 +2,8 @@
 // the touch from the vertical page scroll once the swipe is mostly sideways, reporting the
 // finger's travel and (from its last moves) its speed.
 import { GestureStateTypes, type EventData, type PanGestureEventData, type View } from "@nativescript/core";
+import type { SwipeHandlers } from "./platformTypes";
 
-export interface SwipeHandlers {
-  began: () => void;
-  /** The finger has moved `tx` points sideways from where it started. */
-  moved: (tx: number) => void;
-  /** Let go after `tx` points, moving at `vx` points/s. */
-  released: (tx: number, vx: number) => void;
-}
 
 /** Attach the swipe to `row`; returns a function that removes it. */
 export function attachSideways(row: View, h: SwipeHandlers): () => void {

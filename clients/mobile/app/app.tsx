@@ -2,7 +2,6 @@
 // then the app: one Frame whose pages are the screens (nav.ts).
 import "./shims/globals";
 import { Application, Frame } from "@nativescript/core";
-import { installDiscovery } from "./discovery";
 import { AuthError, ensureSession } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, getToken } from "@tv/api/session";
@@ -12,7 +11,6 @@ import { goHome, goProfiles, goSignIn } from "./session";
 import { devLaunch, devPrepare } from "./devLaunch";
 
 // The Panda servers on this network: Bonjour on iPhone, NSD on Android (discovery.*.ts).
-installDiscovery();
 
 if (__IOS__) {
   // Preview clips mix with whatever else is playing (music, a podcast) instead of stopping it;
