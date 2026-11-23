@@ -6,6 +6,7 @@ import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { load } from "../data";
+import { Avatar } from "../avatar";
 import { goHome, goSignIn } from "../session";
 
 export function Profiles() {
@@ -49,7 +50,7 @@ export function Profiles() {
           <For each={data.value()?.profiles ?? []}>
             {p => (
               <stacklayout class="profile-cell" on:tap={() => pick(p)}>
-                <label class="avatar" text={(p.display_name || p.username).slice(0, 1).toUpperCase()} />
+                <Avatar name={p.display_name || p.username} picture={p.avatar} size={96} />
                 <label class="body center mt8" text={p.display_name || p.username} />
                 <Show when={p.has_pin}>
                   <label class="small center" text={t("PIN")} />

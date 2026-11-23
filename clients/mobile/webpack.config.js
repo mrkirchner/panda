@@ -8,6 +8,10 @@ const TV = path.resolve(__dirname, "../tv/src");
 // The Apple TV host's native helpers that work on iPhone too (Bonjour discovery).
 const APPLETV = path.resolve(__dirname, "../appletv/app");
 
+// Avatar pictures as PNGs (iOS draws no SVG).
+const AVATARS = path.resolve(__dirname, "platforms/raster-avatars");
+require("./scripts/rasterize-avatars.cjs")(path.resolve(__dirname, "../tv/public/images/avatars"), AVATARS);
+
 module.exports = env => {
   webpack.init(env);
   webpack.chainWebpack(config => {
@@ -27,6 +31,10 @@ module.exports = env => {
       return args;
     });
     config.plugins.delete("ForkTsCheckerWebpackPlugin");
+    config.plugin("CopyWebpackPlugin").tap(args => {
+      args[0].patterns.push({ from: AVATARS, to: "images/avatars", noErrorOnMissing: true });
+      return args;
+    });
   });
   return webpack.resolveConfig();
 };

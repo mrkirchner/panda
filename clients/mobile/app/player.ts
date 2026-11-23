@@ -8,7 +8,7 @@ import { absolute, api } from "@tv/api/client";
 import type { AudioTrack, Playback, SubtitleTrack } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { audioLabels } from "@tv/playback/audio";
-import { trackLabels } from "@tv/playback/subtitles";
+import { clampTiming, describeTiming, saveTiming, savedTiming, shortTiming, trackLabels } from "@tv/playback/subtitles";
 import { phoneProfile } from "./profile";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 
@@ -138,6 +138,8 @@ export async function play(target: PlayTarget, startSecs = 0): Promise<void> {
   let images: UIImageView[] = [];
   const imageCache = new Map<string, UIImage | null>();
   let subs: SubtitleSource | null = null;
+  /** Seconds the subtitles are shown later (+) or earlier (-), per file and track (the TV's). */
+  let timing = 0;
   let shownKey = "";
 
   let drawnWidth = 0;
@@ -196,11 +198,12 @@ export async function play(target: PlayTarget, startSecs = 0): Promise<void> {
       }
     }
   };
-  const showSubs = () => draw(subs ? subs.at(position()) : null);
+  const showSubs = () => draw(subs ? subs.at(position() - timing) : null);
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   const chooseSubs = (track: SubtitleTrack | null) => {
     subs?.close();
     subs = track ? new SubtitleSource(track, showSubs, () => toast(t("These subtitles couldn't be loaded"))) : null;
+    timing = track ? savedTiming(pb.item_id, track) : 0;
     shownKey = "x";
     showSubs();
   };
@@ -272,10 +275,34 @@ export async function play(target: PlayTarget, startSecs = 0): Promise<void> {
     controller.presentViewControllerAnimatedCompletion(alert, true, () => {});
   };
 
+  /** Nudge the timing; the menu opens again for the next nudge (iOS menus close on a choice). */
+  const timingMenu = () => {
+    const track = subs?.track;
+    if (!track) return;
+    const nudge = (by: number | null) => () => {
+      timing = by === null ? 0 : clampTiming(timing + by);
+      saveTiming(pb.item_id, track, timing);
+      shownKey = "x";
+      showSubs();
+      toast(describeTiming(timing));
+      setTimeout(timingMenu, 350);
+    };
+    sheet(`${t("Subtitle timing")}: ${shortTiming(timing)}`, [
+      { label: t("{secs} s earlier", { secs: "0.5" }), selected: false, pick: nudge(-0.5) },
+      { label: t("{secs} s earlier", { secs: "0.1" }), selected: false, pick: nudge(-0.1) },
+      { label: t("{secs} s later", { secs: "0.1" }), selected: false, pick: nudge(0.1) },
+      { label: t("{secs} s later", { secs: "0.5" }), selected: false, pick: nudge(0.5) },
+      { label: t("No adjustment"), selected: timing === 0, pick: nudge(null) },
+    ]);
+  };
+
   const subtitleMenu = () => {
     const tracks = pb.subtitles.filter(s => s.url);
     const labels = trackLabels(tracks);
     sheet(t("Subtitles"), [
+      ...(subs
+        ? [{ label: `${t("Subtitle timing")}: ${shortTiming(timing)}`, selected: false, pick: timingMenu }]
+        : []),
       {
         label: t("Off"),
         selected: !subs,

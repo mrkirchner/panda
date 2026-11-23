@@ -23,6 +23,7 @@
     "@nativescript/ios": "9.1.1",
     "@nativescript/types": "9.1.4",
     "@nativescript/webpack": "5.0.42",
+    "@resvg/resvg-js": "2.6.2",
     "@solidjs/babel-plugin": "2.0.2",
     "nativescript": "9.1.2",
     "typescript": "~5.9.3"

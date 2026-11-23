@@ -165,3 +165,5 @@ ActionBar {
 .hero-scrim { background: linear-gradient(to bottom, #0d0d0f00, #0d0d0f); }
 .person-head { margin-top: -70; }
 .photo { width: 120; height: 120; border-radius: 60; background-color: #242427; horizontal-align: left; margin-bottom: 12; border-width: 3; border-color: #0d0d0f; }
+.avatar-frame { horizontal-align: center; }
+.avatar-initial { color: #ffffff; font-weight: bold; text-align: center; vertical-align: middle; }

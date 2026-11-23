@@ -35,9 +35,13 @@ text tracks in 10-minute windows (`?from=`), subtitle files whole, image (PGS) t
 manifest the server fills in as it extracts them, placed where they were authored. Parsing and
 labels are the TV's (`@tv/playback/*`). The subtitle language is remembered across titles (else a
 forced track in the audio's language shows); the audio track per title (the TV's key). Another
-audio track restarts the stream there, as on the TV.
+audio track restarts the stream there, as on the TV. Subtitle timing (the TV's 0.1 s steps,
+remembered per file and track) is in the Subtitles menu; its menu reopens after each nudge.
 
-Not yet: subtitle timing, avatars, editing profiles, Android.
+Avatars: the TV's SVG pictures become PNGs at build time (`scripts/rasterize-avatars.cjs`, iOS
+draws no SVG); `art:<key>` avatars are library posters (`app/avatar.tsx`).
+
+Not yet: editing profiles (name, picture, PIN), adding profiles, Android.
 
 ## Running
 
