@@ -381,8 +381,13 @@
   with a mouse (`(hover: hover)`): a moving snap target repaints its row every frame. The expanding
   row is a track of fixed-size cards: the open card's wide part fades in while the cards after it
   slide (`transform`); backdrops are fetched ahead (lazy loading never fetches a hidden picture).
-  Rows off screen use `content-visibility: auto`. Measured with Chrome traces (hovering a row:
-  120 paints -> 14).
+  Rows off screen use `content-visibility: auto`; unbounded lists (My List's grid, episodes) skip
+  each item off screen; the All grid is virtual with rows keyed by row number (keyed by position,
+  every row switches titles and repaints when the window moves). Fixed/sticky bars, hero slides,
+  grid rows and the player's controls are layers; the player's clock and scrub bar only update
+  while the controls show. Not layered: shadows (`::after`) and the All grid's cards (layers there
+  are re-made as rows come and go). Measured with Chrome traces (hovering a row 120 -> 40 paints,
+  scrolling the grid 1629 -> 485, the idle player 41 -> 3).
 - Spacing from tokens only (`--space-item/block/list/text`, the 4 px scale, `--page-top`), as the
   TV's `theme.space`; no spacing in inline styles.
 

@@ -239,13 +239,18 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
             </div>
           }
         >
-          <For each={rows()} keyed={false}>
+          {/* Rows keyed by their number: a row that stays on screen keeps its posters (keyed by
+              position, every row would switch titles, and repaint, whenever the window moved). */}
+          <For each={rows()}>
             {(r) => (
               <div
                 class="vgrid-row"
-                style={{ top: `${r() * rowH()}px`, "grid-template-columns": `repeat(${cols()}, 1fr)` }}
+                style={{
+                  transform: `translateY(${r * rowH()}px)`,
+                  "grid-template-columns": `repeat(${cols()}, 1fr)`,
+                }}
               >
-                <For each={cells(r())} keyed={false}>
+                <For each={cells(r)} keyed={false}>
                   {(e) => (
                     <Poster
                       image={e().poster}

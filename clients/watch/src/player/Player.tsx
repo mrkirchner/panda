@@ -85,8 +85,13 @@ export default function Player() {
 
   const pb = () => (tick(), engine?.pb ?? null);
   const position = () => (tick(), engine?.position() ?? 0);
-  const duration = () => (tick(), engine?.duration() ?? 0);
-  const buffered = () => (tick(), engine?.bufferedEnd() ?? 0);
+  /** The controls are showing: only then do the clock and the scrub bar follow playback (hidden,
+   * they'd be painted four times a second for nobody). */
+  const uiOn = createMemo(() => controls() || !playing());
+  const uiTick = createMemo(() => (uiOn() ? tick() : 0));
+  const shownPosition = () => (uiTick(), engine?.position() ?? 0);
+  const duration = () => (uiTick(), engine?.duration() ?? 0);
+  const buffered = () => (uiTick(), engine?.bufferedEnd() ?? 0);
   const playing = () => (tick(), engine?.playing() ?? false);
   const waiting = () => (tick(), engine?.waiting() ?? true);
   const info = () => (tick(), engine?.info ?? null);
@@ -287,7 +292,7 @@ export default function Player() {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(() => setPreviewAt(at), PREVIEW_SETTLE_MS);
   };
-  const shownAt = () => (dragging() || hoverAt() !== null ? (hoverAt() ?? position()) : position());
+  const shownAt = () => (dragging() || hoverAt() !== null ? (hoverAt() ?? shownPosition()) : shownPosition());
 
   onSettled(() => {
     setPlayerOpen(true);
@@ -600,7 +605,7 @@ export default function Player() {
             aria-label={t("Position")}
             aria-valuemin="0"
             aria-valuemax={String(Math.round(duration()))}
-            aria-valuenow={String(Math.round(position()))}
+            aria-valuenow={String(Math.round(shownPosition()))}
             tabindex="0"
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
@@ -640,7 +645,12 @@ export default function Player() {
             <div class="scrub-track">
               <div class="scrub-buffered" style={{ transform: `scaleX(${fraction(buffered())})` }} />
               <div class="scrub-played" style={{ transform: `scaleX(${fraction(shownAt())})` }} />
-              <div class="scrub-knob" style={{ left: `${fraction(shownAt()) * 100}%` }} />
+              <div
+                class="scrub-knob-strip"
+                style={{ transform: `translateX(${fraction(shownAt()) * 100}%)` }}
+              >
+                <div class="scrub-knob" />
+              </div>
             </div>
             <Show when={hoverAt() !== null}>
               <div class="scrub-preview" style={{ left: `${fraction(hoverAt()!) * 100}%` }}>

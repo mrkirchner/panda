@@ -700,8 +700,10 @@ h3 {
     .headshot {
         will-change: transform;
     }
-    .card::after {
-        will-change: opacity;
+    /* The All grid scrolls far more than it's hovered: layers there would be re-made as rows come
+       and go; it has no snapping, so a growing card repaints only itself. */
+    .vgrid .card {
+        will-change: auto;
     }
     .card:hover::after {
         opacity: 1;
@@ -1679,6 +1681,7 @@ h3 {
 }
 .vgrid-row {
     position: absolute;
+    top: 0;
     left: 0;
     right: 0;
     display: grid;
@@ -2365,4 +2368,52 @@ h3 {
 /* The buttons that end a form. */
 .actions.form-end {
     margin-top: var(--space-xl);
+}
+
+/* ---- Layers and skipped rendering (measured with Chrome traces; see CLAUDE.md) ---- */
+
+/* Bars that stay put while the page scrolls under them, on their own layers: otherwise they're
+   painted again with the page on every scroll frame. */
+.topbar,
+.bottom-tabs,
+.grid-toolbar,
+.letters {
+    will-change: transform;
+}
+/* The hero's slides crossfade as layers (no repaint of the page under them). */
+.hero-slide {
+    will-change: opacity;
+}
+.hero-dot {
+    will-change: transform;
+}
+/* The All grid's rows are placed with transforms: as layers, a row coming in doesn't repaint
+   the grid around it. */
+.vgrid-row {
+    will-change: transform;
+}
+/* The player's controls fade as one layer. */
+.player-ui {
+    will-change: opacity;
+}
+/* Long lists render only what's near the screen. The All grid is virtual (only nearby rows
+   exist); rows (40 items at most, from the server) are skipped whole while off screen (.row);
+   lists with no limit (My List's grid, a season's episodes) skip each item off screen until it
+   comes near (its size is known, so nothing shifts). */
+.poster-grid > .card {
+    content-visibility: auto;
+    contain-intrinsic-size: auto var(--poster-w) auto calc(var(--poster-w) * 1.5);
+}
+.episodes > .episode {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 140px;
+}
+/* The scrub knob rides a full-width strip moved with a transform (never `left`: a layout). */
+.scrub-knob-strip {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.scrub-knob-strip .scrub-knob {
+    left: 0;
 }
