@@ -9,6 +9,7 @@
 import { render } from "@nativescript-community/solid-js";
 import {
   AbsoluteLayout,
+  AndroidApplication,
   Application,
   Dialogs,
   Frame,
@@ -21,7 +22,7 @@ import {
   type TouchGestureEventData,
   type View,
 } from "@nativescript/core";
-import { absolute, api, HttpError } from "@tv/api/client";
+import { absolute, api, HttpError, imageUrl } from "@tv/api/client";
 import type { Item, Playback, SubtitleTrack } from "@tv/api/types";
 import { formatTime, languageName } from "@tv/format";
 import { lang, t } from "@tv/i18n";
@@ -40,6 +41,8 @@ import { phoneProfile } from "./profile.android";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 import { audioChoice, read, write } from "@tv/platform/settings";
 import type { PlayTarget } from "./platformTypes";
+import { nowPlaying } from "./nowPlaying.android";
+import { nowPlayingInfo, type NowPlayingSession } from "@tv/platform/types";
 
 const SAVE_EVERY_MS = 10_000;
 const CONTROLS_HIDE_MS = 4000;
@@ -49,6 +52,8 @@ const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
 /** The longest playback waits for its picture surface before starting anyway (sound at least). */
 const SURFACE_WAIT_MS = 3000;
+/** A stop this soon after the picture-in-picture window went full size is that window closing. */
+const PIP_CLOSE_MS = 1500;
 
 
 let current: AndroidPlayer | null = null;
@@ -73,7 +78,7 @@ export const devSeek = (secs: number) => current?.seekTo(secs);
 class AndroidPlayer {
   private pb!: Playback;
   private info: Item | null = null;
-  private readonly exo: Exo = newPlayer();
+  private readonly exo: Exo = newPlayer(true);
   private offset = 0;
   private pending: number | null = null;
   private quality: QualityId = savedQuality();
@@ -113,7 +118,11 @@ class AndroidPlayer {
     scrubAt: createSignal<number | null>(null),
     previewAt: createSignal<number | null>(null),
     timing: createSignal(0),
+    /** In a picture-in-picture window: the picture only (no controls or text subtitles). */
+    pip: createSignal(false),
   };
+  /** The lock screen and notification's controls (nowPlaying.android.ts). */
+  private media: NowPlayingSession | null = null;
   private subs: SubtitleSource | null = null;
 
   constructor(
@@ -261,6 +270,7 @@ class AndroidPlayer {
     api.item(this.pb.item_id).then(
       (i) => {
         this.info = i;
+        this.updateMedia(true);
         this.s.title[1](
           i.kind === "episode"
             ? `${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}  ${i.episode_title ?? ""}`.trim()
@@ -273,6 +283,7 @@ class AndroidPlayer {
       isPlaying: (p) => {
         this.s.playing[1](p);
         if (p) this.s.busy[1](false);
+        this.updateMedia();
       },
       playbackState: (st) => {
         const waiting = st === STATE_BUFFERING && this.pending === null && this.exo.getPlayWhenReady();
@@ -287,6 +298,7 @@ class AndroidPlayer {
       videoSize: (w, h) => {
         this.videoSize = [w, h];
         coverTexture(this.texture, w, h, "contain");
+        this.pipParams(true);
         this.bump();
       },
     });
@@ -303,15 +315,76 @@ class AndroidPlayer {
         if (this.s.controls[0]()) this.bump();
         this.showSubs();
       }, 250),
+      setInterval(() => this.updateMedia(), 1000),
     );
-    // Leaving the app pauses (Android stops a player in the background without a media service).
+    this.media = nowPlaying.start(this.mediaInfo(), {
+      play: () => this.exo.play(),
+      pause: () => this.exo.pause(),
+      seekTo: (secs) => this.seekTo(secs),
+    });
+    // Leaving the app: the sound goes on (the media service keeps it running, with its
+    // controls on the lock screen), or the picture goes on in a small window (Android 12+).
     Application.on(Application.backgroundEvent, this.onBackground);
+    Application.android.on(AndroidApplication.activityStoppedEvent, this.onStopped);
   }
 
   private readonly onBackground = () => {
-    this.exo.pause();
     void this.save();
   };
+
+  /** When the picture-in-picture window last went back to full size (its close does too, first). */
+  private pipEndedAt = 0;
+
+  /** The window stopped while (or just after) being picture in picture: it was closed, so pause. */
+  private readonly onStopped = () => {
+    if (this.s.pip[0]() || Date.now() - this.pipEndedAt < PIP_CLOSE_MS) this.exo.pause();
+  };
+
+  private mediaInfo() {
+    const art = this.info ? (this.info.backdrop ?? this.info.poster) : null;
+    return nowPlayingInfo(this.info, imageUrl(art) ?? null, this.duration());
+  }
+
+  /** Where it's at, for the system's controls (`info`: the title too). */
+  private updateMedia(info = false) {
+    if (!this.media || this.closed) return;
+    if (info) this.media.setInfo(this.mediaInfo());
+    this.media.setPosition(this.position(), this.exo.isPlaying());
+  }
+
+  private activity() {
+    return (Application.android.foregroundActivity ?? Application.android.startActivity) as android.app.Activity;
+  }
+
+  /**
+   * Picture in picture (Android 12+): leaving the app while it plays shrinks the picture into a
+   * small window instead of stopping it; `on` false turns that off (the player closing).
+   */
+  private pipParams(on: boolean) {
+    if (android.os.Build.VERSION.SDK_INT < 31) return;
+    const b = new android.app.PictureInPictureParams.Builder().setAutoEnterEnabled(on).setSeamlessResizeEnabled(true);
+    const [w, h] = this.videoSize;
+    // Android takes ratios between 1:2.39 and 2.39:1.
+    if (w > 0 && h > 0) b.setAspectRatio(new android.util.Rational(Math.round(Math.min(w, h * 2.39)), Math.round(h)));
+    try {
+      this.activity().setPictureInPictureParams(b.build());
+    } catch (e) {
+      console.log(`picture in picture: ${String(e)}`);
+    }
+  }
+
+  /** The window became (or stopped being) picture in picture: the picture only, or the controls back. */
+  private checkPip() {
+    if (android.os.Build.VERSION.SDK_INT < 26) return;
+    const pip = this.activity().isInPictureInPictureMode();
+    if (pip === this.s.pip[0]()) return;
+    this.s.pip[1](pip);
+    if (!pip) this.pipEndedAt = Date.now();
+    if (pip) {
+      clearTimeout(this.hideTimer);
+      this.s.controls[1](false);
+    } else this.showControls();
+  }
 
   private bump() {
     this.s.tick[1]((n) => n + 1);
@@ -333,6 +406,7 @@ class AndroidPlayer {
     page.actionBarHidden = true;
     page.backgroundColor = "#000000";
     page.content = root;
+    root.on("layoutChanged", () => this.checkPip());
     page.on("navigatedFrom", (e: NavigatedData) => {
       if (e.isBackNavigation && !this.closed) this.close(true);
     });
@@ -342,6 +416,7 @@ class AndroidPlayer {
     const c = androidx.core.view.WindowCompat.getInsetsController(w, w.getDecorView());
     c.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
     c.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+    this.pipParams(true);
     this.showControls();
   }
 
@@ -356,6 +431,10 @@ class AndroidPlayer {
     clearTimeout(this.toastTimer);
     clearTimeout(this.previewTimer);
     Application.off(Application.backgroundEvent, this.onBackground);
+    Application.android.off(AndroidApplication.activityStoppedEvent, this.onStopped);
+    this.pipParams(false);
+    this.media?.end();
+    this.media = null;
     this.subs?.close();
     this.unlisten?.();
     this.exo.release();
@@ -414,6 +493,7 @@ class AndroidPlayer {
   // ---- Controls ----
 
   private showControls() {
+    if (this.s.pip[0]()) return;
     this.s.controls[1](true);
     clearTimeout(this.hideTimer);
     this.hideTimer = setTimeout(() => {
@@ -461,7 +541,9 @@ class AndroidPlayer {
   }
 
   private showSubs() {
-    this.s.showing[1](this.subs ? this.subs.at(this.position() - this.s.timing[0]()) : null);
+    const showing = this.subs ? this.subs.at(this.position() - this.s.timing[0]()) : null;
+    // A picture-in-picture window is too small for text at its size; image subtitles scale.
+    this.s.showing[1](this.s.pip[0]() && showing?.kind === "text" ? null : showing);
   }
 
   private mine(code: string | null | undefined) {

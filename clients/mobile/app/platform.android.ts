@@ -7,6 +7,7 @@ import {
   stopClip,
 } from "./clip.android";
 import { findServers } from "./discovery.android";
+import { nowPlaying } from "./nowPlaying.android";
 import { pageSnap } from "./paging.android";
 import { devSeek, play } from "./player.android";
 import { phoneProfile } from "./profile.android";
@@ -22,4 +23,5 @@ export const platform = {
   gestures: { sideways: attachSideways, pageSnap },
   // The SF Symbol names drawn as vector drawables (App_Resources/Android/src/main/res/drawable/sym_*.xml).
   icon: (name) => `res://sym_${name.replace(/\./g, "_")}`,
+  nowPlaying,
 } satisfies PhonePlatform as PhonePlatform;

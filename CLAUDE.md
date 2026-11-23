@@ -461,7 +461,14 @@
   `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
 - Android: Media3 ExoPlayer (`media3.android.ts`, a TextureView; playback starts only once its
   surface exists: a decoder switched to it mid-stream may keep drawing into the stand-in, a black
-  picture with sound), NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
+  picture with sound). Lock screen / notification / headphone controls: `nowPlaying.android.ts`
+  (a Media3 MediaSession over `SessionPlayerBase`, the one Java file,
+  `App_Resources/Android/src/main/java`: SimpleBasePlayer's constructors and State are protected,
+  out of NativeScript's reach; its buttons go through the player's own seek) hosted by
+  `PlaybackService` (MediaSessionService, foreground while playing, in the manifest). Leaving the
+  app keeps the sound, or (Android 12+) the picture in a picture-in-picture window (no controls or
+  text subtitles); closing that window pauses. Everything else stays TypeScript: NativeScript
+  generates the Java stubs for `.extend(...)` classes. NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
   (`res/drawable/sym_*.xml`). Build: JDK 17 + `ANDROID_HOME`, `npx ns build android`.
 - Playback (`player.ios.ts`; `player.android.tsx` alike): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The

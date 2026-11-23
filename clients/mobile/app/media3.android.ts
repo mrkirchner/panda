@@ -45,9 +45,20 @@ export interface Listener {
   videoSize?: (width: number, height: number) => void;
 }
 
-export function newPlayer(): Exo {
+/**
+ * A player. `main`: the full player, which takes the audio (pausing for a call or another app's
+ * sound, and when headphones are unplugged); clips stay out of the way of other apps.
+ */
+export function newPlayer(main = false): Exo {
   const ctx = Utils.android.getApplicationContext();
-  return new (m3().exoplayer.ExoPlayer.Builder)(ctx).build() as Exo;
+  const p = new (m3().exoplayer.ExoPlayer.Builder)(ctx).build();
+  if (main) {
+    const C = m3().common.C;
+    const audio = new (m3().common.AudioAttributes.Builder)().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build();
+    p.setAudioAttributes(audio, true);
+    p.setHandleAudioBecomingNoisy(true);
+  }
+  return p as Exo;
 }
 
 /** A media item for `url`; HLS by its type (the server's playlists have no .m3u8 address). */

@@ -15,6 +15,9 @@
 	<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
 	<!-- Voice search (Search's mic, voice.android.ts); asked for the first time. -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+	<!-- Playing on in the background, with its controls on the lock screen (nowPlaying.android.ts). -->
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
 	<queries>
 		<intent>
 			<action android:name="android.speech.RecognitionService" />
@@ -37,6 +40,8 @@
 			android:theme="@style/LaunchScreenTheme"
 			android:hardwareAccelerated="true"
       		android:launchMode="singleTask"
+			android:supportsPictureInPicture="true"
+			android:resizeableActivity="true"
 			android:exported="true">
 
 			<meta-data android:name="SET_THEME_ON_LAUNCH" android:resource="@style/AppTheme" />
@@ -47,5 +52,13 @@
 			</intent-filter>
 		</activity>
 		<activity android:name="com.tns.ErrorReportActivity"/>
+		<service
+			android:name="app.panda.mobile.PlaybackService"
+			android:foregroundServiceType="mediaPlayback"
+			android:exported="true">
+			<intent-filter>
+				<action android:name="androidx.media3.session.MediaSessionService"/>
+			</intent-filter>
+		</service>
 	</application>
 </manifest>
