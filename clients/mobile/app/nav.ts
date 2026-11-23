@@ -3,7 +3,7 @@
 // `open()` pushes onto the frame in use: the selected tab's, else the root's. Pages are native,
 // so iOS gives each its navigation bar and the swipe back. A page's Solid tree lives as long as
 // the page: it's disposed once the page is gone (popped by Back, or dropped by a cleared history).
-import { ActionItem, Frame, type NavigatedData, Page } from "@nativescript/core";
+import { ActionItem, Frame, type GridLayout, type NavigatedData, Page } from "@nativescript/core";
 import { render } from "@nativescript-community/solid-js";
 import { setSheetOpen } from "./clip";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
@@ -22,7 +22,7 @@ export interface ScreenOptions {
   /** Start a new history (after sign-in or switching profile): Back can't return here. */
   clear?: boolean;
   /** Buttons on the right of the navigation bar. */
-  actions?: { text: string; icon?: string; tap: () => void }[];
+  actions?: { text: string; icon?: string; view?: () => JSX.Element; tap: () => void }[];
 }
 
 /** A native page showing `screen`, disposed when it's gone from `frame`. */
@@ -35,6 +35,13 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
     const item = new ActionItem();
     item.text = a.text;
     if (a.icon) item.icon = `sys://${a.icon}`;
+    if (a.view) {
+      // A view of its own (the profile's avatar): taps go to it, not to the item.
+      const host = document.createElement("gridlayout") as unknown as GridLayout;
+      render(a.view, host as unknown as Element);
+      host.on("tap", a.tap);
+      item.actionView = host;
+    }
     item.ios.position = "right";
     item.on("tap", a.tap);
     page.actionBar.actionItems.addItem(item);

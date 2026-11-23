@@ -5,6 +5,7 @@ import { Dialogs } from "@nativescript/core";
 import { t } from "@tv/i18n";
 import { back, open } from "./nav";
 import { MyList } from "./screens/MyList";
+import { Avatar } from "./avatar";
 import { editProfileScreen } from "./screens/EditProfile";
 import { Home } from "./screens/Home";
 import { browseScreen } from "./screens/Browse";
@@ -35,7 +36,14 @@ async function profileMenu() {
 
 /** Signed in: the tab bar, starting on Home. */
 export function goHome() {
-  const profiles = [{ text: t("Profile"), icon: "person.crop.circle", tap: () => void profileMenu() }];
+  // The profile's own picture (as the TV's top bar shows it), which opens the profile menu.
+  const profiles = [
+    {
+      text: t("Profile"),
+      view: () => <Avatar name={currentUser()?.name ?? "?"} picture={currentUser()?.avatar ?? null} size={34} />,
+      tap: () => void profileMenu(),
+    },
+  ];
   showTabs([
     { title: "Home", icon: "house.fill", screen: () => <Home />, opts: { title: "Panda", actions: profiles } },
     {
