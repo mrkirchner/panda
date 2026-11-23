@@ -368,8 +368,10 @@
   Links between screens live in `app/screens/links.tsx`.
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
   (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
-  open, only the sheet's while a sheet is); the expanded tile is a sheet (`openSheet`,
-  `screens/Peek.tsx`) that row posters open; Recently Added rows expand in place (`ExpandRow`).
+  open, only the sheet's while a sheet is); Recently Added rows expand in place (`ExpandRow`: a tap
+  or the row settling after a scroll opens a card, brought fully into view). Tapping a poster
+  opens its page (no preview sheet: the user wants straight to the info). `openSheet` is for
+  pickers (seasons).
   Logos go through `Logo` (iOS centers a picture in its box: the box takes the logo's shape).
   Text over artwork: black scrims plus text-shadow. A GridLayout inside a StackLayout needs
   `rows="auto"`, or its default star row takes spare height. Styling is CSS classes in `app/app.css` (the TV palette); inline

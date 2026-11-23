@@ -10,7 +10,7 @@ import { play } from "../player";
 import { Banner, ExpandRow, GenreTile, Poster, Row, WideCard } from "./cards";
 import { Hero } from "./Hero";
 import { featuredSlide } from "./heroSlides";
-import { openGenre, openPreview, openSeries, openTitle, peekMovie, peekShow, peekSpot } from "./links";
+import { openGenre, openPreview, openSeries, openSpot, openTitle } from "./links";
 import { bestProgress, myRequests, requestBadge } from "../requests";
 import { OfflineBanner } from "../offline";
 import { MoreRow } from "./sections";
@@ -113,7 +113,7 @@ export function Home() {
                 <Poster
                   image={m.poster}
                   title={m.title}
-                  onTap={() => (m.kind === "title" ? peekMovie(m.id) : peekShow(m.id))}
+                  onTap={() => (m.kind === "title" ? openTitle(m.id) : openSeries(m.id))}
                 />
               )}
             </For>
@@ -157,12 +157,12 @@ export function Home() {
           />
         </Show>
         <Show when={more.value()?.spotlights[0]}>
-          <Banner spot={more.value()!.spotlights[0]} onTap={() => peekSpot(more.value()!.spotlights[0])} />
+          <Banner spot={more.value()!.spotlights[0]} onTap={() => openSpot(more.value()!.spotlights[0])} />
         </Show>
         <Show when={more.value()?.top_picks.length}>
           <Row title={t("Top picks for you")}>
             <For each={more.value()!.top_picks}>
-              {s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}
+              {s => <Poster image={s.poster} title={s.title} onTap={() => openSpot(s)} />}
             </For>
           </Row>
         </Show>

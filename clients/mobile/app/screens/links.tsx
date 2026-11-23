@@ -1,7 +1,6 @@
 // Opening a title, a show, a genre or a list from anywhere (pushes onto the current tab).
 import type { Spot } from "@tv/api/types";
-import { open, openSheet } from "../nav";
-import { peekSeries, peekTitle } from "./Peek";
+import { open } from "../nav";
 import { allScreen } from "./All";
 import { browseScreen } from "./Browse";
 import { seriesScreen } from "./Series";
@@ -22,7 +21,3 @@ export const openPerson = (id: number) => open(() => personScreen(id), { title: 
 /** A title you don't have: its page, with Request. */
 export const openPreview = (kind: "movie" | "series", tmdbId: number) =>
   open(() => previewScreen(kind, tmdbId), { title: "" });
-/** The expanded tile: a sheet with the clip, facts, Play, My List and More info. */
-export const peekMovie = (id: string) => openSheet(() => peekTitle(id));
-export const peekShow = (name: string) => openSheet(() => peekSeries(name));
-export const peekSpot = (s: Spot) => (s.kind === "movie" ? peekMovie(s.id) : peekShow(s.id));

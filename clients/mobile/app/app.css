@@ -194,7 +194,7 @@ ActionBar {
 .hero-button { margin: 10 6 0 0; height: 46; }
 .dot { font-size: 8; color: #a39e95; margin: 0 3; }
 .dot.on { color: #d4ae6a; }
-.sheet, .peek { background-color: #0d0d0f; }
+.sheet { background-color: #0d0d0f; }
 
 /* Rating badges (the TV's MetaLine) */
 .ratings-row { margin-top: 8; }

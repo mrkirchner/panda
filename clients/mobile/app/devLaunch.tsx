@@ -2,18 +2,21 @@
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
-//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile | peek:<title id>
+//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
+//   -pandaExpand <n>        open card n of Home's first expanding row (as a tap)
+//   -pandaRowScroll <x>     scroll that row to x (as a finger)
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";
-import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle, peekMovie } from "./screens/links";
+import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
 import { devSeek, play } from "./player";
 import { selectTab } from "./tabs";
+import { devExpand, devScrollRow } from "./screens/cards";
 import { setStartQuery } from "./screens/Search";
 
 const argAfter = (flag: string): string | null => {
@@ -45,6 +48,10 @@ export function devLaunch() {
   if (scroll) {
     setTimeout(() => firstScroll(currentFrame()?.currentPage)?.scrollToVerticalOffset(Number(scroll), false), 4000);
   }
+  const expand = argAfter("-pandaExpand");
+  if (expand) setTimeout(() => devExpand?.(Number(expand)), 4500);
+  const rowScroll = argAfter("-pandaRowScroll");
+  if (rowScroll) setTimeout(() => devScrollRow?.(Number(rowScroll)), 4500);
   const seek = argAfter("-pandaSeek");
   if (seek) setTimeout(() => devSeek(Number(seek)), 8000);
   const target = argAfter("-pandaOpen");
@@ -58,7 +65,6 @@ export function devLaunch() {
     else if (what === "all") openAll(arg === "shows" ? "shows" : "movies");
     else if (what === "tab") selectTab(Number(arg));
     else if (what === "person") openPerson(Number(arg));
-    else if (what === "peek") peekMovie(arg);
     else if (what === "preview") {
       const [kind, id] = arg.split(":");
       openPreview(kind === "series" ? "series" : "movie", Number(id));

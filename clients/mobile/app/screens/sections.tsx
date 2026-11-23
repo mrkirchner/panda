@@ -7,7 +7,7 @@ import { languageName } from "@tv/format";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { Poster, Row } from "./cards";
-import { openPerson, openPreview, openSeries, openTitle, peekSpot } from "./links";
+import { openPerson, openPreview, openSeries, openSpot, openTitle } from "./links";
 
 /** TMDB's logo is 273.42 x 35.52 (images/tmdb.svg). */
 const TMDB_H = 11;
@@ -86,7 +86,7 @@ export function MoreRow(props: { title: string; items: MoreItem[] }) {
                 onTap={() => openTitle(i.title!.id)}
               />
             ) : i.spot ? (
-              <Poster image={i.spot.poster} title={i.spot.title} onTap={() => peekSpot(i.spot!)} />
+              <Poster image={i.spot.poster} title={i.spot.title} onTap={() => openSpot(i.spot!)} />
             ) : i.show ? (
               <Poster
                 image={i.show.poster}

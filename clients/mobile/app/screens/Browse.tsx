@@ -12,7 +12,7 @@ import { OfflineBanner } from "../offline";
 import { Poster, Row } from "./cards";
 import { Hero } from "./Hero";
 import { spotSlide } from "./heroSlides";
-import { openAll, peekSpot } from "./links";
+import { openAll, openSpot } from "./links";
 
 /** What the page is: a kind (Movies/Shows tab), one library, or a genre. */
 export type BrowseKind =
@@ -89,21 +89,21 @@ export function browseScreen(fetchPage: () => Promise<GenrePage>, what: BrowseKi
         <Show when={page.value()?.top.length}>
           <Row title={topTitle()}>
             <For each={page.value()!.top.slice(0, 10)}>
-              {(s, i) => <Poster image={s.poster} title={s.title} rank={i() + 1} onTap={() => peekSpot(s)} />}
+              {(s, i) => <Poster image={s.poster} title={s.title} rank={i() + 1} onTap={() => openSpot(s)} />}
             </For>
           </Row>
         </Show>
         <Show when={page.value()?.recent.length}>
           <Row title={t("Recently added")}>
             <For each={page.value()!.recent}>
-              {s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}
+              {s => <Poster image={s.poster} title={s.title} onTap={() => openSpot(s)} />}
             </For>
           </Row>
         </Show>
         <For each={page.value()?.paired ?? []}>
           {g => (
             <Row title={t(g.genre)}>
-              <For each={g.items}>{s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}</For>
+              <For each={g.items}>{s => <Poster image={s.poster} title={s.title} onTap={() => openSpot(s)} />}</For>
             </Row>
           )}
         </For>
