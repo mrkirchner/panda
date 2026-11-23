@@ -145,7 +145,7 @@ export function Search() {
       const started = Date.now();
       field.insertText(word[i++]);
       if (__DEV__) console.log(`TYPE now "${field.text}" (bar ${bar?.text}) focused=${field.isFirstResponder} in ${Date.now() - started} ms`);
-      setTimeout(next, 400);
+      setTimeout(next, 120);
     };
     setTimeout(next, 500);
   };
