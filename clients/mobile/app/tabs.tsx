@@ -14,6 +14,8 @@ interface Tab {
 }
 
 let selectIndex: (i: number) => void = () => {};
+/** Called when a tab is chosen (Search focuses its bar), by tab title. */
+export const onTabShown = new Map<string, () => void>();
 /** Switch to tab `i` (0: Home). */
 export const selectTab = (i: number) => selectIndex(i);
 
@@ -35,6 +37,7 @@ export function showTabs(tabs: Tab[]): void {
   setCurrentFrame(frames[0]);
   view.on("selectedIndexChanged", (e: SelectedIndexChangedEventData) => {
     setCurrentFrame(frames[e.newIndex]);
+    onTabShown.get(tabs[e.newIndex]?.title ?? "")?.();
   });
   selectIndex = i => (view.selectedIndex = i);
   const page = new Page();

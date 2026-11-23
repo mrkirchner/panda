@@ -2,6 +2,7 @@
 // top picks.
 import { Dialogs, type SearchBar } from "@nativescript/core";
 import { isListening, startListening, stopListening } from "../voice";
+import { onTabShown } from "../tabs";
 import { api } from "@tv/api/client";
 import type { Discover, DiscoverSet, FindResults, Person } from "@tv/api/types";
 import { t, tServer } from "@tv/i18n";
@@ -20,8 +21,12 @@ import { GhostRow, Poster, Row } from "./cards";
 import { openSeries, openTitle } from "./links";
 import { MoreRow, PeopleRow } from "./sections";
 
-/** Wait this long after the last key before searching. */
-const TYPING_MS = 300;
+/** Search once the typing pauses this long (a few keys at normal speed are one search). */
+const TYPING_MS = 700;
+/** Shorter than this searches nothing (one letter matches most of a library). */
+const MIN_CHARS = 2;
+/** Titles per result row (building many posters at once would hold up the keyboard). */
+const ROW_MAX = 24;
 
 /** Debug builds: a query to start with (devLaunch.tsx `search:<q>`). */
 let startQuery = "";
@@ -44,8 +49,27 @@ export function Search() {
 
   /** A key: nothing on screen changes until the typing pauses and the results are back (so the
    * keyboard never waits on the screen rebuilding). */
+  /** When the last key was pressed: results wait until typing pauses before they're drawn. */
+  let lastKey = 0;
+  let held: (() => void) | null = null;
+  let heldTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Draw `apply` now if typing has paused, else once it does. */
+  const whenIdle = (apply: () => void) => {
+    const wait = lastKey + TYPING_MS - Date.now();
+    if (wait <= 0) return apply();
+    held = apply;
+    clearTimeout(heldTimer);
+    heldTimer = setTimeout(() => {
+      const h = held;
+      held = null;
+      h?.();
+    }, wait);
+  };
+
   const search = (q: string) => {
+    lastKey = Date.now();
     clearTimeout(timer);
+    if (q.trim().length < MIN_CHARS && q.trim()) return;
     if (!q.trim()) {
       asked++;
       setQuery("");
@@ -62,16 +86,19 @@ export function Search() {
       try {
         const r = await api.find({ q: q.trim(), more: false });
         if (n !== asked) return;
-        setMore([]);
-        setPeople([]);
-        setQuery(q);
-        setResults(r);
+        whenIdle(() => {
+          if (n !== asked) return;
+          setMore([]);
+          setPeople([]);
+          setQuery(q);
+          setResults(r);
+        });
         api.findMore(q.trim()).then(
-          m => n === asked && setMore(m.more),
+          m => whenIdle(() => n === asked && setMore(m.more)),
           () => {},
         );
         api.findPeople(q.trim()).then(
-          p => n === asked && setPeople(p),
+          p => whenIdle(() => n === asked && setPeople(p)),
           () => {},
         );
       } catch {
@@ -96,7 +123,17 @@ export function Search() {
       onError: message => void Dialogs.alert(t(message)),
     });
   };
-  onCleanup(stopListening);
+  // Choosing the Search tab puts the cursor in the bar (the keyboard comes up), as iOS apps do,
+  // unless there's already a search on screen.
+  onTabShown.set("Search", () => {
+    if (!query().trim() && !(bar?.text ?? "").trim()) setTimeout(() => bar?.focus(), 250);
+  });
+  onCleanup(() => {
+    onTabShown.delete("Search");
+    stopListening();
+    clearTimeout(timer);
+    clearTimeout(heldTimer);
+  });
   devType = word => {
     // Through iOS's text input, as the keyboard types (focus first).
     const field = (bar?.ios as UISearchBar | undefined)?.searchTextField;
@@ -153,7 +190,7 @@ export function Search() {
           </Show>
           {/* People first when the search is someone's name (the TV's rule). */}
           <Show when={query().trim() && personFirst()}>
-            <PeopleRow title={t("People")} people={people()} />
+            <PeopleRow title={t("People")} people={people().slice(0, ROW_MAX)} />
           </Show>
           {/* Movies, then shows: yours first, then ones you could request (badged). */}
           <MoreRow
@@ -161,17 +198,17 @@ export function Search() {
             items={[
               ...(shownResults()?.movies ?? []).map(title => ({ title })),
               ...(query().trim() ? more().filter(d => d.kind === "movie") : []).map(suggestion => ({ suggestion })),
-            ]}
+            ].slice(0, ROW_MAX)}
           />
           <MoreRow
             title={t("Shows")}
             items={[
               ...(shownResults()?.shows ?? []).map(show => ({ show })),
               ...(query().trim() ? more().filter(d => d.kind === "series") : []).map(suggestion => ({ suggestion })),
-            ]}
+            ].slice(0, ROW_MAX)}
           />
           <Show when={query().trim() && !personFirst()}>
-            <PeopleRow title={t("People")} people={people()} />
+            <PeopleRow title={t("People")} people={people().slice(0, ROW_MAX)} />
           </Show>
           <Show when={!query().trim()}>
             <For each={discover.value() ?? []}>
