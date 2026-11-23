@@ -64,7 +64,11 @@
   never in pipelines. HLS output is fMP4; playlist signing must cover `#EXT-X-MAP` URIs.
 - Every HLS session holds a `services::sessions::Ticket` for its slot (RAII release). Never
   start ffmpeg without one; remux tickets are unlimited, encode tickets are capped.
-- Encodes go through `transcode::select_pipeline` (hardware first, software fallback). New
+- Encodes go through `transcode::select_pipeline` (hardware first, software fallback). Every
+  encode carries its colours in the stream (`colour_tags`: `h264_metadata`/`hevc_metadata` after
+  the encoder; VideoToolbox writes none, and Android then draws no picture). Never as
+  `-color_primaries`/`-colorspace` output options: ffmpeg tries to convert hardware frames and
+  the encoder never opens. New
   hardware backends implement `HwPipeline`; size frames with `fit_within` (never stretch), and
   add an args snapshot test plus a `pipeline_selection` case. Any change to
   `panda_media::playback::decide` must keep that order.
@@ -455,8 +459,9 @@
   (700 ms, 2+ letters) and draws results only when idle.
 - Loading states: ghosts, as the TV's GhostRow (`GhostRow`, `GhostHero` in `screens/cards.tsx`, the
   `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
-- Android: Media3 ExoPlayer (`media3.android.ts`, a TextureView; its HLS picture is still black on
-  the emulator), NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
+- Android: Media3 ExoPlayer (`media3.android.ts`, a TextureView; playback starts only once its
+  surface exists: a decoder switched to it mid-stream may keep drawing into the stand-in, a black
+  picture with sound), NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
   (`res/drawable/sym_*.xml`). Build: JDK 17 + `ANDROID_HOME`, `npx ns build android`.
 - Playback (`player.ios.ts`; `player.android.tsx` alike): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The

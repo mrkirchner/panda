@@ -393,6 +393,7 @@ pub fn build_hls_args(
                 a.extend(args(&["-vf", &vf]));
             }
             a.extend(pipeline.encode_args(codec, bitrate_kbps));
+            a.extend(colour_tags(info, tonemap, codec));
             // Keyframe at every segment boundary so segments are independently decodable.
             a.extend(args(&["-force_key_frames", &format!("expr:gte(t,n_forced*{})", opts.segment_secs)]));
         }
@@ -432,6 +433,28 @@ pub fn build_hls_args(
         &out_dir.join(PLAYLIST).to_string_lossy(),
     ]));
     a
+}
+
+/// The encoded picture's colours, written into the stream's headers (the H.264/HEVC VUI) by a
+/// bitstream filter. Hardware encoders (`VideoToolbox` at least) leave the VUI out, and
+/// Android's decoders then draw nothing at all (sound, no picture). A filter after the encoder,
+/// not `-color_primaries` & co.: those make ffmpeg convert the frames, which it can't do to
+/// hardware frames (the encoder never opens). Encodes are SDR: HD sources and anything tone
+/// mapped (the tone mappers output bt709) are BT.709 (code 1); SD sources keep BT.601 (6), as
+/// scaling doesn't convert the colour matrix. Limited range, as every encode is.
+fn colour_tags(info: &MediaInfo, tonemap: bool, codec: VideoCodec) -> Vec<String> {
+    let hd = tonemap || info.video.as_ref().is_some_and(|v| v.height >= 720 || v.width >= 1280);
+    let code = if hd { 1 } else { 6 };
+    let filter = match codec {
+        VideoCodec::H264 => "h264_metadata",
+        VideoCodec::Hevc => "hevc_metadata",
+    };
+    vec![
+        "-bsf:v".into(),
+        format!(
+            "{filter}=colour_primaries={code}:transfer_characteristics={code}:matrix_coefficients={code}:video_full_range_flag=0"
+        ),
+    ]
 }
 
 fn args(list: &[&str]) -> Vec<String> {
@@ -695,6 +718,7 @@ mod tests {
             "-hide_banner -nostdin -y -v warning -ss 30.000 -i /m/in.mkv -map 0:0 -map 0:1 -sn -dn \
              -vf scale=1920:1080,tonemapx=tonemap=bt2390:desat=0:peak=100:t=bt709:m=bt709:p=bt709:format=yuv420p \
              -c:v libx264 -preset veryfast -crf 23 -profile:v high -maxrate 8000k -bufsize 16000k -sc_threshold 0 \
+             -bsf:v h264_metadata=colour_primaries=1:transfer_characteristics=1:matrix_coefficients=1:video_full_range_flag=0 \
              -force_key_frames expr:gte(t,n_forced*3) -c:a aac -ac 2 -b:a 192k \
              -f hls -hls_time 3 -hls_playlist_type event -hls_flags independent_segments+temp_file \
              -hls_segment_type fmp4 -hls_fmp4_init_filename init.mp4 -start_number 0 \
@@ -770,6 +794,23 @@ mod tests {
             "{a}"
         );
         assert!(a.contains("-force_key_frames expr:gte(t,n_forced*3)"), "{a}");
+        // Without colour tags VideoToolbox writes no VUI, and Android draws nothing. Never as
+        // output options: ffmpeg would convert the hardware frames, and the encoder never opens.
+        assert!(a.contains("-bsf:v hevc_metadata=colour_primaries=1:"), "{a}");
+        assert!(!a.contains("-colorspace") && !a.contains("-color_primaries"), "{a}");
+    }
+
+    #[test]
+    fn sd_encodes_are_tagged_bt601() {
+        let info = probe::parse(
+            r#"{"streams":[{"index":0,"codec_type":"video","codec_name":"mpeg2video",
+            "width":720,"height":480,"pix_fmt":"yuv420p"}],"format":{"format_name":"mpeg"}}"#,
+        )
+        .unwrap();
+        let tags = |info: &MediaInfo, tonemap| colour_tags(info, tonemap, VideoCodec::H264).join(" ");
+        assert!(tags(&info, false).contains("h264_metadata=colour_primaries=6:transfer_characteristics=6:"));
+        assert!(tags(&info, true).contains("colour_primaries=1:"), "tone mapped output is bt709");
+        assert!(tags(&hdr_movie(), true).contains("colour_primaries=1:"));
     }
 
     #[test]
