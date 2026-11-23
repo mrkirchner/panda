@@ -9,7 +9,7 @@ import { facts, runtime } from "../data";
 import { play } from "../player";
 import type { HeroSlide } from "./Hero";
 import { openSeries, openSpot, openTitle } from "./links";
-import { nextUp } from "./Series";
+import { nextUp, sortEpisodes } from "./Series";
 
 const genres = (g: string | null | undefined) =>
   (g ?? "")
@@ -22,9 +22,7 @@ const resumeAt = (m: Title) => (m.progress && !m.progress.finished && m.progress
 
 /** A show from its next episode (in progress, else the first not watched). */
 async function playShow(name: string) {
-  const eps = (await api.items({ series: name, kind: "episode", limit: 10000 })).sort(
-    (a, b) => (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0),
-  );
+  const eps = sortEpisodes(await api.items({ series: name, kind: "episode", limit: 10000 }));
   const e = nextUp(eps);
   if (!e) return openSeries(name);
   const p = e.progress;

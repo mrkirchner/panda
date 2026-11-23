@@ -6,6 +6,7 @@
 import type { View } from "@nativescript/core";
 import { api } from "@tv/api/client";
 import { currentUser } from "@tv/api/session";
+import { refreshAll } from "./data";
 
 export type ClipSource = { kind: "title"; id: string } | { kind: "series"; name: string };
 
@@ -18,6 +19,9 @@ let playerOpen = false;
 export function setPlayerOpen(open: boolean) {
   playerOpen = open;
   if (open) stopClip();
+  // Closed: the screens behind show the new resume point and Watched marks (the server has the
+  // last position by then; it's saved as the player closes).
+  else setTimeout(refreshAll, 800);
 }
 
 /** A sheet (the expanded tile) is open: only its clip plays, not the page's behind it. */

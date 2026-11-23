@@ -14,22 +14,31 @@ import { play } from "../player";
 import { ClipArt, Logo, Progress } from "./cards";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 
-/** In progress, else the first one not watched, else the first. */
+/** Episode order, Specials (season 0) last, as the TV lists them. */
+export function sortEpisodes(eps: Item[]): Item[] {
+  const season = (e: Item) => (e.season === 0 ? Number.MAX_SAFE_INTEGER : (e.season ?? 0));
+  return [...eps].sort((a, b) => season(a) - season(b) || (a.episode ?? 0) - (b.episode ?? 0));
+}
+
+/**
+ * What Play plays, as on the TV: the episode you watched last if it's unfinished, else the first
+ * one not watched, else the first; never a Special unless the show has nothing else.
+ */
 export function nextUp(eps: Item[]): Item | undefined {
-  return (
-    eps.find(e => e.progress && !e.progress.finished && e.progress.position_secs > 30) ??
-    eps.find(e => !e.progress?.finished) ??
-    eps[0]
-  );
+  const regular = eps.filter(e => e.season !== 0);
+  const pool = regular.length ? regular : eps;
+  const started = pool
+    .filter(e => e.progress && !e.progress.finished && e.progress.position_secs > 30)
+    .sort((a, b) => (b.progress?.last_played_at ?? 0) - (a.progress?.last_played_at ?? 0));
+  return started[0] ?? pool.find(e => !e.progress?.finished) ?? pool[0];
 }
 
 const label = (e: Item) => `S${e.season ?? 0}:E${e.episode ?? 0}`;
 
 export function seriesScreen(name: string) {
   const show = load(async () => (await api.series()).find(s => s.series === name) ?? null);
-  const episodes = load(async () => {
-    const items = await api.items({ series: name, kind: "episode", limit: 10000 });
-    return items.sort((a, b) => (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0));
+  const episodes = load(async () => sortEpisodes(await api.items({ series: name, kind: "episode", limit: 10000 })), {
+    live: true,
   });
   const details = load(() => api.seriesDetails(name).catch(() => null));
   const similar = load(() => api.relatedSeries(name).catch(() => [] as SeriesSummary[]));
@@ -40,6 +49,8 @@ export function seriesScreen(name: string) {
   const seasons = createMemo(() => [...new Set((episodes.value() ?? []).map(e => e.season ?? 0))]);
   const [picked, setPicked] = createSignal<number | null>(null);
   const next = () => nextUp(episodes.value() ?? []);
+  /** Any episode watched or begun. */
+  const started = () => (episodes.value() ?? []).some(e => e.progress);
   const season = () => picked() ?? next()?.season ?? seasons()[0] ?? 0;
   const shown = () => (episodes.value() ?? []).filter(e => (e.season ?? 0) === season());
   /** The seasons TMDB lists that aren't in your library (More seasons asks Sonarr for them). */
@@ -52,8 +63,7 @@ export function seriesScreen(name: string) {
 
   const playEpisode = (e: Item) => {
     const p = e.progress;
-    play({ kind: "item", id: e.id }, p && !p.finished ? p.position_secs : 0).then(
-      () => setTimeout(episodes.reload, 1500),
+    play({ kind: "item", id: e.id }, p && !p.finished ? p.position_secs : 0).catch(
       err => void Dialogs.alert(String(err instanceof Error ? err.message : err)),
     );
   };
@@ -148,7 +158,16 @@ export function seriesScreen(name: string) {
           <Show when={note()}>
             <label class="status-line" textWrap={true} text={note()} />
           </Show>
-          <label class="overview" textWrap={true} text={show.value()?.overview ?? ""} />
+          {/* Once you've started the show, its next episode (as the TV shows it): "S4:E10 · Name: plot". */}
+          <label
+            class="overview"
+            textWrap={true}
+            text={
+              started() && next()
+                ? `${label(next()!)} · ${next()!.episode_title ?? next()!.title}${next()!.episode_overview ? `: ${next()!.episode_overview}` : ""}`
+                : (show.value()?.overview ?? "")
+            }
+          />
           <Show when={details.value()}>
             <label
               class="credits-line"

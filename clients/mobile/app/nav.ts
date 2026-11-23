@@ -47,6 +47,17 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
     page.actionBar.actionItems.addItem(item);
   }
   const dispose = render(screen, page as unknown as Element);
+  // A button with a view of its own (the avatar) is drawn without iOS 26's glass circle behind
+  // it, so the picture is the whole button.
+  if (opts.actions?.some(a => a.view)) {
+    page.on("navigatedTo", () => {
+      const items = (page.ios as UIViewController | undefined)?.navigationItem.rightBarButtonItems;
+      for (let i = 0; i < (items?.count ?? 0); i++) {
+        const item = items!.objectAtIndex(i) as UIBarButtonItem & { hidesSharedBackground?: boolean };
+        if (item.customView && "hidesSharedBackground" in item) item.hidesSharedBackground = true;
+      }
+    });
+  }
   page.on("navigatedFrom", (e: NavigatedData) => {
     const f = frame();
     if (e.isBackNavigation || !f?.backStack.some(entry => entry.resolvedPage === page)) dispose();

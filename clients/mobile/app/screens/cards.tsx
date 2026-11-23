@@ -161,8 +161,9 @@ export function Logo(props: { image: string | null | undefined; height: number; 
       width={props.maxWidth}
       horizontalAlignment="left"
       stretch="aspectFit"
-      on:propertyChange={(e: { propertyName: string; value: { width: number; height: number } | null; object: { width: number } }) => {
-        if (e.propertyName !== "imageSource" || !e.value?.width || !e.value.height) return;
+      // NativeScript announces a loaded picture as `imageSourceChange` (a property's "<name>Change").
+      on:imageSourceChange={(e: { value: { width: number; height: number } | null; object: { width: number } }) => {
+        if (!e.value?.width || !e.value.height) return;
         e.object.width = Math.min(props.maxWidth, (props.height * e.value.width) / e.value.height);
       }}
     />

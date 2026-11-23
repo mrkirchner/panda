@@ -8,7 +8,7 @@ import type { Preview } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
 import { t } from "@tv/i18n";
 import { Show, createSignal } from "solid-js";
-import { facts, load, longDate, runtime } from "../data";
+import { facts, load, longDate, refreshAll, runtime } from "../data";
 import { bestProgress, requestStatus } from "../requests";
 import { Facts, MoreRow, PeopleRow, Ratings } from "./sections";
 import { Logo } from "./cards";
@@ -41,6 +41,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
       await api.request(i, seasons);
       data.reload();
       void status.refresh();
+      refreshAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -62,6 +63,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
       await api.cancelRequest(r.id);
       await status.refresh();
       data.reload();
+      refreshAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

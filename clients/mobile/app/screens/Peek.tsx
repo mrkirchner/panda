@@ -14,7 +14,7 @@ import { play } from "../player";
 import { ClipArt, Logo } from "./cards";
 import { openSeries, openTitle } from "./links";
 import { Action, Ratings } from "./sections";
-import { nextUp } from "./Series";
+import { nextUp, sortEpisodes } from "./Series";
 
 const failed = (e: unknown) => void Dialogs.alert(e instanceof Error ? e.message : String(e));
 const genres = (g: string | null | undefined) => (g ?? "").split(/,\s*/).filter(Boolean).slice(0, 3).join(", ");
@@ -53,11 +53,7 @@ export function peekTitle(id: string) {
 export function peekSeries(name: string) {
   const show = load<SeriesSummary | null>(async () => (await api.series()).find(s => s.series === name) ?? null);
   const details = load<TitleDetails | null>(() => api.seriesDetails(name).catch(() => null));
-  const episodes = load<Item[]>(async () =>
-    (await api.items({ series: name, kind: "episode", limit: 10000 })).sort(
-      (a, b) => (a.season ?? 0) - (b.season ?? 0) || (a.episode ?? 0) - (b.episode ?? 0),
-    ),
-  );
+  const episodes = load<Item[]>(async () => sortEpisodes(await api.items({ series: name, kind: "episode", limit: 10000 })));
   const myList = myListToggle("series", name);
   const next = () => nextUp(episodes.value() ?? []);
   const label = () => {

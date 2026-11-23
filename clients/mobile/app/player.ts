@@ -14,10 +14,13 @@
 // Picture in Picture; the lock screen and Control Center show it with play/pause, skip and the
 // scrubber (Now Playing).
 import { Application, ImageSource, Utils } from "@nativescript/core";
-import { absolute, api, imageUrl } from "@tv/api/client";
+import { absolute, api, HttpError, imageUrl } from "@tv/api/client";
 import type { AudioTrack, Item, Playback, SubtitleTrack } from "@tv/api/types";
 import { formatTime } from "@tv/format";
-import { t } from "@tv/i18n";
+import { lang, t } from "@tv/i18n";
+import { languageName } from "@tv/format";
+import { DEFAULT_STALLS, StallMonitor, stepDownBudget } from "@tv/playback/stalls";
+import { features } from "./features";
 import { audioLabels } from "@tv/playback/audio";
 import { QUALITIES, profileFor, saveQuality, savedQuality, type QualityId } from "@tv/playback/quality";
 import { planSeek } from "@tv/playback/seek";
@@ -159,6 +162,16 @@ class PlayerSession {
   private readonly remoteTargets: { command: MPRemoteCommand; token: unknown }[] = [];
   private artwork: MPMediaItemArtwork | null = null;
   private readonly appEvents: [string, (...a: unknown[]) => void][] = [];
+  /** The TV's stall rules: too many or too long, and the stream steps down a quality. */
+  private readonly stalls = new StallMonitor();
+  private stallTimer: ReturnType<typeof setTimeout> | undefined;
+  private waiting = false;
+  /** This session's bitrate cap from step-downs (the saved quality choice is untouched). */
+  private stallCap: number | null = null;
+  /** Restarts after a broken stream in the last minute (a few, then it stops and says why). */
+  private retries: number[] = [];
+  private canSearchSubs = false;
+  private finding = false;
 
   // Views
   private readonly vc = new PlayerController();
@@ -200,11 +213,23 @@ class PlayerSession {
   // ---- Streams ----
 
   private async request(at: number): Promise<Playback> {
-    const profile = await profileFor(phoneProfile(), this.quality);
+    const chosen = await profileFor(phoneProfile(), this.quality);
+    const profile =
+      this.stallCap === null
+        ? chosen
+        : { ...chosen, max_bitrate_kbps: Math.min(chosen.max_bitrate_kbps ?? Infinity, this.stallCap) };
     const target = this.target;
-    return target.kind === "title"
-      ? api.playTitle(target.id, profile, at, target.version, this.audioIndex)
-      : api.startPlayback(target.id, profile, at, this.audioIndex);
+    try {
+      return target.kind === "title"
+        ? await api.playTitle(target.id, profile, at, target.version, this.audioIndex)
+        : await api.startPlayback(target.id, profile, at, this.audioIndex);
+    } catch (e) {
+      // 503: the library's storage (NAS) is offline; said plainly.
+      if (e instanceof HttpError && e.status === 503) {
+        throw new Error(t("This title's storage isn't reachable right now. Check that the NAS is on and connected."));
+      }
+      throw e;
+    }
   }
 
   private load(pb: Playback, at: number) {
@@ -212,6 +237,7 @@ class PlayerSession {
     this.item = AVPlayerItem.playerItemWithURL(NSURL.URLWithString(absolute(pb.url)));
     this.player.replaceCurrentItemWithPlayerItem(this.item);
     this.offset = pb.method === "hls" ? pb.start_secs : 0;
+    this.stalls.reset(Date.now());
     if (pb.method === "direct_play" && at > 0) {
       this.player.seekToTimeToleranceBeforeToleranceAfter(CMTimeMakeWithSeconds(at, 600), kCMTimeZero, kCMTimeZero);
     }
@@ -276,6 +302,7 @@ class PlayerSession {
       current: this.position(),
       keepBehind: KEEP_BEHIND_SECS,
     });
+    this.stalls.reset(Date.now());
     if (action.kind === "jump") {
       this.player.seekToTimeToleranceBeforeToleranceAfter(
         CMTimeMakeWithSeconds(action.mediaTime, 600),
@@ -321,6 +348,7 @@ class PlayerSession {
     );
     this.build();
     this.chooseSubs(initialTrack(this.pb.subtitles, this.audioLanguage()), false);
+    void features().then(f => (this.canSearchSubs = !!f?.subtitle_search));
     this.vc.modalPresentationStyle = UIModalPresentationStyle.FullScreen;
     topController()?.presentViewControllerAnimatedCompletion(this.vc, true, () => {
       this.player.play();
@@ -419,6 +447,7 @@ class PlayerSession {
     this.closed = true;
     void this.save();
     for (const t of this.timers) clearInterval(t);
+    clearTimeout(this.stallTimer);
     clearTimeout(this.hideTimer);
     clearTimeout(this.toastTimer);
     clearTimeout(this.previewTimer);
@@ -453,10 +482,52 @@ class PlayerSession {
       this.player.timeControlStatus === AVPlayerTimeControlStatus.WaitingToPlayAtSpecifiedRate;
     if (waiting) this.spinner.startAnimating();
     else this.spinner.stopAnimating();
+    this.watchStalls(waiting && this.pending === null && this.player.rate !== 0);
+    if (this.item?.status === AVPlayerItemStatus.Failed && this.pending === null) this.recover();
     this.setPlayIcon();
     this.showSubs();
     // The end: saved as watched (the server marks it finished), and the player closes.
     if (dur > 0 && pos >= dur - 1 && this.player.rate === 0 && this.pending === null) this.close();
+  }
+
+  /** Buffering while playing: the TV's step-down rules (StallMonitor). */
+  private watchStalls(waiting: boolean) {
+    if (waiting === this.waiting) return;
+    this.waiting = waiting;
+    if (!waiting) {
+      this.stalls.playing();
+      clearTimeout(this.stallTimer);
+      return;
+    }
+    if (this.stalls.waiting(Date.now())) return void this.stepDown();
+    clearTimeout(this.stallTimer);
+    this.stallTimer = setTimeout(() => {
+      if (this.stalls.stillWaiting(Date.now())) this.stepDown();
+    }, DEFAULT_STALLS.longMs);
+  }
+
+  /** The connection can't keep up: start again at ~60% of the current bitrate. */
+  private stepDown() {
+    const next = stepDownBudget(this.pb.stream.bitrate_kbps);
+    if (next === null) return;
+    this.stallCap = next;
+    this.toast(t("Slow connection: lowering quality to {mbps} Mbps", { mbps: (next / 1000).toFixed(1) }));
+    void this.restart(this.position());
+  }
+
+  /** The stream broke (a missing segment, the NAS dropping): start again where we are, a few
+   * times a minute, then stop and say why. */
+  private recover() {
+    const now = Date.now();
+    this.retries = this.retries.filter(at => now - at < 60_000);
+    if (this.retries.length >= 3) {
+      this.player.replaceCurrentItemWithPlayerItem(null);
+      this.item = null;
+      this.toast(t("Playback stopped. Check that the NAS is on and connected, then try again."));
+      return;
+    }
+    this.retries.push(now);
+    void this.restart(this.position());
   }
 
   private setPlayIcon() {
@@ -642,7 +713,7 @@ class PlayerSession {
   // ---- Controls ----
 
   private showControls() {
-    this.subsButton.hidden = !this.pb.subtitles.some(s => s.url);
+    this.subsButton.hidden = !this.pb.subtitles.some(s => s.url) && !this.canFind();
     this.audioButton.hidden = (this.pb.audio?.length ?? 0) < 2;
     this.layout();
     UIView.animateWithDurationAnimations(0.2, () => (this.controls.alpha = 1));
@@ -812,10 +883,47 @@ class PlayerSession {
     }
   }
 
+  /** A track in your language (the app's). */
+  private mine(code: string | null | undefined) {
+    return !!code && languageName(code) === languageName(lang());
+  }
+
+  /** Subtitles can be searched for (Bazarr) and it's worth it: nothing in your language among
+   * the tracks, and the audio isn't in it either (the TV's rule). */
+  private canFind() {
+    return this.canSearchSubs && !this.pb.subtitles.some(s => this.mine(s.language)) && !this.mine(this.audioLanguage());
+  }
+
+  /** Ask the server (Bazarr) for subtitles in your language; the new file is chosen when found. */
+  private async findSubtitles() {
+    if (this.finding) return;
+    const language = languageName(lang()) ?? lang();
+    this.finding = true;
+    this.toast(t("Looking for {language} subtitles...", { language }));
+    try {
+      const r = await api.findSubtitles(this.pb.item_id, lang());
+      const before = new Set(this.pb.subtitles.map(s => s.key));
+      this.pb.subtitles = r.subtitles;
+      const fresh = r.subtitles.find(s => s.url && !before.has(s.key) && this.mine(s.language));
+      if (fresh) {
+        this.chooseSubs(fresh, true);
+        rememberSubtitles(fresh);
+      } else this.toast(t("No {language} subtitles found", { language }));
+    } catch {
+      this.toast(t("No {language} subtitles found", { language }));
+    } finally {
+      this.finding = false;
+    }
+  }
+
   private subtitleMenu() {
     const tracks = this.pb.subtitles.filter(s => s.url);
     const labels = trackLabels(tracks);
+    const language = languageName(lang()) ?? lang();
     this.sheet(t("Subtitles"), this.subsButton, [
+      ...(this.canFind()
+        ? [{ label: t("Find {language} subtitles", { language }), selected: false, pick: () => void this.findSubtitles() }]
+        : []),
       ...(this.subs
         ? [{ label: `${t("Subtitle timing")}: ${shortTiming(this.timing)}`, selected: false, pick: () => this.timingMenu() }]
         : []),
@@ -905,6 +1013,7 @@ class PlayerSession {
         selected: q.id === this.quality,
         pick: () => {
           this.quality = q.id;
+          this.stallCap = null; // an explicit choice overrides step-downs
           saveQuality(q.id);
           void this.restart(this.position());
         },

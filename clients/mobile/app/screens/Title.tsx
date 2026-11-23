@@ -7,14 +7,14 @@ import type { Discover, Title } from "@tv/api/types";
 import { formatTime, tmdbRating } from "@tv/format";
 import { t } from "@tv/i18n";
 import { Show, createMemo } from "solid-js";
-import { facts, gb, load, longDate, runtime } from "../data";
+import { facts, gb, load, longDate, refreshAll, runtime } from "../data";
 import { myListToggle } from "../myList";
 import { play } from "../player";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "./sections";
 import { ClipArt, Logo } from "./cards";
 
 export function titleScreen(id: string) {
-  const data = load(() => api.title(id));
+  const data = load(() => api.title(id), { live: true });
   const details = load(() => api.titleDetails(id).catch(() => null));
   const related = load(() => api.relatedTitles(id).catch(() => [] as Title[]));
   const collection = load(() => api.titleCollection(id).catch(() => null));
@@ -27,10 +27,7 @@ export function titleScreen(id: string) {
     return p && !p.finished && p.position_secs > 30 ? p.position_secs : 0;
   };
   const start = (at: number, version?: number) =>
-    play({ kind: "title", id, version }, at).then(
-      () => setTimeout(data.reload, 1500),
-      e => void Dialogs.alert(String(e instanceof Error ? e.message : e)),
-    );
+    play({ kind: "title", id, version }, at).catch(e => void Dialogs.alert(String(e instanceof Error ? e.message : e)));
 
   /** More Like This: yours first, then ones you could request; not the films in its series' row. */
   const more = createMemo<MoreItem[]>(() => {
@@ -47,7 +44,7 @@ export function titleScreen(id: string) {
     const tt = title();
     if (!tt) return;
     await api.watched(tt.versions[0].item_id, !tt.progress?.finished).catch(() => {});
-    data.reload();
+    refreshAll();
   };
   const chooseVersion = async () => {
     const versions = title()?.versions ?? [];

@@ -2,6 +2,7 @@
 import { api } from "@tv/api/client";
 import type { MyListEntry } from "@tv/api/types";
 import { createSignal } from "solid-js";
+import { refreshAll } from "./data";
 
 export function myListToggle(kind: MyListEntry["kind"], id: string) {
   const [inList, setInList] = createSignal(false);
@@ -13,6 +14,7 @@ export function myListToggle(kind: MyListEntry["kind"], id: string) {
     const next = !inList();
     setInList(next);
     await api.setInMyList(kind, id, next).catch(() => setInList(!next));
+    refreshAll();
   };
   return { inList, toggle };
 }

@@ -5,7 +5,7 @@ import { api, imageUrl } from "@tv/api/client";
 import type { MyListEntry, MyRequest } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
-import { load } from "../data";
+import { load, refreshAll } from "../data";
 import { bestProgress } from "../requests";
 import { Poster, Progress, Row } from "./cards";
 import { openPreview, openSeries, openTitle, peekMovie, peekShow } from "./links";
@@ -22,8 +22,8 @@ function statusOf(r: MyRequest): string {
 }
 
 export function MyList() {
-  const requests = load(() => api.myRequests().catch(() => [] as MyRequest[]));
-  const list = load(() => api.myList().catch(() => [] as MyListEntry[]));
+  const requests = load(() => api.myRequests().catch(() => [] as MyRequest[]), { live: true });
+  const list = load(() => api.myList().catch(() => [] as MyListEntry[]), { live: true });
   // Arrived and saved: it shows as a saved title, not a request.
   const shown = () => (requests.value() ?? []).filter(r => !r.listed);
 
@@ -41,7 +41,7 @@ export function MyList() {
     });
     if (!ok) return;
     await api.cancelRequest(r.id).catch((e: unknown) => void Dialogs.alert(String(e)));
-    requests.reload();
+    refreshAll();
   };
   /** Cancellable while it's still being searched for (nothing downloading yet). */
   const cancellable = (r: MyRequest) => {

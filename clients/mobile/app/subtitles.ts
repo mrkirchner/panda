@@ -141,8 +141,8 @@ export function rememberSubtitles(track: SubtitleTrack | null) {
 }
 
 /**
- * The track to start with: your language (as last chosen), else a forced track in the language
- * being heard (signs and foreign dialogue), else none.
+ * The track to start with: your language (as last chosen; "off" stays off), else a forced track
+ * in the language being heard (signs and foreign dialogue), else the file's default, else none.
  */
 export function initialTrack(tracks: SubtitleTrack[], audioLanguage: string | null): SubtitleTrack | null {
   const usable = tracks.filter(t => t.url);
@@ -152,5 +152,11 @@ export function initialTrack(tracks: SubtitleTrack[], audioLanguage: string | nu
     const pick = mine.find(t => t.hearing_impaired === pref.sdh) ?? mine[0];
     if (pick) return pick;
   }
-  return usable.find(t => t.forced && (!audioLanguage || t.language === audioLanguage)) ?? null;
+  // Else the file's own choice (as the TV picks): a forced track in the language heard, then one
+  // the file marks as default.
+  return (
+    usable.find(t => t.forced && (!audioLanguage || t.language === audioLanguage)) ??
+    usable.find(t => t.default) ??
+    null
+  );
 }

@@ -40,7 +40,7 @@ export function goHome() {
   const profiles = [
     {
       text: t("Profile"),
-      view: () => <Avatar name={currentUser()?.name ?? "?"} picture={currentUser()?.avatar ?? null} size={34} />,
+      view: () => <Avatar name={currentUser()?.name ?? "?"} picture={currentUser()?.avatar ?? null} size={40} />,
       tap: () => void profileMenu(),
     },
   ];

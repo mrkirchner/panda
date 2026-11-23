@@ -33,10 +33,13 @@ function Themed(props: { row: ThemedRow }) {
 }
 
 export function Home() {
-  const data = load<HomeData>(async () => {
-    await ensureSession();
-    return api.home();
-  });
+  const data = load<HomeData>(
+    async () => {
+      await ensureSession();
+      return api.home();
+    },
+    { live: true },
+  );
   // The rest takes longer and never holds up the first rows.
   const more = load<HomeMore | null>(async () => {
     await ensureSession();
@@ -44,12 +47,15 @@ export function Home() {
   });
   const home = () => data.value();
   /** Requests still on their way: first in My List, with how they're going. */
-  const requests = load<MyRequest[]>(async () => {
-    await ensureSession();
-    return (await api.myRequests().catch(() => [] as MyRequest[])).filter(
-      r => !r.title_id && !r.series && r.status !== "failed",
-    );
-  });
+  const requests = load<MyRequest[]>(
+    async () => {
+      await ensureSession();
+      return (await api.myRequests().catch(() => [] as MyRequest[])).filter(
+        r => !r.title_id && !r.series && r.status !== "failed",
+      );
+    },
+    { live: true },
+  );
   const requestBadge = (r: MyRequest) => {
     const p = bestProgress(r);
     if (p?.state === "downloading") return t("Downloading {p}%", { p: Math.round(p.fraction * 100) });

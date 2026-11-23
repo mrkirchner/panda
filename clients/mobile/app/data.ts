@@ -1,9 +1,19 @@
 import { lang } from "@tv/i18n";
-import { createSignal, untrack } from "solid-js";
+import { createSignal, onCleanup, untrack } from "solid-js";
+
+/** Screens' loads that show watch progress, My List or requests: asked again on `refreshAll()`. */
+const live = new Set<() => void>();
+
+/** Something changed what screens show (the player closed, My List, a request, Watched): every
+ * live screen asks again. Tab pages stay alive, so without this they'd go stale. */
+export function refreshAll() {
+  for (const reload of live) reload();
+}
 
 /** A screen's data: loads once, `value` until then undefined, `error` if it failed. The request
- * starts untracked (it reads the server address, a signal, once). */
-export function load<T>(fetcher: () => Promise<T>) {
+ * starts untracked (it reads the server address, a signal, once). `live`: asked again on
+ * `refreshAll()` while the screen exists. */
+export function load<T>(fetcher: () => Promise<T>, opts: { live?: boolean } = {}) {
   const [value, setValue] = createSignal<T | undefined>(undefined);
   const [error, setError] = createSignal<string | null>(null);
   const run = () =>
@@ -14,6 +24,10 @@ export function load<T>(fetcher: () => Promise<T>) {
   void run();
   /** Ask again (after a change): the old answer stays shown meanwhile. */
   const reload = () => run();
+  if (opts.live) {
+    live.add(reload);
+    onCleanup(() => live.delete(reload));
+  }
   return { value, error, reload };
 }
 
