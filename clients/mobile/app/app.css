@@ -228,3 +228,13 @@ ActionBar {
 .link-code { font-size: 44; font-weight: bold; color: #d4ae6a; letter-spacing: 0.2; margin-top: 24; }
 .focus-row { margin: 0 0 0 16; }
 .focus-card { border-radius: 8; background-color: #1a1a1d; }
+
+/* Ghosts: loading placeholders, gently pulsing (the TV's GhostRow) */
+@keyframes ghost-pulse { 0% { opacity: 0.55; } 50% { opacity: 1; } 100% { opacity: 0.55; } }
+.ghost { background-color: #1e1e21; border-radius: 8; animation-name: ghost-pulse; animation-duration: 1.4; animation-iteration-count: infinite; }
+.ghost-row { margin-bottom: 6; }
+.ghost-title { width: 160; height: 18; border-radius: 5; margin: 24 16 12 16; horizontal-align: left; }
+.ghost-poster { width: 112; height: 168; margin-right: 10; }
+.ghost-wide { width: 240; height: 135; margin-right: 10; }
+.ghost-genre { width: 170; height: 96; margin-right: 10; }
+.ghost-expand { width: 300; height: 168; margin-right: 10; }

@@ -15,7 +15,7 @@ const fold = (x: string) =>
     .trim();
 import { For, Show, createSignal } from "solid-js";
 import { load } from "../data";
-import { Poster, Row } from "./cards";
+import { GhostRow, Poster, Row } from "./cards";
 import { openSeries, openTitle } from "./links";
 import { MoreRow, PeopleRow } from "./sections";
 
@@ -93,8 +93,10 @@ export function Search() {
       />
       <scrollview>
         <stacklayout class="home">
-          <Show when={busy()}>
-            <activityindicator busy={true} class="mt24" />
+          {/* Ghost rows while a search (or the first screen) is on its way. */}
+          <Show when={busy() || (!query().trim() && !picks.value())}>
+            <GhostRow />
+            <GhostRow />
           </Show>
           <Show when={!query().trim() && shownResults()}>
             <label class="muted search-note" text={t("Top picks")} />

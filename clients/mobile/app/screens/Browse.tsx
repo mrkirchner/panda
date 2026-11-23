@@ -9,7 +9,7 @@ import { For, Show } from "solid-js";
 import { load } from "../data";
 import { open } from "../nav";
 import { OfflineBanner } from "../offline";
-import { Poster, Row } from "./cards";
+import { GhostHero, GhostRow, Poster, Row } from "./cards";
 import { Hero } from "./Hero";
 import { spotSlide } from "./heroSlides";
 import { openAll, openSpot } from "./links";
@@ -52,7 +52,9 @@ export function browseScreen(fetchPage: () => Promise<GenrePage>, what: BrowseKi
           <label class="error form" textWrap={true} text={page.error() ?? ""} />
         </Show>
         <Show when={!page.value() && !page.error()}>
-          <activityindicator busy={true} class="mt40" />
+          <GhostHero />
+          <GhostRow />
+          <GhostRow />
         </Show>
         <Show when={empty()}>
           <label

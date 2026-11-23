@@ -129,7 +129,13 @@ export function allScreen(kind: "movies" | "shows", genre?: string, library?: nu
           <label class="error" textWrap={true} text={list.error() ?? ""} />
         </Show>
         <Show when={!list.value() && !list.error()}>
-          <activityindicator busy={true} class="mt40" />
+          <wraplayout>
+            <For each={Array.from({ length: 12 }, (_, n) => n)}>
+              {n => (
+                <stacklayout class="ghost grid-cell" width={width} height={height} marginRight={n % 3 === 2 ? 0 : 10} />
+              )}
+            </For>
+          </wraplayout>
         </Show>
         <Show when={list.value()}>
           <label class="muted grid-note" text={tn(entries().length, "{n} title", "{n} titles")} />

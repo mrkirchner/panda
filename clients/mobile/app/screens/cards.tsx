@@ -6,7 +6,7 @@ import { t } from "@tv/i18n";
 import { genreTint } from "@tv/theme";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { For, Show, createSignal, onCleanup } from "solid-js";
-import type { ContentView, ScrollView, View } from "@nativescript/core";
+import { Screen, type ContentView, type ScrollView, type View } from "@nativescript/core";
 import { playClip, type ClipSource } from "../clip";
 
 export function Row(props: {
@@ -442,3 +442,33 @@ export let devExpand: ((i: number) => void) | null = null;
 export let devScrollRow: ((steps: number) => void) | null = null;
 /** Debug builds (`-pandaDrag <points>`): drag the first expanding row like a finger. */
 export let devDrag: ((distance: number, ms: number) => void) | null = null;
+
+/**
+ * A row still loading, as the TV's GhostRow: a greyed title and placeholder tiles, gently
+ * pulsing, holding the row's place so the page doesn't jump when it arrives.
+ */
+export function GhostRow(props: { variant?: "poster" | "wide" | "genre" | "expand" }) {
+  const v = props.variant ?? "poster";
+  const tile = v === "wide" ? "ghost ghost-wide" : v === "genre" ? "ghost ghost-genre" : "ghost ghost-poster";
+  return (
+    <stacklayout class="ghost-row">
+      <stacklayout class="ghost ghost-title" />
+      <stacklayout orientation="horizontal" class="row-items">
+        <Show when={v === "expand"}>
+          <stacklayout class="ghost ghost-expand" />
+        </Show>
+        <For each={[0, 1, 2, 3]}>{() => <stacklayout class={tile} />}</For>
+      </stacklayout>
+    </stacklayout>
+  );
+}
+
+/** The hero still loading: its shape, pulsing. */
+export function GhostHero() {
+  const width = Screen.mainScreen.widthDIPs;
+  return (
+    <stacklayout class="ghost-row">
+      <stacklayout class="ghost" width={width} height={Math.round(width * 1.3) + 28} />
+    </stacklayout>
+  );
+}

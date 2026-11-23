@@ -11,7 +11,7 @@ import { facts, load, longDate, runtime } from "../data";
 import { features } from "../features";
 import { myListToggle } from "../myList";
 import { play } from "../player";
-import { ClipArt, Logo, Progress } from "./cards";
+import { ClipArt, GhostRow, Logo, Progress } from "./cards";
 import { pickSeasons } from "./SeasonPicker";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 
@@ -262,15 +262,20 @@ export function seriesScreen(name: string) {
           </gridlayout>
         </Show>
         {/* Your shows first (one per show across libraries), then ones you could request. */}
-        <MoreRow
-          title={t("More Like This")}
-          items={[
-            ...(similar.value() ?? [])
-              .filter((x, i, all) => !x.tmdb_id || all.findIndex(y => y.tmdb_id === x.tmdb_id) === i)
-              .map(show => ({ show })),
-            ...(suggestions.value() ?? []).map(suggestion => ({ suggestion })),
-          ]}
-        />
+        <Show when={!episodes.value()}>
+          <GhostRow variant="wide" />
+        </Show>
+        <Show when={similar.value() && suggestions.value()} fallback={<GhostRow />}>
+          <MoreRow
+            title={t("More Like This")}
+            items={[
+              ...(similar.value() ?? [])
+                .filter((x, i, all) => !x.tmdb_id || all.findIndex(y => y.tmdb_id === x.tmdb_id) === i)
+                .map(show => ({ show })),
+              ...(suggestions.value() ?? []).map(suggestion => ({ suggestion })),
+            ]}
+          />
+        </Show>
         <PeopleRow people={[...(details.value()?.directors ?? []), ...(details.value()?.cast ?? [])]} />
         <Facts
           title={t("Information")}

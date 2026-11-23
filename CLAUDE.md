@@ -379,6 +379,8 @@
   Text over artwork: black scrims plus text-shadow. A GridLayout inside a StackLayout needs
   `rows="auto"`, or its default star row takes spare height. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
+- Loading states: ghosts, as the TV's GhostRow (`GhostRow`, `GhostHero` in `screens/cards.tsx`, the
+  `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
 - Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The
   timeline is the file's length; seeks go through the TV's `planSeek` (restart outside the

@@ -7,7 +7,7 @@ import { t, tServer } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { facts, load, runtime } from "../data";
 import { play } from "../player";
-import { Banner, ExpandRow, GenreTile, Poster, Row, WideCard } from "./cards";
+import { Banner, ExpandRow, GenreTile, GhostHero, GhostRow, Poster, Row, WideCard } from "./cards";
 import { Hero } from "./Hero";
 import { featuredSlide } from "./heroSlides";
 import { openGenre, openPreview, openSeries, openSpot, openTitle } from "./links";
@@ -68,8 +68,12 @@ export function Home() {
         <Show when={data.error()}>
           <label class="error form" textWrap={true} text={data.error() ?? ""} />
         </Show>
+        {/* First visit: ghosts hold the page's shape until it arrives (the TV's). */}
         <Show when={!home() && !data.error()}>
-          <activityindicator busy={true} class="mt40" />
+          <GhostHero />
+          <GhostRow variant="wide" />
+          <GhostRow />
+          <GhostRow variant="expand" />
         </Show>
         <OfflineBanner />
         {/* Nothing featured: the newest movies take the hero (as the TV does). */}
@@ -158,6 +162,11 @@ export function Home() {
         </Show>
         <Show when={more.value()?.spotlights[0]}>
           <Banner spot={more.value()!.spotlights[0]} onTap={() => openSpot(more.value()!.spotlights[0])} />
+        </Show>
+        {/* The slower half (genres, picks, themes) still on its way. */}
+        <Show when={home() && more.value() === undefined}>
+          <GhostRow variant="genre" />
+          <GhostRow />
         </Show>
         <Show when={more.value()?.top_picks.length}>
           <Row title={t("Top picks for you")}>

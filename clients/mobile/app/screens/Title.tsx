@@ -11,7 +11,7 @@ import { facts, gb, load, longDate, refreshAll, runtime } from "../data";
 import { myListToggle } from "../myList";
 import { play } from "../player";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "./sections";
-import { ClipArt, Logo } from "./cards";
+import { ClipArt, GhostRow, Logo } from "./cards";
 
 export function titleScreen(id: string) {
   const data = load(() => api.title(id), { live: true });
@@ -137,7 +137,16 @@ export function titleScreen(id: string) {
               items={collection.value()!.items.map(i => ({ title: i.title, suggestion: i.suggestion }))}
             />
           </Show>
-          <MoreRow title={t("More Like This")} items={more()} />
+          {/* Held by a ghost until every list is in (the TV's). */}
+          <Show
+            when={related.value() && suggestions.value() && collection.value() !== undefined}
+            fallback={<GhostRow />}
+          >
+            <MoreRow title={t("More Like This")} items={more()} />
+          </Show>
+          <Show when={details.value() === undefined}>
+            <GhostRow />
+          </Show>
           <PeopleRow people={[...(details.value()?.directors ?? []), ...(details.value()?.cast ?? [])]} />
           <Facts
             title={t("Information")}
