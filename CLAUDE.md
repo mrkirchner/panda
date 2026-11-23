@@ -223,7 +223,7 @@
   `DeviceConfig` (`tv/devices/devices.ts`, one folder per target), the phone's `platform.ios.ts` /
   `platform.android.ts` (`satisfies PhonePlatform`, `app/platformTypes.ts`; screens import only
   `./platform`), the web app's `src/platform/`. Optional capabilities left out turn their feature
-  off (Android has no `nowPlaying` yet: lock-screen controls need a media notification service).
+  off (the TV apps have no `nowPlaying`: TVs have no lock screen).
   A new platform implements the object and the type check lists what's missing.
 - Everything kept on a device goes through `clients/tv/src/platform/settings.ts` (`SETTINGS`,
   `audioChoice()`, `read`/`write`; typed, storage failures swallowed). Never call `localStorage`
