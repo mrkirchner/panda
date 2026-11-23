@@ -9,7 +9,8 @@ UDID=${1:-$(xcrun simctl list devices available | grep -m1 "iPhone 17 Pro (" | s
 OUT=${2:-./sim-out}; SETTLE=${3:-8}; shift $(( $# < 3 ? $# : 3 ))
 BUNDLE=app.panda.mobile; NAME=Panda
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
-APP=$(find platforms/ios/build -maxdepth 3 -type d -name "$NAME.app" | grep -i simulator | head -1)
+# The newest simulator build (Debug or Release; only Debug takes the -panda* launch options).
+APP=$(ls -dt platforms/ios/build/*-iphonesimulator/"$NAME.app" 2>/dev/null | head -1)
 [ -z "$APP" ] && { echo "no simulator build; run: . scripts/env.sh && npx ns build ios --emulator"; exit 1; }
 # An interrupted Xcode step can leave the app unsigned (iOS then refuses to start it) or stale.
 codesign -v "$APP" 2>/dev/null || { echo "$APP isn't signed: build again"; exit 1; }

@@ -402,6 +402,11 @@ const ES: Record<string, string> = {
   "Wrong username or password.": "Usuario o contraseña incorrectos.",
   "airs {date}": "se emite el {date}",
   "{seasons} seasons, {episodes} episodes": "{seasons} temporadas, {episodes} episodios",
+  "Speech recognition is off for Panda (Settings > Panda).":
+    "El reconocimiento de voz está desactivado para Panda (Ajustes > Panda).",
+  "The microphone is off for Panda (Settings > Panda).": "El micrófono está desactivado para Panda (Ajustes > Panda).",
+  "Voice search isn't available right now.": "La búsqueda por voz no está disponible ahora.",
+  "The microphone couldn't start.": "No se pudo activar el micrófono.",
 };
 
 const TABLES: Record<Lang, Record<string, string>> = { en: {}, es: ES };

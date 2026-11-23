@@ -1,6 +1,7 @@
 // Search the library (`/api/find`): movies and shows as you type. Before typing, the library's
 // top picks.
-import type { SearchBar } from "@nativescript/core";
+import { Dialogs, type SearchBar } from "@nativescript/core";
+import { isListening, startListening, stopListening } from "../voice";
 import { api } from "@tv/api/client";
 import type { Discover, DiscoverSet, FindResults, Person } from "@tv/api/types";
 import { t, tServer } from "@tv/i18n";
@@ -13,7 +14,7 @@ const fold = (x: string) =>
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 import { load } from "../data";
 import { GhostRow, Poster, Row } from "./cards";
 import { openSeries, openTitle } from "./links";
@@ -82,6 +83,20 @@ export function Search() {
   };
 
   let bar: SearchBar | undefined;
+  const [listening, setListening] = createSignal(false);
+  const voice = () => {
+    if (isListening()) return stopListening();
+    bar?.dismissSoftInput();
+    return startListening({
+      onText: text => {
+        if (bar) bar.text = text;
+        search(text);
+      },
+      onListening: setListening,
+      onError: message => void Dialogs.alert(t(message)),
+    });
+  };
+  onCleanup(stopListening);
   devType = word => {
     // Through iOS's text input, as the keyboard types (focus first).
     const field = (bar?.ios as UISearchBar | undefined)?.searchTextField;
@@ -111,7 +126,9 @@ export function Search() {
 
   return (
     <stacklayout>
+      <gridlayout columns="*, auto" rows="auto" class="search-row">
       <searchbar
+        col={0}
         class="search"
         text={startQuery}
         hint={t("Movies and shows")}
@@ -119,6 +136,11 @@ export function Search() {
         on:textChange={(e: { object: SearchBar }) => search(e.object.text ?? "")}
         on:submit={(e: { object: SearchBar }) => e.object.dismissSoftInput()}
       />
+        {/* Voice search, as the TV's Voice key: the words fill the bar as you speak. */}
+        <gridlayout col={1} class={listening() ? "mic on" : "mic"} on:tap={() => void voice()}>
+          <image class="mic-icon" src="sys://mic.fill" tintColor={listening() ? "#141210" : "#f4f1ea"} />
+        </gridlayout>
+      </gridlayout>
       <scrollview>
         <stacklayout class="home">
           {/* Ghost rows while a search (or the first screen) is on its way. */}

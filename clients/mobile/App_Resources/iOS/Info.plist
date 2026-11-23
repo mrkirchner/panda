@@ -66,6 +66,11 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<!-- Voice search (Search's mic). -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Panda listens when you tap the microphone in Search, to search by voice.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Panda turns what you say in Search into the words to search for.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Panda looks for your Panda server on your home network.</string>
 	<key>NSBonjourServices</key>
