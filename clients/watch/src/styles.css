@@ -1831,6 +1831,11 @@ h3 {
     position: absolute;
     z-index: 2;
     pointer-events: none;
+    transition: transform 0.25s;
+}
+/* Image subtitles sit where they were authored, low on the picture: lifted over the controls. */
+.player.controls-on .player-subs-bitmap {
+    transform: translateY(-96px);
 }
 .player-subs-bitmap img {
     position: absolute;

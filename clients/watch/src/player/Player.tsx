@@ -59,6 +59,9 @@ export default function Player() {
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   let previewTimer: ReturnType<typeof setTimeout> | undefined;
   let closing = false;
+  /** When a tap last brought the controls back: the click that follows the tap mustn't press
+   * the button that just appeared under the finger. */
+  let revealedAt = 0;
 
   const toast = (text: string) => {
     setToastText(text);
@@ -407,18 +410,24 @@ export default function Player() {
   return (
     <div
       class={["player", { "controls-on": controls() || !playing(), idle: !controls() && playing() }]}
-      onMouseMove={showControls}
-      onTouchStart={() => {
-        if (!controls()) showControls();
+      onPointerMove={e => {
+        // A mouse moving shows the controls (touches show them by tapping, below).
+        if (e.pointerType === "mouse") showControls();
       }}
     >
       <video
         ref={el => (video = el)}
         playsinline
-        onClick={() => {
-          // A mouse click plays or pauses; a tap shows the controls (handled on touchstart).
-          if (matchMedia("(hover: hover)").matches) {
+        onPointerUp={e => {
+          // A mouse click plays or pauses; a tap shows or hides the controls.
+          if (e.pointerType === "mouse") {
             engine?.togglePlay();
+            showControls();
+          } else if (controls()) {
+            clearTimeout(hideTimer);
+            setControls(false);
+          } else {
+            revealedAt = Date.now();
             showControls();
           }
         }}
@@ -483,7 +492,21 @@ export default function Player() {
         </div>
       </Show>
 
-      <div class="player-ui">
+      <div
+        class="player-ui"
+        ref={el =>
+          el.addEventListener(
+            "click",
+            e => {
+              if (Date.now() - revealedAt < 500) {
+                e.stopPropagation();
+                e.preventDefault();
+              }
+            },
+            true,
+          )
+        }
+      >
         <div class="player-top">
           <button class="icon-btn" aria-label={t("Back")} onClick={leave}>
             <Icon name="left" size={28} />
