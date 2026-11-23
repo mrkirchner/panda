@@ -1,0 +1,7 @@
+# Its own pnpm root with a flat node_modules: the NativeScript CLI finds plugins by walking
+# node_modules (same as clients/appletv).
+nodeLinker: hoisted
+onlyBuiltDependencies:
+  - '@nativescript/core'
+  - '@nativescript/webpack'
+  - nativescript

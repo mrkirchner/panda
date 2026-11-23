@@ -354,6 +354,22 @@
   `Config.preventDefaultOnHandledKeys`.
 - Dev server base path is `/common/` (set per device by `devices/deviceConfigPlugin.ts`).
 
+## Phone app (clients/mobile)
+- NativeScript 9 + SolidJS 2 via `@nativescript-community/solid-js` (native iOS views; Android
+  later, same project). Not the TV app's SolidTV canvas: phones need touch and portrait layouts.
+- Shares the TV client's non-UI code as source: webpack alias `@tv` -> `../tv/src` (api, session,
+  discover, i18n, types) and `@appletv` -> `../appletv/app` (Bonjour). Browser/TV globals that code
+  reads are answered in `app/shims/` (`localStorage` = ApplicationSettings, `#device`,
+  `#devices/debug`). Solid 2 here, Solid 1.9 in the TV app: shared code may only use
+  `createSignal` plain values (both versions agree on that).
+- Screens are native pages on one Frame (`app/nav.ts` `open()`: a Solid tree per page, disposed
+  when the page is gone). Styling is CSS classes in `app/app.css` (the TV palette); inline
+  `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
+- Playback: AVPlayerViewController (`app/player.ts`), the device profile in `app/profile.ts`,
+  progress every 10 s and on close, HLS sessions stopped on close.
+- Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` (debug builds;
+  `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
+
 ## Logo (clients/brand)
 - Sources: `panda-mark.svg` (panda in front of an orange play triangle; groups `#play` and
   `#panda`) and `panda-wordmark.svg` ("Panda" in Fredoka Bold as outlines, a play in the "a").

@@ -1,0 +1,30 @@
+{
+  "name": "panda-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Panda on iPhone (Android later): NativeScript + SolidJS with native views; shares the TV client's API code (../tv/src/api)",
+  "main": "app/app.tsx",
+  "scripts": {
+    "ios": "ns run ios --emulator --no-hmr",
+    "build:ios": "ns build ios",
+    "typecheck": "tsc --noEmit",
+    "clean": "ns clean"
+  },
+  "dependencies": {
+    "@nativescript-community/solid-js": "2.0.1",
+    "@nativescript/core": "9.1.4",
+    "@solidjs/universal": "2.0.3",
+    "dominative": "0.1.3",
+    "solid-js": "2.0.3",
+    "undom-ng": "1.1.2"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.27.1",
+    "@nativescript/ios": "9.1.1",
+    "@nativescript/types": "9.1.4",
+    "@nativescript/webpack": "5.0.42",
+    "@solidjs/babel-plugin": "2.0.2",
+    "nativescript": "9.1.2",
+    "typescript": "~5.9.3"
+  }
+}
