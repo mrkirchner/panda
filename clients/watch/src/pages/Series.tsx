@@ -24,29 +24,32 @@ const label = (e: Item) => `S${e.season ?? 0}:E${e.episode ?? 0}`;
 
 function SeriesView(props: { name: string }) {
   const name = props.name;
-  const show = load(async () => (await api.series()).find(s => s.series === name) ?? null);
-  const episodes = load(async () => sortEpisodes(await api.items({ series: name, kind: "episode", limit: 10000 })), {
-    live: true,
-  });
+  const show = load(async () => (await api.series()).find((s) => s.series === name) ?? null);
+  const episodes = load(
+    async () => sortEpisodes(await api.items({ series: name, kind: "episode", limit: 10000 })),
+    {
+      live: true,
+    },
+  );
   const details = load(() => api.seriesDetails(name).catch(() => null));
   const similar = load(() => api.relatedSeries(name).catch(() => [] as SeriesSummary[]));
   const suggestions = load(() => api.seriesSuggestions(name).catch(() => [] as Discover[]));
   const canRequest = load(async () => (await features())?.request_shows ?? false);
   const myList = myListToggle("series", name);
 
-  const seasons = createMemo(() => [...new Set((episodes.value() ?? []).map(e => e.season ?? 0))]);
+  const seasons = createMemo(() => [...new Set((episodes.value() ?? []).map((e) => e.season ?? 0))]);
   const [picked, setPicked] = createSignal<number | null>(null);
   const next = () => nextUp(episodes.value() ?? []);
-  const started = () => (episodes.value() ?? []).some(e => e.progress);
+  const started = () => (episodes.value() ?? []).some((e) => e.progress);
   const season = () => picked() ?? next()?.season ?? seasons()[0] ?? 0;
-  const inSeason = () => (episodes.value() ?? []).filter(e => (e.season ?? 0) === season());
+  const inSeason = () => (episodes.value() ?? []).filter((e) => (e.season ?? 0) === season());
   const [limit, setLimit] = createSignal(EPISODES_PAGE);
   const shown = () => inSeason().slice(0, limit());
   /** The seasons TMDB lists that aren't in your library (More seasons asks Sonarr for them). */
   const missing = createMemo(() => {
     const total = details.value()?.seasons ?? 0;
     const have = new Set(seasons());
-    return Array.from({ length: total }, (_, i) => i + 1).filter(n => !have.has(n));
+    return Array.from({ length: total }, (_, i) => i + 1).filter((n) => !have.has(n));
   });
   const [note, setNote] = createSignal("");
 
@@ -65,7 +68,9 @@ function SeriesView(props: { name: string }) {
     try {
       await api.moreSeasons(name, get);
       setNote(
-        get.length === 1 ? t("Requested season {n}.", { n: get[0] }) : t("Requested {n} seasons.", { n: get.length }),
+        get.length === 1
+          ? t("Requested season {n}.", { n: get[0] })
+          : t("Requested {n} seasons.", { n: get.length }),
       );
     } catch (e) {
       setNote(message(e));
@@ -73,12 +78,12 @@ function SeriesView(props: { name: string }) {
   };
 
   /** A season that is another TMDB show's story (an anthology): its own name, art and text. */
-  const art = () => details.value()?.season_art?.find(a => a.season === season());
+  const art = () => details.value()?.season_art?.find((a) => a.season === season());
   /** TMDB's next episode to air, unless it's already in your library. */
   const upcoming = () => {
     const n = details.value()?.next_episode;
     if (!n) return null;
-    const have = (episodes.value() ?? []).some(e => e.season === n.season && e.episode === n.episode);
+    const have = (episodes.value() ?? []).some((e) => e.season === n.season && e.episode === n.episode);
     return have ? null : n;
   };
   const upcomingInSeason = () => {
@@ -129,7 +134,11 @@ function SeriesView(props: { name: string }) {
               ])}
             </span>
             <Ratings
-              ratings={details.value()?.ratings?.length ? details.value()!.ratings! : tmdbRating(show.value()?.rating)}
+              ratings={
+                details.value()?.ratings?.length
+                  ? details.value()!.ratings!
+                  : tmdbRating(show.value()?.rating)
+              }
             />
             <Show when={nextAiring()}>
               <span class="status-line">{nextAiring()}</span>
@@ -137,7 +146,7 @@ function SeriesView(props: { name: string }) {
             <p class="overview clamp">{overview()}</p>
             <div class="actions">
               <Show when={next()}>
-                {e => (
+                {(e) => (
                   <button class="btn primary" onClick={() => playEpisode(e())}>
                     <Icon name="play" size={20} />
                     {e().progress && !e().progress!.finished
@@ -161,7 +170,7 @@ function SeriesView(props: { name: string }) {
             </Show>
           </div>
           <Show when={details.value()}>
-            {d => <Credits cast={d().cast} directors={d().directors} createdBy />}
+            {(d) => <Credits cast={d().cast} directors={d().directors} createdBy />}
           </Show>
         </div>
       </section>
@@ -170,7 +179,7 @@ function SeriesView(props: { name: string }) {
         <Show when={episodes.value()} fallback={<GhostRow variant="wide" />}>
           <div class="season-tabs" role="tablist">
             <For each={seasons()}>
-              {s => (
+              {(s) => (
                 <button
                   role="tab"
                   aria-selected={season() === s ? "true" : "false"}
@@ -187,11 +196,11 @@ function SeriesView(props: { name: string }) {
           </div>
           <div class="episodes">
             <For each={shown()}>
-              {e => (
+              {(e) => (
                 <button class="episode" onClick={() => playEpisode(e)}>
                   <div class="still">
                     <Show when={imageUrl(e.episode_still ?? e.backdrop)}>
-                      {src => <img src={src()} alt="" loading="lazy" decoding="async" />}
+                      {(src) => <img src={src()} alt="" loading="lazy" decoding="async" />}
                     </Show>
                     <span class="play-over">
                       <Icon name="play" size={32} />
@@ -216,7 +225,13 @@ function SeriesView(props: { name: string }) {
               )}
             </For>
             {/* The next episode to air, greyed at the end of its season (the TV's). */}
-            <Show when={upcomingInSeason() && upcomingInSeason()!.season === season() && shown().length === inSeason().length}>
+            <Show
+              when={
+                upcomingInSeason() &&
+                upcomingInSeason()!.season === season() &&
+                shown().length === inSeason().length
+              }
+            >
               {(() => {
                 const n = upcomingInSeason()!;
                 return (
@@ -225,7 +240,9 @@ function SeriesView(props: { name: string }) {
                     <div>
                       <div class="episode-title">{`${n.episode}. ${n.name ?? t("Episode {n}", { n: n.episode })}`}</div>
                       <div class="episode-meta accent">
-                        {n.air_date ? t("Coming {date}", { date: longDate(n.air_date) ?? "" }) : t("Coming soon")}
+                        {n.air_date
+                          ? t("Coming {date}", { date: longDate(n.air_date) ?? "" })
+                          : t("Coming soon")}
                       </div>
                       <p class="episode-overview">{n.overview ?? ""}</p>
                     </div>
@@ -236,7 +253,7 @@ function SeriesView(props: { name: string }) {
           </div>
           <Show when={inSeason().length > limit()}>
             <div style={{ padding: "16px var(--gutter) 0" }}>
-              <button class="btn" onClick={() => setLimit(n => n + EPISODES_PAGE)}>
+              <button class="btn" onClick={() => setLimit((n) => n + EPISODES_PAGE)}>
                 {t("Show more")}
               </button>
             </div>
@@ -250,15 +267,18 @@ function SeriesView(props: { name: string }) {
           title={t("More Like This")}
           items={[
             ...(similar.value() ?? [])
-              .filter((x, i, all) => !x.tmdb_id || all.findIndex(y => y.tmdb_id === x.tmdb_id) === i)
-              .map(s => ({ show: s })),
-            ...(suggestions.value() ?? []).map(suggestion => ({ suggestion })),
+              .filter((x, i, all) => !x.tmdb_id || all.findIndex((y) => y.tmdb_id === x.tmdb_id) === i)
+              .map((s) => ({ show: s })),
+            ...(suggestions.value() ?? []).map((suggestion) => ({ suggestion })),
           ]}
         />
       </Show>
       <PeopleRow people={[...(details.value()?.directors ?? []), ...(details.value()?.cast ?? [])]} />
       <div class="section facts-grid">
-        <Facts title={t("About")} facts={[{ label: show.value()?.meta_title ?? name, value: show.value()?.overview }]} />
+        <Facts
+          title={t("About")}
+          facts={[{ label: show.value()?.meta_title ?? name, value: show.value()?.overview }]}
+        />
         <Facts
           title={t("Information")}
           facts={[
@@ -270,7 +290,7 @@ function SeriesView(props: { name: string }) {
             {
               label: t("In your library"),
               value: episodes.value()
-                ? `${t("{seasons} seasons, {episodes} episodes", { seasons: seasons().length, episodes: episodes.value()!.length })}, ${t("{n} watched", { n: episodes.value()!.filter(e => e.progress?.finished).length })}`
+                ? `${t("{seasons} seasons, {episodes} episodes", { seasons: seasons().length, episodes: episodes.value()!.length })}, ${t("{n} watched", { n: episodes.value()!.filter((e) => e.progress?.finished).length })}`
                 : null,
             },
           ]}
@@ -297,7 +317,7 @@ export default function SeriesPage() {
   const params = useParams<{ name: string }>();
   return (
     <Show when={params.name} keyed>
-      {name => <SeriesView name={name} />}
+      {(name) => <SeriesView name={name} />}
     </Show>
   );
 }

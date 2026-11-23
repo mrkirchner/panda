@@ -37,7 +37,7 @@ export default function Connect() {
 
   return (
     <div class="center-page">
-      <form class="panel" onSubmit={e => void submit(e)}>
+      <form class="panel" onSubmit={(e) => void submit(e)}>
         <div class="brand">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           <span>Panda</span>
@@ -55,7 +55,7 @@ export default function Connect() {
             autocapitalize="none"
             autocomplete="url"
             value={address()}
-            onInput={e => setAddress(e.currentTarget.value)}
+            onInput={(e) => setAddress(e.currentTarget.value)}
           />
         </div>
         <Show when={error()}>

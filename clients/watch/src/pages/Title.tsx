@@ -10,7 +10,16 @@ import { t } from "@tv/i18n";
 import { Show, createMemo } from "solid-js";
 import { DetailArt, GhostRow, Logo } from "../components/cards";
 import { Icon } from "../components/icons";
-import { Action, Credits, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "../components/sections";
+import {
+  Action,
+  Credits,
+  Facts,
+  MoreRow,
+  PeopleRow,
+  Ratings,
+  trackList,
+  type MoreItem,
+} from "../components/sections";
 import { pick } from "../components/ui";
 import { facts, gb, genres, load, refreshAll, runtime } from "../data";
 import { myListToggle } from "../myList";
@@ -32,11 +41,13 @@ function TitleView(props: { id: string }) {
   /** More Like This: yours first, then ones you could request; not the films in its series' row. */
   const more = createMemo<MoreItem[]>(() => {
     const inSeries = new Set(
-      (collection.value()?.items ?? []).map(i => i.title?.id ?? `m${i.suggestion?.tmdb_id ?? ""}`),
+      (collection.value()?.items ?? []).map((i) => i.title?.id ?? `m${i.suggestion?.tmdb_id ?? ""}`),
     );
     return [
-      ...(related.value() ?? []).filter(r => !inSeries.has(r.id)).map(r => ({ title: r })),
-      ...(suggestions.value() ?? []).filter(s => !inSeries.has(`m${s.tmdb_id}`)).map(s => ({ suggestion: s })),
+      ...(related.value() ?? []).filter((r) => !inSeries.has(r.id)).map((r) => ({ title: r })),
+      ...(suggestions.value() ?? [])
+        .filter((s) => !inSeries.has(`m${s.tmdb_id}`))
+        .map((s) => ({ suggestion: s })),
     ];
   });
 
@@ -50,7 +61,7 @@ function TitleView(props: { id: string }) {
     const versions = title()?.versions ?? [];
     const i = await pick(
       t("Versions"),
-      versions.map(v => ({ label: `${v.label}  ·  ${gb(v.size_bytes)}` })),
+      versions.map((v) => ({ label: `${v.label}  ·  ${gb(v.size_bytes)}` })),
       e.currentTarget as Element,
     );
     if (i >= 0) start(at(), versions[i].item_id);
@@ -58,7 +69,8 @@ function TitleView(props: { id: string }) {
   const progressText = () =>
     at() > 0 ? t("{t} watched", { t: formatTime(at()) }) : title()?.progress?.finished ? t("Watched") : "";
   const minutes = () =>
-    details.value()?.runtime_mins ?? (title()?.duration_secs ? Math.round(title()!.duration_secs! / 60) : null);
+    details.value()?.runtime_mins ??
+    (title()?.duration_secs ? Math.round(title()!.duration_secs! / 60) : null);
 
   return (
     <>
@@ -76,7 +88,7 @@ function TitleView(props: { id: string }) {
           </Show>
         }
       >
-        {tt => (
+        {(tt) => (
           <>
             <section class="detail-hero">
               <DetailArt image={tt().backdrop} clip={{ kind: "title", id }} />
@@ -86,10 +98,17 @@ function TitleView(props: { id: string }) {
                     <Logo image={details.value()!.logo} title={tt().title} />
                   </Show>
                   <span class="facts-line">
-                    {facts([tt().year, runtime(tt().duration_secs), details.value()?.certification, genres(tt().genres, 3)])}
+                    {facts([
+                      tt().year,
+                      runtime(tt().duration_secs),
+                      details.value()?.certification,
+                      genres(tt().genres, 3),
+                    ])}
                   </span>
                   <Ratings
-                    ratings={details.value()?.ratings?.length ? details.value()!.ratings! : tmdbRating(tt().rating)}
+                    ratings={
+                      details.value()?.ratings?.length ? details.value()!.ratings! : tmdbRating(tt().rating)
+                    }
                   />
                   <Show when={progressText()}>
                     <span class="status-line">{progressText()}</span>
@@ -120,19 +139,19 @@ function TitleView(props: { id: string }) {
                       onClick={() => void toggleWatched()}
                     />
                     <Show when={tt().versions.length > 1}>
-                      <Action icon="stack" label={t("Versions")} onClick={e => void chooseVersion(e)} />
+                      <Action icon="stack" label={t("Versions")} onClick={(e) => void chooseVersion(e)} />
                     </Show>
                   </div>
                 </div>
                 <Show when={details.value()}>
-                  {d => <Credits cast={d().cast} directors={d().directors} />}
+                  {(d) => <Credits cast={d().cast} directors={d().directors} />}
                 </Show>
               </div>
             </section>
             <Show when={(collection.value()?.items.length ?? 0) > 1}>
               <MoreRow
                 title={collection.value()!.name}
-                items={collection.value()!.items.map(i => ({ title: i.title, suggestion: i.suggestion }))}
+                items={collection.value()!.items.map((i) => ({ title: i.title, suggestion: i.suggestion }))}
               />
             </Show>
             {/* Held by a ghost until every list is in (the TV's). */}
@@ -152,7 +171,10 @@ function TitleView(props: { id: string }) {
                 title={t("Information")}
                 facts={[
                   { label: t("Studio"), value: details.value()?.studios.join(", ") },
-                  { label: t("Released"), value: longDate(details.value()?.release_date) ?? tt().year?.toString() },
+                  {
+                    label: t("Released"),
+                    value: longDate(details.value()?.release_date) ?? tt().year?.toString(),
+                  },
                   { label: t("Runtime"), value: minutes() ? runtime(minutes()! * 60) : null },
                   { label: t("Rated"), value: details.value()?.certification },
                   { label: t("Region of origin"), value: details.value()?.countries?.join(", ") },
@@ -168,7 +190,7 @@ function TitleView(props: { id: string }) {
                       : null,
                   },
                   ...(details.value()?.version_languages?.length
-                    ? details.value()!.version_languages!.flatMap(v => [
+                    ? details.value()!.version_languages!.flatMap((v) => [
                         { label: `${t("Audio")} · ${v.label}`, value: trackList(v.audio) },
                         { label: `${t("Subtitles")} · ${v.label}`, value: trackList(v.subtitles) },
                       ])
@@ -184,7 +206,7 @@ function TitleView(props: { id: string }) {
                   {
                     label: t("Versions"),
                     value: tt()
-                      .versions.map(v => `${v.label} (${gb(v.size_bytes)})`)
+                      .versions.map((v) => `${v.label} (${gb(v.size_bytes)})`)
                       .join(", "),
                   },
                 ]}
@@ -201,7 +223,7 @@ export default function TitlePage() {
   const params = useParams<{ id: string }>();
   return (
     <Show when={params.id} keyed>
-      {id => <TitleView id={id} />}
+      {(id) => <TitleView id={id} />}
     </Show>
   );
 }

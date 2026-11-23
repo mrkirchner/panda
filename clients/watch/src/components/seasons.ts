@@ -3,12 +3,16 @@
 import { t } from "@tv/i18n";
 import { pickMany } from "./ui";
 
-export async function pickSeasons(seasons: number[], title: string, action: string): Promise<number[] | null | undefined> {
+export async function pickSeasons(
+  seasons: number[],
+  title: string,
+  action: string,
+): Promise<number[] | null | undefined> {
   const r = await pickMany(
     title,
-    seasons.map(n => t("Season {n}", { n })),
+    seasons.map((n) => t("Season {n}", { n })),
     action,
   );
   if (r === null) return undefined;
-  return r.length === seasons.length ? null : r.map(i => seasons[i]);
+  return r.length === seasons.length ? null : r.map((i) => seasons[i]);
 }

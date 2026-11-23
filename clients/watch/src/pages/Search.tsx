@@ -53,7 +53,7 @@ export default function Search() {
     if (!results()) setBusy(true);
     api
       .find({ q: trimmed, more: false })
-      .then(r => {
+      .then((r) => {
         if (n !== asked) return;
         setQuery(trimmed);
         setResults(r);
@@ -63,11 +63,11 @@ export default function Search() {
       .catch(() => n === asked && setResults({ movies: [], shows: [], more: [] }))
       .finally(() => n === asked && setBusy(false));
     api.findMore(trimmed).then(
-      m => n === asked && setMore(m.more),
+      (m) => n === asked && setMore(m.more),
       () => {},
     );
     api.findPeople(trimmed).then(
-      p => n === asked && setPeople(p),
+      (p) => n === asked && setPeople(p),
       () => {},
     );
   };
@@ -78,7 +78,7 @@ export default function Search() {
     if (!namesAsked && q.trim()) {
       namesAsked = true;
       void Promise.all([api.titles().catch(() => []), api.series().catch(() => [])]).then(([m, s]) =>
-        setNames([...m.map(x => x.title), ...s.map(x => x.meta_title ?? x.series)]),
+        setNames([...m.map((x) => x.title), ...s.map((x) => x.meta_title ?? x.series)]),
       );
     }
   };
@@ -86,7 +86,7 @@ export default function Search() {
   const predictions = () => {
     const q = text().trim();
     if (q.length < 2) return [];
-    return suggest(names(), q, 5).filter(p => fold(p) !== fold(q));
+    return suggest(names(), q, 5).filter((p) => fold(p) !== fold(q));
   };
   const choose = (q: string) => {
     setText(q);
@@ -106,7 +106,7 @@ export default function Search() {
 
   const voice = () => {
     if (voiceState() === "listening") return stopVoiceSearch();
-    startVoiceSearch(heard => choose(heard));
+    startVoiceSearch((heard) => choose(heard));
   };
 
   /** The search is someone's name (the best match's starts with it): People comes first. */
@@ -119,23 +119,27 @@ export default function Search() {
 
   return (
     <div style={{ "padding-top": "calc(var(--topbar-h) + 12px)" }}>
-      <form class="search-bar" role="search" onSubmit={e => {
-        e.preventDefault();
-        choose(text());
-        field?.blur();
-      }}>
+      <form
+        class="search-bar"
+        role="search"
+        onSubmit={(e) => {
+          e.preventDefault();
+          choose(text());
+          field?.blur();
+        }}
+      >
         <label class="search-field">
           <span class="sr-only">{t("Search")}</span>
           <Icon name="search" size={20} />
           <input
-            ref={el => (field = el)}
+            ref={(el) => (field = el)}
             class="input"
             type="search"
             enterkeyhint="search"
             autocomplete="off"
             placeholder={t("Movies, shows and people")}
             value={text()}
-            onInput={e => typed(e.currentTarget.value)}
+            onInput={(e) => typed(e.currentTarget.value)}
           />
         </label>
         <Show when={voiceSupported()}>
@@ -157,7 +161,7 @@ export default function Search() {
       <Show when={predictions().length}>
         <div class="suggestions">
           <For each={predictions()}>
-            {p => (
+            {(p) => (
               <button class="chip" onClick={() => choose(p)}>
                 {p}
               </button>
@@ -176,15 +180,15 @@ export default function Search() {
       <MoreRow
         title={query() ? t("Movies") : t("Top picks")}
         items={[
-          ...(shown()?.movies ?? []).map(title => ({ title })),
-          ...(query() ? more().filter(d => d.kind === "movie") : []).map(suggestion => ({ suggestion })),
+          ...(shown()?.movies ?? []).map((title) => ({ title })),
+          ...(query() ? more().filter((d) => d.kind === "movie") : []).map((suggestion) => ({ suggestion })),
         ].slice(0, ROW_MAX)}
       />
       <MoreRow
         title={t("Shows")}
         items={[
-          ...(shown()?.shows ?? []).map(show => ({ show })),
-          ...(query() ? more().filter(d => d.kind === "series") : []).map(suggestion => ({ suggestion })),
+          ...(shown()?.shows ?? []).map((show) => ({ show })),
+          ...(query() ? more().filter((d) => d.kind === "series") : []).map((suggestion) => ({ suggestion })),
         ].slice(0, ROW_MAX)}
       />
       <Show when={query() && !personFirst()}>
@@ -192,7 +196,9 @@ export default function Search() {
       </Show>
       <Show when={!query()}>
         <For each={discover.value() ?? []}>
-          {set => <MoreRow title={tServer(set.title)} items={set.items.map(suggestion => ({ suggestion }))} />}
+          {(set) => (
+            <MoreRow title={tServer(set.title)} items={set.items.map((suggestion) => ({ suggestion }))} />
+          )}
         </For>
       </Show>
       <Show

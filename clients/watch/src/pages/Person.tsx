@@ -39,7 +39,7 @@ function PersonView(props: { id: number; knownName?: string; knownImage?: string
             <div class="person-head">
               <div class="person-photo">
                 {name().slice(0, 1)}
-                <Show when={photo()}>{src => <img src={src()} alt="" />}</Show>
+                <Show when={photo()}>{(src) => <img src={src()} alt="" />}</Show>
               </div>
               <div style={{ display: "grid", gap: "8px" }}>
                 <h1 class="detail-title">{name()}</h1>
@@ -53,7 +53,8 @@ function PersonView(props: { id: number; knownName?: string; knownImage?: string
                         : null,
                       p()!.place_of_birth,
                       p()!.deathday
-                        ? t("Died {date}", { date: longDate(p()!.deathday) ?? "" }) + (age() !== null ? ` (${age()})` : "")
+                        ? t("Died {date}", { date: longDate(p()!.deathday) ?? "" }) +
+                          (age() !== null ? ` (${age()})` : "")
                         : null,
                     ])}
                   </span>
@@ -68,7 +69,7 @@ function PersonView(props: { id: number; knownName?: string; knownImage?: string
                 {p()!.biography}
               </p>
               <div>
-                <button class="link-btn" onClick={() => setOpen(o => !o)}>
+                <button class="link-btn" onClick={() => setOpen((o) => !o)}>
                   {open() ? t("Less") : t("Biography")}
                 </button>
               </div>
@@ -76,13 +77,21 @@ function PersonView(props: { id: number; knownName?: string; knownImage?: string
           </div>
         </div>
       </section>
-      <Show when={p()} fallback={<Show when={!data.error()}><GhostRow /><GhostRow /></Show>}>
+      <Show
+        when={p()}
+        fallback={
+          <Show when={!data.error()}>
+            <GhostRow />
+            <GhostRow />
+          </Show>
+        }
+      >
         <MoreRow
           title={t("In your library")}
-          items={[...p()!.movies.map(title => ({ title })), ...p()!.shows.map(show => ({ show }))]}
+          items={[...p()!.movies.map((title) => ({ title })), ...p()!.shows.map((show) => ({ show }))]}
         />
         <For each={p()!.roles}>
-          {r => <MoreRow title={t(r.role)} items={r.items.map(suggestion => ({ suggestion }))} />}
+          {(r) => <MoreRow title={t(r.role)} items={r.items.map((suggestion) => ({ suggestion }))} />}
         </For>
       </Show>
     </>
@@ -94,7 +103,7 @@ export default function PersonPage() {
   const [search] = useSearchParams<{ name?: string; image?: string }>();
   return (
     <Show when={params.id} keyed>
-      {id => <PersonView id={Number(id)} knownName={search.name} knownImage={search.image || undefined} />}
+      {(id) => <PersonView id={Number(id)} knownName={search.name} knownImage={search.image || undefined} />}
     </Show>
   );
 }

@@ -14,7 +14,7 @@ let started = false;
 function check() {
   if (!getToken() || document.hidden) return;
   api.offlineLibraries().then(
-    names => store.setOffline(names),
+    (names) => store.setOffline(names),
     () => {},
   );
 }

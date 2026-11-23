@@ -68,7 +68,7 @@ export function spotSlide(s: Spot): HeroSlide {
     play: () =>
       void (
         s.kind === "movie"
-          ? api.title(s.id).then(m => play({ kind: "title", id: m.id }, resumeAt(m)))
+          ? api.title(s.id).then((m) => play({ kind: "title", id: m.id }, resumeAt(m)))
           : playShow(s.id)
       ).catch(failed),
     infoHref: href(paths.spot(s)),

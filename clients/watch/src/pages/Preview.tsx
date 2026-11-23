@@ -25,7 +25,7 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
   // In the library after all: its own page.
   createEffect(
     () => p()?.library,
-    lib => {
+    (lib) => {
       if (lib) go(props.kind === "movie" ? paths.title(lib) : paths.series(lib), { replace: true });
     },
   );
@@ -93,7 +93,7 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
           </Show>
         }
       >
-        {pp => (
+        {(pp) => (
           <>
             <section class="detail-hero">
               <Art image={pp().backdrop} alt="" eager />
@@ -106,14 +106,18 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
                   <span class="facts-line">
                     {facts([
                       pp().year,
-                      pp().seasons ? t("{n} seasons", { n: pp().seasons! }) : runtime((pp().runtime_mins ?? 0) * 60),
+                      pp().seasons
+                        ? t("{n} seasons", { n: pp().seasons! })
+                        : runtime((pp().runtime_mins ?? 0) * 60),
                       pp().details.certification,
                       genres(pp().genres, 3),
                     ])}
                   </span>
-                  <Ratings ratings={pp().details.ratings?.length ? pp().details.ratings! : tmdbRating(pp().rating)} />
+                  <Ratings
+                    ratings={pp().details.ratings?.length ? pp().details.ratings! : tmdbRating(pp().rating)}
+                  />
                   <Show when={pp().details.next_episode}>
-                    {n => (
+                    {(n) => (
                       <span class="status-line">
                         {t("Next: S{s} E{e}, {date}", {
                           s: n().season,
@@ -151,27 +155,39 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
                     <p class="error">{error()}</p>
                   </Show>
                 </div>
-                <Credits cast={pp().details.cast} directors={pp().details.directors} createdBy={pp().kind === "series"} />
+                <Credits
+                  cast={pp().details.cast}
+                  directors={pp().details.directors}
+                  createdBy={pp().kind === "series"}
+                />
               </div>
             </section>
             <Show when={(pp().collection?.items.length ?? 0) > 1}>
               <MoreRow
                 title={pp().collection!.name}
-                items={pp().collection!.items.map(i => ({ title: i.title, suggestion: i.suggestion }))}
+                items={pp().collection!.items.map((i) => ({ title: i.title, suggestion: i.suggestion }))}
               />
             </Show>
             <MoreRow
               title={t("More Like This")}
               items={(pp().more ?? [])
-                .filter(d => !(pp().collection?.items ?? []).some(c => (c.suggestion?.tmdb_id ?? c.title?.id) === d.tmdb_id))
-                .map(suggestion => ({ suggestion }))}
+                .filter(
+                  (d) =>
+                    !(pp().collection?.items ?? []).some(
+                      (c) => (c.suggestion?.tmdb_id ?? c.title?.id) === d.tmdb_id,
+                    ),
+                )
+                .map((suggestion) => ({ suggestion }))}
             />
             <PeopleRow people={[...pp().details.directors, ...pp().details.cast]} />
             <div class="section facts-grid">
               <Facts
                 title={t("Information")}
                 facts={[
-                  { label: pp().kind === "series" ? t("Network") : t("Studio"), value: pp().details.studios.join(", ") },
+                  {
+                    label: pp().kind === "series" ? t("Network") : t("Studio"),
+                    value: pp().details.studios.join(", "),
+                  },
                   {
                     label: pp().kind === "series" ? t("First aired") : t("Released"),
                     value: longDate(pp().details.release_date),
@@ -218,7 +234,7 @@ export default function PreviewPage() {
   const params = useParams<{ kind: string; id: string }>();
   return (
     <Show when={params.id} keyed>
-      {id => <PreviewView kind={params.kind === "series" ? "series" : "movie"} tmdbId={Number(id)} />}
+      {(id) => <PreviewView kind={params.kind === "series" ? "series" : "movie"} tmdbId={Number(id)} />}
     </Show>
   );
 }

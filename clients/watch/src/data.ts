@@ -21,7 +21,7 @@ export function load<T>(fetcher: () => Promise<T>, opts: { live?: boolean } = {}
   const [error, setError] = createSignal<string | null>(null);
   const run = () =>
     untrack(fetcher).then(
-      v => {
+      (v) => {
         setValue(() => v);
         setError(null);
       },
@@ -46,16 +46,12 @@ export function runtime(secs: number | null | undefined): string {
 
 /** "2009 · 1h 37m · Science Fiction", leaving out what's unknown. */
 export function facts(parts: (string | number | null | undefined)[]): string {
-  return parts.filter(p => p !== null && p !== undefined && p !== "").join("  ·  ");
+  return parts.filter((p) => p !== null && p !== undefined && p !== "").join("  ·  ");
 }
 
 /** The first genres of a comma-separated list. */
 export const genres = (g: string | null | undefined, n = 2) =>
-  (g ?? "")
-    .split(/,\s*/)
-    .filter(Boolean)
-    .slice(0, n)
-    .join(", ");
+  (g ?? "").split(/,\s*/).filter(Boolean).slice(0, n).join(", ");
 
 /** "48.2 GB". */
 export const gb = (bytes: number) => `${(bytes / 1e9).toFixed(1)} GB`;

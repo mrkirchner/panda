@@ -12,7 +12,7 @@ const store = createRoot(() => {
 let asked = false;
 const refresh = () =>
   api.myList().then(
-    l => store.setList(l),
+    (l) => store.setList(l),
     () => {},
   );
 refreshHooks.add(() => {
@@ -24,12 +24,16 @@ export function myListToggle(kind: MyListEntry["kind"], id: string) {
     asked = true;
     void refresh();
   }
-  const inList = () => !!store.list()?.some(e => e.kind === kind && e.id === id);
+  const inList = () => !!store.list()?.some((e) => e.kind === kind && e.id === id);
   const toggle = async () => {
     const next = !inList();
     // Shown at once; put right if the server says no.
     const before = store.list() ?? [];
-    store.setList(next ? [...before, { kind, id, title: "", year: null, poster: null, backdrop: null }] : before.filter(e => !(e.kind === kind && e.id === id)));
+    store.setList(
+      next
+        ? [...before, { kind, id, title: "", year: null, poster: null, backdrop: null }]
+        : before.filter((e) => !(e.kind === kind && e.id === id)),
+    );
     await api.setInMyList(kind, id, next).catch(() => store.setList(before));
     refreshAll();
   };

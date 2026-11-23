@@ -32,12 +32,14 @@ jobs:
           [[ "v$version" == "$GITHUB_REF_NAME" ]] || { echo "tag $GITHUB_REF_NAME, Cargo.toml $version"; exit 1; }
       - run: cd clients/web && pnpm install --frozen-lockfile && pnpm build
       - run: cd clients/tv && pnpm install --frozen-lockfile && pnpm build:server
+      - run: cd clients/watch && pnpm install --frozen-lockfile && pnpm build
       - uses: actions/upload-artifact@v4
         with:
           name: ui
           path: |
             clients/web/dist
             clients/tv/dist/server
+            clients/watch/dist
           retention-days: 1
 
   linux:

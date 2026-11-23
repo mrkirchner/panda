@@ -26,6 +26,11 @@ export const Frame: ParentComponent<{ me: Me }> = (props) => {
         <div class="spacer" />
         {/* Actions, apart from the pages above. */}
         <a href="/link">Pair a TV</a>
+        {/* The web app for watching (served by Panda at /watch/; it signs in from this session).
+            A full page load (rel="external": the router leaves it alone): it's a separate app. */}
+        <a href="/watch/" rel="external">
+          Watch ↗
+        </a>
         {/* The TV app in this browser (served by Panda at /tv/; it signs in from this session).
             A new tab, and a full page load: the router leaves target="_blank" links alone. */}
         <a href="/tv/" target="_blank" rel="noopener">

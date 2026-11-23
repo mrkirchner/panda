@@ -23,7 +23,7 @@ export function Ratings(props: { ratings: TitleRating[] }) {
     <Show when={props.ratings.length}>
       <div class="ratings">
         <For each={props.ratings.slice(0, 4)}>
-          {r => (
+          {(r) => (
             <span class="rating">
               <Show
                 when={r.source !== "tmdb"}
@@ -49,9 +49,14 @@ export function Ratings(props: { ratings: TitleRating[] }) {
 }
 
 /** A rounded action next to Play (My List, Watched, Versions...). */
-export function Action(props: { icon: IconName; label: string; onClick: (e: MouseEvent) => void; on?: boolean }) {
+export function Action(props: {
+  icon: IconName;
+  label: string;
+  onClick: (e: MouseEvent) => void;
+  on?: boolean;
+}) {
   return (
-    <button class={["round-action", { on: !!props.on }]} onClick={e => props.onClick(e)}>
+    <button class={["round-action", { on: !!props.on }]} onClick={(e) => props.onClick(e)}>
       <Icon name={props.icon} size={20} />
       <span>{props.label}</span>
     </button>
@@ -82,15 +87,23 @@ export function MoreRow(props: { title: string; items: MoreItem[]; link?: { labe
     <Show when={props.items.length}>
       <Row title={props.title} link={props.link}>
         <For each={props.items} keyed={keyOf}>
-          {item => (
+          {(item) => (
             <Show
               when={item().suggestion}
               fallback={
                 <Poster
                   image={item().title?.poster ?? item().spot?.poster ?? item().show?.poster ?? null}
-                  title={item().title?.title ?? item().spot?.title ?? item().show?.meta_title ?? item().show?.series ?? ""}
+                  title={
+                    item().title?.title ??
+                    item().spot?.title ??
+                    item().show?.meta_title ??
+                    item().show?.series ??
+                    ""
+                  }
                   fraction={
-                    item().title?.progress && !item().title!.progress!.finished ? item().title!.progress!.fraction : 0
+                    item().title?.progress && !item().title!.progress!.finished
+                      ? item().title!.progress!.fraction
+                      : 0
                   }
                   watched={item().title?.progress?.finished}
                   href={href(
@@ -103,7 +116,7 @@ export function MoreRow(props: { title: string; items: MoreItem[]; link?: { labe
                 />
               }
             >
-              {s => (
+              {(s) => (
                 <Poster
                   image={s().poster}
                   title={s().title}
@@ -126,15 +139,21 @@ export function PeopleRow(props: { people: Person[]; title?: string }) {
     <Show when={props.people.length}>
       <Row title={props.title ?? t("Cast & Crew")}>
         <For each={props.people}>
-          {p => (
+          {(p) => (
             <a
               class="person-cell"
-              href={p.id ? href(`${paths.person(p.id)}?name=${encodeURIComponent(p.name)}&image=${encodeURIComponent(p.image ?? "")}`) : undefined}
+              href={
+                p.id
+                  ? href(
+                      `${paths.person(p.id)}?name=${encodeURIComponent(p.name)}&image=${encodeURIComponent(p.image ?? "")}`,
+                    )
+                  : undefined
+              }
             >
               <span class="headshot">
                 {p.name.slice(0, 1)}
                 <Show when={imageUrl(p.image)}>
-                  {src => <img src={src()} alt="" loading="lazy" decoding="async" />}
+                  {(src) => <img src={src()} alt="" loading="lazy" decoding="async" />}
                 </Show>
               </span>
               <div class="person-name">{p.name}</div>
@@ -154,13 +173,13 @@ export interface Fact {
 
 /** A heading and its facts (label over value); facts without a value are left out. */
 export function Facts(props: { title: string; facts: Fact[] }) {
-  const shown = () => props.facts.filter(f => f.value);
+  const shown = () => props.facts.filter((f) => f.value);
   return (
     <Show when={shown().length}>
       <div class="facts-block">
         <h3>{props.title}</h3>
         <For each={shown()}>
-          {f => (
+          {(f) => (
             <div class="fact">
               <div class="label">{f.label}</div>
               <div>{f.value}</div>
@@ -175,7 +194,7 @@ export function Facts(props: { title: string; facts: Fact[] }) {
 /** "English (5.1), Spanish" from a file's tracks (unknown languages left out). */
 export function trackList(tracks: TrackInfo[] | undefined): string | null {
   const names = (tracks ?? [])
-    .map(tr => {
+    .map((tr) => {
       const name = languageName(tr.language);
       return name ? (tr.detail ? `${name} (${tr.detail})` : name) : null;
     })
@@ -205,7 +224,7 @@ export function Credits(props: { cast: Person[]; directors: Person[]; createdBy?
       <Show when={props.directors.length}>
         <div>
           <b>{props.createdBy ? t("Created by") : t("Director")}: </b>
-          {props.directors.map(p => p.name).join(", ")}
+          {props.directors.map((p) => p.name).join(", ")}
         </div>
       </Show>
     </div>

@@ -49,7 +49,11 @@ export function bestProgress(r: MyRequest): TierProgress["progress"] {
   for (const tier of r.tiers) {
     const p = tier.progress;
     if (!p) continue;
-    if (!best || order[p.state] > order[best.state] || (p.state === best.state && p.fraction > best.fraction)) {
+    if (
+      !best ||
+      order[p.state] > order[best.state] ||
+      (p.state === best.state && p.fraction > best.fraction)
+    ) {
       best = p;
     }
   }
@@ -76,12 +80,20 @@ export function requestBadge(r: MyRequest): string | undefined {
 
 /** What a title you don't have says: its label, the download's progress, and whether it can be
  * asked for. */
-export function discoverStatus(d: Discover): { label: string | undefined; action: boolean; progress: number } {
+export function discoverStatus(d: Discover): {
+  label: string | undefined;
+  action: boolean;
+  progress: number;
+} {
   if (d.downloaded) return { label: t("Downloaded"), action: false, progress: 0 };
-  const r = myRequests().find(x => x.kind === d.kind && x.tmdb_id === d.tmdb_id);
+  const r = myRequests().find((x) => x.kind === d.kind && x.tmdb_id === d.tmdb_id);
   const p = r ? bestProgress(r) : null;
   if (p?.state === "downloading")
-    return { label: t("Downloading {p}%", { p: Math.round(p.fraction * 100) }), action: false, progress: p.fraction };
+    return {
+      label: t("Downloading {p}%", { p: Math.round(p.fraction * 100) }),
+      action: false,
+      progress: p.fraction,
+    };
   if (p?.state === "importing") return { label: t("Importing"), action: false, progress: 0 };
   if (p?.state === "searching") return { label: t("Searching"), action: false, progress: 0 };
   if (d.requested || r) return { label: t("Requested"), action: false, progress: 0 };
@@ -90,4 +102,5 @@ export function discoverStatus(d: Discover): { label: string | undefined; action
 }
 
 /** Your request for `d`, if you made one. */
-export const requestFor = (d: Discover) => myRequests().find(x => x.kind === d.kind && x.tmdb_id === d.tmdb_id);
+export const requestFor = (d: Discover) =>
+  myRequests().find((x) => x.kind === d.kind && x.tmdb_id === d.tmdb_id);

@@ -13,6 +13,8 @@ export default defineConfig({
       "/api": { target: server, changeOrigin: false },
       // The TV app the server serves (the sidebar's "Open the TV app").
       "/tv": { target: server, changeOrigin: false },
+      // The web app for watching.
+      "/watch": { target: server, changeOrigin: false },
     },
   },
   build: {

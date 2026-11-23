@@ -25,7 +25,8 @@ export function Row(props: {
     setCanPrev(scroller.scrollLeft > 4);
     setCanNext(scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 4);
   };
-  const page = (dir: 1 | -1) => scroller?.scrollBy({ left: dir * scroller.clientWidth * 0.85, behavior: "smooth" });
+  const page = (dir: 1 | -1) =>
+    scroller?.scrollBy({ left: dir * scroller.clientWidth * 0.85, behavior: "smooth" });
   onSettled(() => {
     update();
     const ro = new ResizeObserver(update);
@@ -37,20 +38,28 @@ export function Row(props: {
       <div class="section-head">
         <h2 class="section-title">{props.title}</h2>
         <Show when={props.link}>
-          {l => (
+          {(l) => (
             <a class="section-link" href={l().href}>
               {l().label}
             </a>
           )}
         </Show>
       </div>
-      <div class="row-scroller" ref={el => (scroller = el)} onScroll={update}>
+      <div class="row-scroller" ref={(el) => (scroller = el)} onScroll={update}>
         {props.children}
       </div>
-      <button class={["row-arrow", "prev", { can: canPrev() }]} aria-label={t("Previous")} onClick={() => page(-1)}>
+      <button
+        class={["row-arrow", "prev", { can: canPrev() }]}
+        aria-label={t("Previous")}
+        onClick={() => page(-1)}
+      >
         <Icon name="left" size={28} />
       </button>
-      <button class={["row-arrow", "next", { can: canNext() }]} aria-label={t("Next")} onClick={() => page(1)}>
+      <button
+        class={["row-arrow", "next", { can: canNext() }]}
+        aria-label={t("Next")}
+        onClick={() => page(1)}
+      >
         <Icon name="right" size={28} />
       </button>
     </section>
@@ -69,10 +78,15 @@ export function Progress(props: { fraction: number }) {
 }
 
 /** Artwork that fades in when loaded (nothing shown when there's none). */
-export function Art(props: { image: string | null | undefined; class?: string; alt?: string; eager?: boolean }) {
+export function Art(props: {
+  image: string | null | undefined;
+  class?: string;
+  alt?: string;
+  eager?: boolean;
+}) {
   return (
     <Show when={imageUrl(props.image)}>
-      {src => (
+      {(src) => (
         <img
           class={["art", props.class]}
           src={src()}
@@ -101,7 +115,7 @@ export function Poster(props: {
       class="card poster"
       href={props.href ?? "#"}
       title={props.title}
-      onClick={e => {
+      onClick={(e) => {
         if (props.onClick) {
           e.preventDefault();
           props.onClick();
@@ -148,7 +162,7 @@ export function WideCard(props: {
     <a
       class="card wide"
       href={props.href ?? "#"}
-      onClick={e => {
+      onClick={(e) => {
         if (props.onClick) {
           e.preventDefault();
           props.onClick();
@@ -234,9 +248,14 @@ export function GhostRow(props: { variant?: "poster" | "wide" | "genre" | "expan
       </div>
       <div class="row-scroller" style={{ overflow: "hidden" }}>
         <Show when={v() === "expand"}>
-          <div class="ghost" style={{ width: "calc(var(--expand-h) * 16 / 9)", height: "var(--expand-h)", flex: "none" }} />
+          <div
+            class="ghost"
+            style={{ width: "calc(var(--expand-h) * 16 / 9)", height: "var(--expand-h)", flex: "none" }}
+          />
         </Show>
-        <For each={[0, 1, 2, 3, 4, 5, 6, 7]}>{() => <div class="ghost" style={{ ...size(), flex: "none" }} />}</For>
+        <For each={[0, 1, 2, 3, 4, 5, 6, 7]}>
+          {() => <div class="ghost" style={{ ...size(), flex: "none" }} />}
+        </For>
       </div>
     </section>
   );
@@ -268,7 +287,11 @@ const HOVER_OPEN_MS = 220;
  * its clip after a moment); the rest are posters. With a mouse, resting on a card opens it; on a
  * touch screen, the first tap opens a card and the second opens its page; keyboard focus opens it.
  */
-export function ExpandRow(props: { title: string; items: ExpandItem[]; link?: { label: string; href: string } }) {
+export function ExpandRow(props: {
+  title: string;
+  items: ExpandItem[];
+  link?: { label: string; href: string };
+}) {
   const [open, setOpen] = createSignal(0);
   const hosts: HTMLElement[] = [];
   let clip: { stop: () => void } | null = null;
@@ -309,7 +332,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[]; link?: { 
             }}
             onMouseLeave={() => clearTimeout(hoverTimer)}
             onFocus={() => openAt(i())}
-            onClick={e => {
+            onClick={(e) => {
               // Touch: the first tap opens the card, the next opens its page.
               if (!hoverable && open() !== i()) {
                 e.preventDefault();
@@ -325,7 +348,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[]; link?: { 
               <Show when={Math.abs(i() - open()) <= 1}>
                 <Art image={item().backdrop ?? item().poster} alt="" />
               </Show>
-              <div class="clip-host layer" ref={el => (hosts[i()] = el)} />
+              <div class="clip-host layer" ref={(el) => (hosts[i()] = el)} />
               <div class="card-caption">
                 <b>{item().title}</b>
                 <span>{item().meta}</span>
@@ -355,7 +378,7 @@ export function DetailArt(props: { image: string | null | undefined; clip?: Clip
   return (
     <>
       <Art image={props.image} alt="" eager />
-      <div class="clip-host" ref={el => (host = el)} />
+      <div class="clip-host" ref={(el) => (host = el)} />
       <div class="scrim-left" />
     </>
   );

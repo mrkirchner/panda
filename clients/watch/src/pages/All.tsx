@@ -6,7 +6,15 @@
 import { useSearchParams } from "@solidjs/router";
 import { api } from "@tv/api/client";
 import { t, tn } from "@tv/i18n";
-import { LETTERS, browse, genresOf, indexForLetter, letterOf, type BrowseEntry, type SortBy } from "@tv/library/browse";
+import {
+  LETTERS,
+  browse,
+  genresOf,
+  indexForLetter,
+  letterOf,
+  type BrowseEntry,
+  type SortBy,
+} from "@tv/library/browse";
 import { For, Show, createMemo, createSignal, onSettled } from "solid-js";
 import { Poster } from "../components/cards";
 import { Icon } from "../components/icons";
@@ -45,7 +53,7 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
   const list = load<Entry[]>(
     async () =>
       props.kind === "movies"
-        ? (await api.titles()).map(m => ({
+        ? (await api.titles()).map((m) => ({
             key: m.id,
             title: m.title,
             year: m.year,
@@ -58,7 +66,7 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
             progress: m.progress && !m.progress.finished ? m.progress.fraction : 0,
             href: href(paths.title(m.id)),
           }))
-        : (await api.series()).map(s => ({
+        : (await api.series()).map((s) => ({
             key: s.series,
             title: s.meta_title ?? s.series,
             year: s.year,
@@ -72,13 +80,13 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
           })),
     { live: true },
   );
-  const sort = () => (SORTS.some(s => s.id === params.sort) ? (params.sort as SortBy) : "az");
+  const sort = () => (SORTS.some((s) => s.id === params.sort) ? (params.sort as SortBy) : "az");
   const genre = () => params.genre ?? null;
   const only = () => (params.library ? Number(params.library) : null);
   const unwatched = () => params.unwatched === "1";
-  const ofKind = () => (libs.value() ?? []).filter(l => l.kind === props.kind);
+  const ofKind = () => (libs.value() ?? []).filter((l) => l.kind === props.kind);
   const entries = createMemo(() => {
-    const all = (list.value() ?? []).filter(e => only() === null || e.library === only());
+    const all = (list.value() ?? []).filter((e) => only() === null || e.library === only());
     return browse(all, { sort: sort(), unwatchedOnly: unwatched(), genre: genre(), text: params.q ?? "" });
   });
   const genreList = createMemo(() => genresOf(list.value() ?? []));
@@ -87,13 +95,13 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
   const sortMenu = async (e: MouseEvent) => {
     const i = await pick(
       t("Sort"),
-      SORTS.map(s => ({ label: t(s.label), selected: s.id === sort() })),
+      SORTS.map((s) => ({ label: t(s.label), selected: s.id === sort() })),
       e.currentTarget as Element,
     );
     if (i >= 0) set({ sort: SORTS[i].id === "az" ? undefined : SORTS[i].id });
   };
   const genreMenu = async (e: MouseEvent) => {
-    const options = [t("All genres"), ...genreList().map(g => t(g))];
+    const options = [t("All genres"), ...genreList().map((g) => t(g))];
     const i = await pick(
       t("Genre"),
       options.map((label, n) => ({ label, selected: n === 0 ? !genre() : genreList()[n - 1] === genre() })),
@@ -102,10 +110,13 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
     if (i >= 0) set({ genre: i === 0 ? undefined : genreList()[i - 1] });
   };
   const libraryMenu = async (e: MouseEvent) => {
-    const options = [{ label: t("All libraries"), id: null as number | null }, ...ofKind().map(l => ({ label: l.name, id: l.id }))];
+    const options = [
+      { label: t("All libraries"), id: null as number | null },
+      ...ofKind().map((l) => ({ label: l.name, id: l.id })),
+    ];
     const i = await pick(
       t("Library"),
-      options.map(o => ({ label: o.label, selected: o.id === only() })),
+      options.map((o) => ({ label: o.label, selected: o.id === only() })),
       e.currentTarget as Element,
     );
     if (i >= 0) set({ library: options[i].id === null ? undefined : String(options[i].id) });
@@ -156,7 +167,7 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
   const cells = (r: number) => entries().slice(r * cols(), (r + 1) * cols());
 
   /** The A-Z rail: the first title at or after a letter. */
-  const letters = createMemo(() => new Set(entries().map(e => letterOf(e.title))));
+  const letters = createMemo(() => new Set(entries().map((e) => letterOf(e.title))));
   const jump = (letter: string) => {
     const i = indexForLetter(entries(), letter);
     if (i < 0 || !grid) return;
@@ -170,22 +181,25 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
         <h1>{props.kind === "movies" ? t("All movies") : t("All shows")}</h1>
       </div>
       <div class="grid-toolbar">
-        <button class={["chip", { on: sort() !== "az" }]} onClick={e => void sortMenu(e)}>
-          {t("Sort")}: {t(SORTS.find(s => s.id === sort())!.label)}
+        <button class={["chip", { on: sort() !== "az" }]} onClick={(e) => void sortMenu(e)}>
+          {t("Sort")}: {t(SORTS.find((s) => s.id === sort())!.label)}
           <Icon name="down" size={16} />
         </button>
-        <button class={["chip", { on: !!genre() }]} onClick={e => void genreMenu(e)}>
+        <button class={["chip", { on: !!genre() }]} onClick={(e) => void genreMenu(e)}>
           {t("Genre")}: {genre() ? t(genre()!) : t("All")}
           <Icon name="down" size={16} />
         </button>
         <Show when={ofKind().length > 1}>
-          <button class={["chip", { on: only() !== null }]} onClick={e => void libraryMenu(e)}>
-            {t("Library")}: {ofKind().find(l => l.id === only())?.name ?? t("All")}
+          <button class={["chip", { on: only() !== null }]} onClick={(e) => void libraryMenu(e)}>
+            {t("Library")}: {ofKind().find((l) => l.id === only())?.name ?? t("All")}
             <Icon name="down" size={16} />
           </button>
         </Show>
         <Show when={props.kind === "movies"}>
-          <button class={["chip", { on: unwatched() }]} onClick={() => set({ unwatched: unwatched() ? undefined : "1" })}>
+          <button
+            class={["chip", { on: unwatched() }]}
+            onClick={() => set({ unwatched: unwatched() ? undefined : "1" })}
+          >
             {t("Unwatched")}
           </button>
         </Show>
@@ -201,13 +215,16 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
       </Show>
       <div
         class={["vgrid", { "with-letters": sort() === "az" && entries().length > 40 }]}
-        ref={el => (grid = el)}
+        ref={(el) => (grid = el)}
         style={{ height: list.value() ? `${rowCount() * rowH()}px` : "auto" }}
       >
         <Show
           when={list.value()}
           fallback={
-            <div class="vgrid-row" style={{ position: "static", "grid-template-columns": `repeat(${cols()}, 1fr)` }}>
+            <div
+              class="vgrid-row"
+              style={{ position: "static", "grid-template-columns": `repeat(${cols()}, 1fr)` }}
+            >
               <For each={Array.from({ length: cols() * 3 }, (_, n) => n)}>
                 {() => <div class="ghost" style={{ "aspect-ratio": "2 / 3" }} />}
               </For>
@@ -215,13 +232,13 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
           }
         >
           <For each={rows()} keyed={false}>
-            {r => (
+            {(r) => (
               <div
                 class="vgrid-row"
                 style={{ top: `${r() * rowH()}px`, "grid-template-columns": `repeat(${cols()}, 1fr)` }}
               >
                 <For each={cells(r())} keyed={false}>
-                  {e => (
+                  {(e) => (
                     <Poster
                       image={e().poster}
                       title={e().title}
@@ -239,7 +256,7 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
       <Show when={sort() === "az" && entries().length > 40}>
         <nav class="letters" aria-label={t("Jump to letter")}>
           <For each={LETTERS}>
-            {l => (
+            {(l) => (
               <button disabled={!letters().has(l)} onClick={() => jump(l)}>
                 {l}
               </button>

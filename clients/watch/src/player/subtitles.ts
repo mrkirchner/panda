@@ -18,7 +18,8 @@ const PENDING_RETRY_MS = 20_000;
 /** Image subtitles: the manifest is asked for again this often until it's complete. */
 const BITMAP_POLL_MS = 10_000;
 
-export type Showing = { kind: "text"; text: string } | { kind: "bitmap"; cue: BitmapCue; frame: BitmapManifest } | null;
+export type Showing =
+  { kind: "text"; text: string } | { kind: "bitmap"; cue: BitmapCue; frame: BitmapManifest } | null;
 
 export class SubtitleSource {
   private cues: Cue[] = [];
@@ -95,8 +96,8 @@ export class SubtitleSource {
       this.complete = true;
       this.cues = parsed;
     } else {
-      const seen = new Set(this.cues.map(c => `${c.start}|${c.text}`));
-      this.cues = [...this.cues, ...parsed.filter(c => !seen.has(`${c.start}|${c.text}`))].sort(
+      const seen = new Set(this.cues.map((c) => `${c.start}|${c.text}`));
+      this.cues = [...this.cues, ...parsed.filter((c) => !seen.has(`${c.start}|${c.text}`))].sort(
         (a, b) => a.start - b.start,
       );
     }
@@ -145,18 +146,18 @@ export function rememberSubtitles(track: SubtitleTrack | null) {
  * in the language being heard (signs and foreign dialogue), else the file's default, else none.
  */
 export function initialTrack(tracks: SubtitleTrack[], audioLanguage: string | null): SubtitleTrack | null {
-  const usable = tracks.filter(t => t.url);
+  const usable = tracks.filter((t) => t.url);
   const pref = readPref();
   if (pref?.language) {
-    const mine = usable.filter(t => t.language === pref.language && !t.forced);
-    const pick = mine.find(t => t.hearing_impaired === pref.sdh) ?? mine[0];
+    const mine = usable.filter((t) => t.language === pref.language && !t.forced);
+    const pick = mine.find((t) => t.hearing_impaired === pref.sdh) ?? mine[0];
     if (pick) return pick;
   }
   // Else the file's own choice (as the TV picks): a forced track in the language heard, then one
   // the file marks as default.
   return (
-    usable.find(t => t.forced && (!audioLanguage || t.language === audioLanguage)) ??
-    usable.find(t => t.default) ??
+    usable.find((t) => t.forced && (!audioLanguage || t.language === audioLanguage)) ??
+    usable.find((t) => t.default) ??
     null
   );
 }

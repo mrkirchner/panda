@@ -13,12 +13,30 @@ const Router = createRouter({
   base: import.meta.env.BASE_URL.replace(/\/$/, ""),
   routes: [
     { path: "/", component: Home },
-    { path: "/movies", component: lazy(() => import("./pages/Browse").then(m => ({ default: m.MoviesPage }))) },
-    { path: "/shows", component: lazy(() => import("./pages/Browse").then(m => ({ default: m.ShowsPage }))) },
-    { path: "/movies/all", component: lazy(() => import("./pages/All").then(m => ({ default: m.AllMovies }))) },
-    { path: "/shows/all", component: lazy(() => import("./pages/All").then(m => ({ default: m.AllShows }))) },
-    { path: "/library/:id", component: lazy(() => import("./pages/Browse").then(m => ({ default: m.LibraryPage }))) },
-    { path: "/genre/:name", component: lazy(() => import("./pages/Browse").then(m => ({ default: m.GenrePage }))) },
+    {
+      path: "/movies",
+      component: lazy(() => import("./pages/Browse").then((m) => ({ default: m.MoviesPage }))),
+    },
+    {
+      path: "/shows",
+      component: lazy(() => import("./pages/Browse").then((m) => ({ default: m.ShowsPage }))),
+    },
+    {
+      path: "/movies/all",
+      component: lazy(() => import("./pages/All").then((m) => ({ default: m.AllMovies }))),
+    },
+    {
+      path: "/shows/all",
+      component: lazy(() => import("./pages/All").then((m) => ({ default: m.AllShows }))),
+    },
+    {
+      path: "/library/:id",
+      component: lazy(() => import("./pages/Browse").then((m) => ({ default: m.LibraryPage }))),
+    },
+    {
+      path: "/genre/:name",
+      component: lazy(() => import("./pages/Browse").then((m) => ({ default: m.GenrePage }))),
+    },
     { path: "/title/:id", component: lazy(() => import("./pages/Title")) },
     { path: "/series/:name", component: lazy(() => import("./pages/Series")) },
     { path: "/person/:id", component: lazy(() => import("./pages/Person")) },
@@ -44,8 +62,12 @@ function Root(props: { children?: JSX.Element }) {
   const location = useLocation();
   const [ready, setReady] = createSignal(false);
   onSettled(() => {
-    void boot(appPath(location.pathname)).then(dest => {
-      if (dest) go(dest, { replace: true });
+    const here = appPath(location.pathname);
+    void boot(here).then((dest) => {
+      // Sent to sign in or pick a profile on the way to a page: back to it afterwards.
+      const comeBack = (dest === "/sign-in" || dest === "/profiles") && here !== "/" && !bare(here);
+      if (dest)
+        go(comeBack ? `${dest}?next=${encodeURIComponent(here + location.search)}` : dest, { replace: true });
       setReady(true);
     });
     const onKey = (e: KeyboardEvent) => {
@@ -73,4 +95,4 @@ function Root(props: { children?: JSX.Element }) {
   );
 }
 
-render(() => <Router>{props => <Root>{props.children}</Root>}</Router>, document.getElementById("app")!);
+render(() => <Router>{(props) => <Root>{props.children}</Root>}</Router>, document.getElementById("app")!);

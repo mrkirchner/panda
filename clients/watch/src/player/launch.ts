@@ -32,12 +32,12 @@ export function sortEpisodes(eps: Item[]): Item[] {
  * the first one not watched, else the first; never a Special unless the show has nothing else.
  */
 export function nextUp(eps: Item[]): Item | undefined {
-  const regular = eps.filter(e => e.season !== 0);
+  const regular = eps.filter((e) => e.season !== 0);
   const pool = regular.length ? regular : eps;
   const started = pool
-    .filter(e => e.progress && !e.progress.finished && e.progress.position_secs > 30)
+    .filter((e) => e.progress && !e.progress.finished && e.progress.position_secs > 30)
     .sort((a, b) => (b.progress?.last_played_at ?? 0) - (a.progress?.last_played_at ?? 0));
-  return started[0] ?? pool.find(e => !e.progress?.finished) ?? pool[0];
+  return started[0] ?? pool.find((e) => !e.progress?.finished) ?? pool[0];
 }
 
 /** Play a show from its next episode. */

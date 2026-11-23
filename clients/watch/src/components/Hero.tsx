@@ -105,14 +105,14 @@ export function Hero(props: { slides: HeroSlide[] }) {
   return (
     <section
       class="hero"
-      ref={el => (root = el)}
+      ref={(el) => (root = el)}
       aria-roledescription="carousel"
-      onTouchStart={e => {
+      onTouchStart={(e) => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         swiping = true;
       }}
-      onTouchEnd={e => {
+      onTouchEnd={(e) => {
         if (!swiping) return;
         swiping = false;
         const dx = e.changedTouches[0].clientX - startX;
@@ -122,11 +122,14 @@ export function Hero(props: { slides: HeroSlide[] }) {
     >
       <For each={props.slides}>
         {(s, i) => (
-          <div class={["hero-slide", { on: index() === i() }]} aria-hidden={index() !== i() ? "true" : undefined}>
+          <div
+            class={["hero-slide", { on: index() === i() }]}
+            aria-hidden={index() !== i() ? "true" : undefined}
+          >
             <Show when={Math.abs(i() - index()) <= 1 || (index() === props.slides.length - 1 && i() === 0)}>
               <Art image={s.backdrop} alt="" eager={i() === 0} />
             </Show>
-            <div class="clip-host" ref={el => (hosts[i()] = el)} />
+            <div class="clip-host" ref={(el) => (hosts[i()] = el)} />
             <div class="scrim-left" />
             <div class="hero-content">
               <span class="hero-reason">{s.reason}</span>
@@ -153,7 +156,11 @@ export function Hero(props: { slides: HeroSlide[] }) {
         )}
       </For>
       <Show when={props.slides.length > 1}>
-        <button class="icon-btn glass hero-nav prev" aria-label={t("Previous")} onClick={() => go(index() - 1)}>
+        <button
+          class="icon-btn glass hero-nav prev"
+          aria-label={t("Previous")}
+          onClick={() => go(index() - 1)}
+        >
           <Icon name="left" />
         </button>
         <button class="icon-btn glass hero-nav next" aria-label={t("Next")} onClick={() => go(index() + 1)}>

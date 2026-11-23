@@ -1517,3 +1517,30 @@ async fn a_password_change_revokes_signed_urls() {
         bob.post("/api/auth/topshelf-token", json!({})).await.json()["token"].as_str().unwrap().to_string();
     assert_eq!(shelf.get(&format!("/api/topshelf/items?t={fresh}")).await.status, StatusCode::OK);
 }
+
+/// The web app for watching (`/watch`, clients/watch) is static and public, like the admin UI:
+/// every page of it carries a CSP that forbids framing and inline scripts, and a missing asset is
+/// a 404, never the app's page (a stale bundle must not load HTML as script).
+#[tokio::test]
+async fn the_web_app_is_framed_by_nothing_and_runs_no_inline_scripts() {
+    if !ffmpeg_available() {
+        return;
+    }
+    let server = server().await;
+    let mut anon = Client::new(&server.app);
+    for path in ["/watch/", "/watch/title/m1", "/watch/play/title/m1"] {
+        let res = anon.get(path).await;
+        // Built into this binary or not (then a plain 404 that says how to build it).
+        if res.status != StatusCode::OK {
+            assert_eq!(res.status, StatusCode::NOT_FOUND, "{path}");
+            continue;
+        }
+        let csp = res.headers.get(header::CONTENT_SECURITY_POLICY).and_then(|v| v.to_str().ok()).unwrap_or("");
+        assert!(csp.contains("frame-ancestors 'none'"), "{path}: {csp}");
+        assert!(csp.contains("script-src 'self';"), "{path} must not allow inline scripts: {csp}");
+        assert_eq!(res.headers.get(header::CACHE_CONTROL).unwrap(), "no-cache", "{path}");
+    }
+    assert_eq!(anon.get("/watch/assets/missing.js").await.status, StatusCode::NOT_FOUND);
+    // Its pages are public; what they show still needs a session.
+    assert_eq!(anon.get("/api/home").await.status, StatusCode::UNAUTHORIZED);
+}

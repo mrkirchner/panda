@@ -1,6 +1,7 @@
 // Who's watching: the account's profiles in this browser (its device credential lists them), as
 // on the TV: pick one to watch (its PIN first, if it has one), add one (up to the account's
 // limit), or edit one (signs in as it first). Sign out of this browser at the bottom.
+import { useSearchParams } from "@solidjs/router";
 import { api, ensureSession, HttpError, resetSession } from "@tv/api/client";
 import { setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
@@ -10,13 +11,14 @@ import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/icons";
 import { ask } from "../components/ui";
 import { load, message } from "../data";
-import { go, paths } from "../nav";
+import { go, nextPath, paths } from "../nav";
 import { signOutBrowser } from "../session";
 
 /** The server's per-account limit (MAX_PROFILES). */
 const MAX_PROFILES = 8;
 
 export default function Profiles() {
+  const [search] = useSearchParams<{ next?: string }>();
   const data = load(() => api.deviceProfiles());
   const [editing, setEditing] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -36,7 +38,7 @@ export default function Profiles() {
       setToken(res.token);
       resetSession();
       await ensureSession();
-      go(editing() ? paths.editProfile : "/", { replace: !editing() });
+      go(editing() ? paths.editProfile : nextPath(search.next), { replace: !editing() });
     } catch (e) {
       setError(
         e instanceof HttpError && e.status === 403
@@ -50,7 +52,9 @@ export default function Profiles() {
 
   /** A new profile (no password of its own), then straight to its Edit page for its picture. */
   const add = async () => {
-    const name = (await ask(t("Add profile"), { input: { type: "text", placeholder: t("Name") }, ok: t("Add") }))
+    const name = (
+      await ask(t("Add profile"), { input: { type: "text", placeholder: t("Name") }, ok: t("Add") })
+    )
       ?.trim()
       .slice(0, 32);
     if (!name) return;
@@ -74,7 +78,7 @@ export default function Profiles() {
       </Show>
       <div class="profiles">
         <For each={data.value()?.profiles ?? []}>
-          {p => (
+          {(p) => (
             <button class="profile-cell" onClick={() => void pick(p)}>
               <Avatar name={p.display_name || p.username} picture={p.avatar} size={140} />
               <span>{p.display_name || p.username}</span>
@@ -103,7 +107,7 @@ export default function Profiles() {
         </Show>
       </div>
       <div class="actions" style={{ "justify-content": "center" }}>
-        <button class={["btn", { primary: editing() }]} onClick={() => setEditing(e => !e)}>
+        <button class={["btn", { primary: editing() }]} onClick={() => setEditing((e) => !e)}>
           {editing() ? t("Done") : t("Edit profiles")}
         </button>
         <button class="btn" onClick={signOutBrowser}>

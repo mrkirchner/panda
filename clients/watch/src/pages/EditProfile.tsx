@@ -17,7 +17,11 @@ const LIBRARY_ART_MAX = 60;
 
 const pinMessage = (e: unknown) => {
   const m = message(e);
-  return m.includes("Too many") ? t("Too many tries. Wait a few minutes.") : m.includes("wrong") ? t("Wrong PIN") : m;
+  return m.includes("Too many")
+    ? t("Too many tries. Wait a few minutes.")
+    : m.includes("wrong")
+      ? t("Wrong PIN")
+      : m;
 };
 
 export default function EditProfile() {
@@ -32,7 +36,7 @@ export default function EditProfile() {
   onSettled(() => {
     void ensureSession().catch(() => {});
     api.pinStatus().then(
-      r => setHasPin(r.has_pin),
+      (r) => setHasPin(r.has_pin),
       () => {},
     );
   });
@@ -54,7 +58,7 @@ export default function EditProfile() {
   const language = async (e: MouseEvent) => {
     const i = await pick(
       t("Language"),
-      LANGS.map(l => ({ label: l.label, selected: (me()?.language ?? null) === l.value })),
+      LANGS.map((l) => ({ label: l.label, selected: (me()?.language ?? null) === l.value })),
       e.currentTarget as Element,
     );
     if (i >= 0) void save({ language: LANGS[i].value });
@@ -64,13 +68,13 @@ export default function EditProfile() {
     if (art().length) return;
     void Promise.all([api.titles().catch(() => []), api.series().catch(() => [])]).then(([movies, shows]) => {
       const all = [
-        ...movies.map(m => ({ poster: m.poster, rating: m.rating ?? 0 })),
-        ...shows.map(s => ({ poster: s.poster, rating: s.rating ?? 0 })),
+        ...movies.map((m) => ({ poster: m.poster, rating: m.rating ?? 0 })),
+        ...shows.map((s) => ({ poster: s.poster, rating: s.rating ?? 0 })),
       ];
       const keys = all
-        .filter(x => x.poster)
+        .filter((x) => x.poster)
         .sort((a, b) => b.rating - a.rating)
-        .map(x => x.poster!);
+        .map((x) => x.poster!);
       setArt([...new Set(keys)].slice(0, LIBRARY_ART_MAX));
     });
   };
@@ -91,7 +95,11 @@ export default function EditProfile() {
         setError("");
         return;
       }
-      const choice = await pick(t("PIN"), [{ label: t("Change PIN") }, { label: t("Remove PIN") }], e.currentTarget as Element);
+      const choice = await pick(
+        t("PIN"),
+        [{ label: t("Change PIN") }, { label: t("Remove PIN") }],
+        e.currentTarget as Element,
+      );
       if (choice < 0) return;
       const current = await askPin(t("Enter the current PIN"));
       if (!current) return;
@@ -154,7 +162,7 @@ export default function EditProfile() {
     <div class="form-page" style={{ "padding-top": "calc(var(--topbar-h) + 16px)" }}>
       <h1>{t("Edit profile")}</h1>
       <Show when={me()}>
-        {m => (
+        {(m) => (
           <>
             <div class="form-section">
               <div class="setting-row" style={{ "justify-content": "flex-start" }}>
@@ -168,7 +176,7 @@ export default function EditProfile() {
                       class="input"
                       maxlength={32}
                       value={name()}
-                      onInput={e => setName(e.currentTarget.value)}
+                      onInput={(e) => setName(e.currentTarget.value)}
                       onChange={saveName}
                     />
                   </label>
@@ -186,7 +194,7 @@ export default function EditProfile() {
                   <Avatar name={m().name} picture={null} size={64} />
                 </button>
                 <For each={AVATARS}>
-                  {a => (
+                  {(a) => (
                     <button
                       class={["avatar-choice", { on: m().avatar === a }]}
                       aria-label={a}
@@ -209,7 +217,7 @@ export default function EditProfile() {
                   <h2 style={{ "margin-top": "8px" }}>{t("From your library")}</h2>
                   <div class="avatar-grid">
                     <For each={art()}>
-                      {key => (
+                      {(key) => (
                         <button
                           class={["avatar-choice", { on: m().avatar === `${ART}${key}` }]}
                           onClick={() => void save({ avatar: `${ART}${key}` })}
@@ -228,8 +236,8 @@ export default function EditProfile() {
               <div>
                 <b>{t("Language")}</b>
               </div>
-              <button class="chip" onClick={e => void language(e)}>
-                {LANGS.find(l => l.value === (m().language ?? null))?.label}
+              <button class="chip" onClick={(e) => void language(e)}>
+                {LANGS.find((l) => l.value === (m().language ?? null))?.label}
               </button>
             </div>
             <div class="form-section setting-row">
@@ -254,7 +262,7 @@ export default function EditProfile() {
                   {hasPin() ? t("On") : t("Off")}
                 </div>
               </div>
-              <button class="btn small" onClick={e => void pin(e)}>
+              <button class="btn small" onClick={(e) => void pin(e)}>
                 {hasPin() ? t("Change") : t("Set PIN")}
               </button>
             </div>

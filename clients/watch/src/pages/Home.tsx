@@ -5,7 +5,16 @@ import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, MyRequest, ThemedRow } from "@tv/api/types";
 import { t, tServer } from "@tv/i18n";
 import { For, Show, createMemo } from "solid-js";
-import { Banner, ExpandRow, GenreTile, GhostHero, GhostRow, Poster, Row, WideCard } from "../components/cards";
+import {
+  Banner,
+  ExpandRow,
+  GenreTile,
+  GhostHero,
+  GhostRow,
+  Poster,
+  Row,
+  WideCard,
+} from "../components/cards";
 import { Hero } from "../components/Hero";
 import { featuredSlide } from "../components/heroSlides";
 import { MoreRow } from "../components/sections";
@@ -18,7 +27,9 @@ import { bestProgress, myRequests, requestBadge } from "../requests";
 function resume(e: ContinueEntry) {
   const at = e.up_next ? 0 : e.position_secs;
   const target =
-    e.kind === "movie" && e.title_id ? { kind: "title" as const, id: e.title_id } : { kind: "item" as const, id: e.item_id };
+    e.kind === "movie" && e.title_id
+      ? { kind: "title" as const, id: e.title_id }
+      : { kind: "item" as const, id: e.item_id };
   const after = e.title_id ? paths.title(e.title_id) : e.series ? paths.series(e.series) : undefined;
   play(target, at, after);
 }
@@ -28,7 +39,10 @@ function Themed(props: { row: ThemedRow }) {
   return (
     <MoreRow
       title={tServer(props.row.title)}
-      items={[...props.row.items.map(spot => ({ spot })), ...props.row.more.map(suggestion => ({ suggestion }))]}
+      items={[
+        ...props.row.items.map((spot) => ({ spot })),
+        ...props.row.more.map((suggestion) => ({ suggestion })),
+      ]}
     />
   );
 }
@@ -58,16 +72,18 @@ export default function Home() {
   const home = () => data.value();
   /** My List on Home (the TV's): requests not saved yet first, then saved titles a request
    * doesn't already show. */
-  const listRequests = () => myRequests().filter(r => !r.listed);
+  const listRequests = () => myRequests().filter((r) => !r.listed);
   const listEntries = () => {
-    const shown = new Set(listRequests().flatMap(r => [r.title_id, r.series].filter(Boolean)));
-    return (home()?.my_list ?? []).filter(m => !shown.has(m.id));
+    const shown = new Set(listRequests().flatMap((r) => [r.title_id, r.series].filter(Boolean)));
+    return (home()?.my_list ?? []).filter((m) => !shown.has(m.id));
   };
   const heroSlides = createMemo(() =>
-    (home()?.featured.length ? home()!.featured : (home()?.recently_added_movies ?? []).slice(0, 5)).map(featuredSlide),
+    (home()?.featured.length ? home()!.featured : (home()?.recently_added_movies ?? []).slice(0, 5)).map(
+      featuredSlide,
+    ),
   );
   const movieCards = createMemo(() =>
-    (home()?.recently_added_movies ?? []).map(m => ({
+    (home()?.recently_added_movies ?? []).map((m) => ({
       key: m.id,
       title: m.title,
       poster: m.poster,
@@ -79,7 +95,7 @@ export default function Home() {
     })),
   );
   const showCards = createMemo(() =>
-    (home()?.recently_added_shows ?? []).map(s => ({
+    (home()?.recently_added_shows ?? []).map((s) => ({
       key: s.series,
       title: s.meta_title ?? s.series,
       poster: s.poster,
@@ -89,8 +105,8 @@ export default function Home() {
       href: href(paths.series(s.series)),
     })),
   );
-  const seasonal = () => (more.value()?.themed ?? []).filter(r => r.seasonal);
-  const daily = () => (more.value()?.themed ?? []).filter(r => !r.seasonal);
+  const seasonal = () => (more.value()?.themed ?? []).filter((r) => r.seasonal);
+  const daily = () => (more.value()?.themed ?? []).filter((r) => !r.seasonal);
 
   return (
     <>
@@ -112,7 +128,7 @@ export default function Home() {
       <Show when={home()?.continue_watching.length}>
         <Row title={t("Continue Watching")}>
           <For each={home()!.continue_watching}>
-            {e => (
+            {(e) => (
               <WideCard
                 image={e.backdrop ?? e.poster}
                 title={e.title}
@@ -127,7 +143,7 @@ export default function Home() {
       <Show when={listEntries().length + listRequests().length > 0}>
         <Row title={t("My List")} link={{ label: t("See all"), href: href(paths.myList) }}>
           <For each={listRequests()}>
-            {r => (
+            {(r) => (
               <Poster
                 image={r.poster}
                 title={r.title}
@@ -138,7 +154,7 @@ export default function Home() {
             )}
           </For>
           <For each={listEntries()}>
-            {m => (
+            {(m) => (
               <Poster
                 image={m.poster}
                 title={m.title}
@@ -148,7 +164,7 @@ export default function Home() {
           </For>
         </Row>
       </Show>
-      <For each={seasonal()}>{row => <Themed row={row} />}</For>
+      <For each={seasonal()}>{(row) => <Themed row={row} />}</For>
       <Show when={movieCards().length}>
         <ExpandRow
           title={t("Recently Added Movies")}
@@ -158,7 +174,7 @@ export default function Home() {
       </Show>
       <Show when={more.value()?.genres.length}>
         <Row title={t("Browse by genre")}>
-          <For each={more.value()!.genres}>{g => <GenreTile name={g.name} image={g.backdrop} />}</For>
+          <For each={more.value()!.genres}>{(g) => <GenreTile name={g.name} image={g.backdrop} />}</For>
         </Row>
       </Show>
       <Show when={showCards().length}>
@@ -168,7 +184,7 @@ export default function Home() {
           link={{ label: t("See all"), href: href(paths.all("shows", {})) }}
         />
       </Show>
-      <Show when={more.value()?.spotlights[0]}>{s => <Banner spot={s()} />}</Show>
+      <Show when={more.value()?.spotlights[0]}>{(s) => <Banner spot={s()} />}</Show>
       {/* The slower half (genres, picks, themes) still on its way. */}
       <Show when={home() && more.value() === undefined}>
         <GhostRow variant="genre" />
@@ -177,11 +193,11 @@ export default function Home() {
       <Show when={more.value()?.top_picks.length}>
         <Row title={t("Top picks for you")}>
           <For each={more.value()!.top_picks}>
-            {s => <Poster image={s.poster} title={s.title} href={href(paths.spot(s))} />}
+            {(s) => <Poster image={s.poster} title={s.title} href={href(paths.spot(s))} />}
           </For>
         </Row>
       </Show>
-      <For each={daily()}>{row => <Themed row={row} />}</For>
+      <For each={daily()}>{(row) => <Themed row={row} />}</For>
     </>
   );
 }

@@ -1016,9 +1016,10 @@ h3 {
 .scrim-left {
     position: absolute;
     inset: 0;
+    /* The fade into the page is the top layer, so the art ends exactly in the page's color. */
     background:
-        linear-gradient(90deg, rgb(0 0 0 / 82%) 0%, rgb(0 0 0 / 50%) 35%, transparent 65%),
         linear-gradient(transparent 55%, var(--bg) 100%),
+        linear-gradient(90deg, rgb(0 0 0 / 82%) 0%, rgb(0 0 0 / 50%) 35%, transparent 65%),
         linear-gradient(rgb(0 0 0 / 40%), transparent 20%);
 }
 @media (max-width: 899px) {
@@ -1190,8 +1191,8 @@ h3 {
 }
 .detail-hero .scrim-left {
     background:
-        linear-gradient(90deg, rgb(0 0 0 / 88%) 0%, rgb(0 0 0 / 55%) 40%, transparent 72%),
         linear-gradient(transparent 50%, var(--bg) 100%),
+        linear-gradient(90deg, rgb(0 0 0 / 88%) 0%, rgb(0 0 0 / 55%) 40%, transparent 72%),
         linear-gradient(rgb(0 0 0 / 45%), transparent 18%);
 }
 .detail-body {
@@ -1850,8 +1851,7 @@ h3 {
     opacity: 0;
     transition: opacity 0.25s;
     background:
-        linear-gradient(rgb(0 0 0 / 70%), transparent 22%),
-        linear-gradient(transparent 62%, rgb(0 0 0 / 82%));
+        linear-gradient(rgb(0 0 0 / 70%), transparent 22%), linear-gradient(transparent 62%, rgb(0 0 0 / 82%));
     pointer-events: none;
 }
 .player.controls-on .player-ui {

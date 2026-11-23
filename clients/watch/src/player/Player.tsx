@@ -10,7 +10,14 @@ import { formatTime, languageName } from "@tv/format";
 import { lang, t } from "@tv/i18n";
 import { audioLabels } from "@tv/playback/audio";
 import { QUALITIES, describeStream, saveQuality } from "@tv/playback/quality";
-import { clampTiming, describeTiming, savedTiming, saveTiming, shortTiming, trackLabels } from "@tv/playback/subtitles";
+import {
+  clampTiming,
+  describeTiming,
+  savedTiming,
+  saveTiming,
+  shortTiming,
+  trackLabels,
+} from "@tv/playback/subtitles";
 import { previewUrl } from "@tv/playback/trickplay";
 import { For, Show, createMemo, createSignal, onSettled } from "solid-js";
 import { setPlayerOpen } from "../clip";
@@ -35,7 +42,7 @@ export default function Player() {
 
   /** Bumped by the engine's events and a 4 Hz clock: everything time-based reads it. */
   const [tick, setTick] = createSignal(0);
-  const bump = () => setTick(n => n + 1);
+  const bump = () => setTick((n) => n + 1);
   const [loading, setLoading] = createSignal(true);
   const [fatal, setFatal] = createSignal("");
   const [toastText, setToastText] = createSignal("");
@@ -90,15 +97,17 @@ export default function Player() {
   };
   const subtitle = () => {
     const i = info();
-    return i?.kind === "episode" ? `S${i.season ?? 0}:E${i.episode ?? 0}  ${i.episode_title ?? ""}`.trim() : (i?.year?.toString() ?? "");
+    return i?.kind === "episode"
+      ? `S${i.season ?? 0}:E${i.episode ?? 0}  ${i.episode_title ?? ""}`.trim()
+      : (i?.year?.toString() ?? "");
   };
-  const tracks = () => (pb()?.subtitles ?? []).filter(s => s.url);
+  const tracks = () => (pb()?.subtitles ?? []).filter((s) => s.url);
   const audioTracks = () => pb()?.audio ?? [];
-  const audioLanguage = () => audioTracks().find(a => a.index === pb()?.audio_index)?.language ?? null;
+  const audioLanguage = () => audioTracks().find((a) => a.index === pb()?.audio_index)?.language ?? null;
   const mine = (code: string | null | undefined) => !!code && languageName(code) === languageName(lang());
   /** Subtitles can be searched for (Bazarr), and it's worth it: nothing in your language among
    * the tracks, and the audio isn't in it either (the TV's rule). */
-  const canFind = () => canSearch() && !tracks().some(s => mine(s.language)) && !mine(audioLanguage());
+  const canFind = () => canSearch() && !tracks().some((s) => mine(s.language)) && !mine(audioLanguage());
   const showing = createMemo<Showing>(() => {
     tick();
     const s = subs();
@@ -110,14 +119,12 @@ export default function Player() {
   const chooseSubs = (track: SubtitleTrack | null, announce: boolean) => {
     subs()?.close();
     setSubs(
-      track
-        ? new SubtitleSource(track, bump, () => toast(t("These subtitles couldn't be loaded")))
-        : null,
+      track ? new SubtitleSource(track, bump, () => toast(t("These subtitles couldn't be loaded"))) : null,
     );
     setTiming(track && engine?.pb ? savedTiming(engine.pb.item_id, track) : 0);
     if (announce) {
       const list = tracks();
-      const i = track ? list.findIndex(s => s.key === track.key) : -1;
+      const i = track ? list.findIndex((s) => s.key === track.key) : -1;
       toast(i >= 0 ? t("Subtitles: {name}", { name: trackLabels(list)[i] }) : t("Subtitles off"));
     }
   };
@@ -139,10 +146,10 @@ export default function Player() {
     toast(t("Looking for {language} subtitles...", { language }));
     try {
       const r = await api.findSubtitles(engine.pb.item_id, lang());
-      const before = new Set(engine.pb.subtitles.map(s => s.key));
+      const before = new Set(engine.pb.subtitles.map((s) => s.key));
       engine.pb.subtitles = r.subtitles;
       bump();
-      const fresh = r.subtitles.find(s => s.url && !before.has(s.key) && mine(s.language));
+      const fresh = r.subtitles.find((s) => s.url && !before.has(s.key) && mine(s.language));
       if (fresh) {
         chooseSubs(fresh, true);
         rememberSubtitles(fresh);
@@ -212,9 +219,7 @@ export default function Player() {
   const qualityMenu = async (e: MouseEvent) => {
     const i = await pick(
       t("Quality"),
-      [
-        ...QUALITIES.map(q => ({ label: t(q.label), selected: q.id === engine?.quality })),
-      ],
+      [...QUALITIES.map((q) => ({ label: t(q.label), selected: q.id === engine?.quality }))],
       e.currentTarget as Element,
     );
     if (i >= 0 && engine) {
@@ -287,7 +292,7 @@ export default function Player() {
     engine = new Engine(v, target, {
       onState: bump,
       onToast: toast,
-      onFatal: text => {
+      onFatal: (text) => {
         engine?.close();
         setFatal(text);
       },
@@ -301,12 +306,12 @@ export default function Player() {
         showControls();
         mediaSession();
       },
-      e => {
+      (e) => {
         setLoading(false);
         setFatal(t("Playback failed: {error}", { error: message(e) }));
       },
     );
-    void features().then(f => setCanSearch(!!f?.subtitle_search));
+    void features().then((f) => setCanSearch(!!f?.subtitle_search));
 
     const clock = setInterval(bump, 250);
     const onKey = (e: KeyboardEvent) => {
@@ -395,7 +400,7 @@ export default function Player() {
     ms.setActionHandler("seekbackward", () => engine?.seekTo(engine.position() - SKIP_SECS));
     ms.setActionHandler("seekforward", () => engine?.seekTo(engine.position() + SKIP_SECS));
     try {
-      ms.setActionHandler("seekto", d => d.seekTime !== undefined && engine?.seekTo(d.seekTime));
+      ms.setActionHandler("seekto", (d) => d.seekTime !== undefined && engine?.seekTo(d.seekTime));
     } catch {
       // Not every browser knows seekto.
     }
@@ -410,15 +415,15 @@ export default function Player() {
   return (
     <div
       class={["player", { "controls-on": controls() || !playing(), idle: !controls() && playing() }]}
-      onPointerMove={e => {
+      onPointerMove={(e) => {
         // A mouse moving shows the controls (touches show them by tapping, below).
         if (e.pointerType === "mouse") showControls();
       }}
     >
       <video
-        ref={el => (video = el)}
+        ref={(el) => (video = el)}
         playsinline
-        onPointerUp={e => {
+        onPointerUp={(e) => {
           // A mouse click plays or pauses; a tap shows or hides the controls.
           if (e.pointerType === "mouse") {
             engine?.togglePlay();
@@ -441,7 +446,7 @@ export default function Player() {
         </div>
       </Show>
       <Show when={showing()?.kind === "bitmap" ? (showing() as Extract<Showing, { kind: "bitmap" }>) : null}>
-        {s => (
+        {(s) => (
           <div
             class="player-subs-bitmap"
             style={{
@@ -452,7 +457,7 @@ export default function Player() {
             }}
           >
             <For each={s().cue.images}>
-              {img => {
+              {(img) => {
                 const sx = () => picture().w / (s().frame.video_width || 1920);
                 const sy = () => picture().h / (s().frame.video_height || 1080);
                 return (
@@ -494,10 +499,10 @@ export default function Player() {
 
       <div
         class="player-ui"
-        ref={el =>
+        ref={(el) =>
           el.addEventListener(
             "click",
-            e => {
+            (e) => {
               if (Date.now() - revealedAt < 500) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -553,14 +558,14 @@ export default function Player() {
         <div class="player-bottom">
           <div
             class={["scrub", { dragging: dragging() }]}
-            ref={el => (bar = el)}
+            ref={(el) => (bar = el)}
             role="slider"
             aria-label={t("Position")}
             aria-valuemin="0"
             aria-valuemax={String(Math.round(duration()))}
             aria-valuenow={String(Math.round(position()))}
             tabindex="0"
-            onPointerDown={e => {
+            onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
               setDragging(true);
               const at = atPointer(e.clientX);
@@ -568,7 +573,7 @@ export default function Player() {
               settlePreview(at);
               showControls();
             }}
-            onPointerMove={e => {
+            onPointerMove={(e) => {
               const at = atPointer(e.clientX);
               if (dragging() || e.pointerType === "mouse") {
                 setHoverAt(at);
@@ -576,7 +581,7 @@ export default function Player() {
               }
               if (dragging()) showControls();
             }}
-            onPointerUp={e => {
+            onPointerUp={(e) => {
               if (!dragging()) return;
               setDragging(false);
               engine?.seekTo(atPointer(e.clientX));
@@ -634,7 +639,7 @@ export default function Player() {
               step="0.05"
               aria-label={t("Volume")}
               value={muted() ? 0 : volume()}
-              onInput={e => {
+              onInput={(e) => {
                 if (!video) return;
                 video.volume = Number(e.currentTarget.value);
                 video.muted = video.volume === 0;
@@ -651,17 +656,17 @@ export default function Player() {
               <button
                 class={["icon-btn", { on: !!subs() }]}
                 aria-label={t("Subtitles")}
-                onClick={e => void subtitleMenu(e)}
+                onClick={(e) => void subtitleMenu(e)}
               >
                 <Icon name="captions" />
               </button>
             </Show>
             <Show when={audioTracks().length > 1}>
-              <button class="icon-btn" aria-label={t("Audio")} onClick={e => void audioMenu(e)}>
+              <button class="icon-btn" aria-label={t("Audio")} onClick={(e) => void audioMenu(e)}>
                 <Icon name="audio" />
               </button>
             </Show>
-            <button class="icon-btn" aria-label={t("Quality")} onClick={e => void qualityMenu(e)}>
+            <button class="icon-btn" aria-label={t("Quality")} onClick={(e) => void qualityMenu(e)}>
               <Icon name="gear" />
             </button>
             <Show when={pipSupported()}>

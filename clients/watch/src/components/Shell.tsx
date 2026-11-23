@@ -34,7 +34,7 @@ export function Shell(props: { children?: JSX.Element }) {
 
   const topTabs = createMemo<Tab[]>(() => [
     { label: t("Home"), path: "/" },
-    ...(libs.value() ?? []).map(l => ({ label: l.name, path: paths.library(l.id) })),
+    ...(libs.value() ?? []).map((l) => ({ label: l.name, path: paths.library(l.id) })),
     { label: t("My List"), path: paths.myList },
   ]);
   const active = (path: string) => {
@@ -51,7 +51,11 @@ export function Shell(props: { children?: JSX.Element }) {
 
   const profileMenu = async (e: MouseEvent) => {
     const options = [t("Switch profile"), t("Edit profile"), t("About"), t("Sign out of this browser")];
-    const i = await pick(currentUser()?.name, options.map(label => ({ label })), e.currentTarget as Element);
+    const i = await pick(
+      currentUser()?.name,
+      options.map((label) => ({ label })),
+      e.currentTarget as Element,
+    );
     if (i === 0) go(paths.profiles);
     else if (i === 1) go(paths.editProfile);
     else if (i === 2) go("/about");
@@ -67,7 +71,7 @@ export function Shell(props: { children?: JSX.Element }) {
         </a>
         <nav class="top-tabs" aria-label={t("Main")}>
           <For each={topTabs()}>
-            {tab => (
+            {(tab) => (
               <a class="top-tab" href={href(tab.path)} data-active={active(tab.path) ? "" : undefined}>
                 {tab.label}
               </a>
@@ -78,7 +82,7 @@ export function Shell(props: { children?: JSX.Element }) {
           <a class="icon-btn top-search" href={href("/search")} aria-label={t("Search")}>
             <Icon name="search" />
           </a>
-          <button class="profile-btn" aria-label={t("Profile")} onClick={e => void profileMenu(e)}>
+          <button class="profile-btn" aria-label={t("Profile")} onClick={(e) => void profileMenu(e)}>
             <Avatar name={currentUser()?.name ?? "?"} picture={currentUser()?.avatar} size={34} />
           </button>
         </div>
@@ -87,7 +91,7 @@ export function Shell(props: { children?: JSX.Element }) {
       <main class="page">{props.children}</main>
       <nav class="bottom-tabs" aria-label={t("Main")}>
         <For each={bottomTabs}>
-          {tab => (
+          {(tab) => (
             <a class="bottom-tab" href={href(tab.path)} data-active={active(tab.path) ? "" : undefined}>
               <Icon name={tab.icon} size={24} />
               <span>{t(tab.label)}</span>

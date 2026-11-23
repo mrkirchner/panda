@@ -22,7 +22,13 @@ function statusOf(r: MyRequest): string {
 }
 
 const requestPath = (r: MyRequest) =>
-  r.title_id ? paths.title(r.title_id) : r.series ? paths.series(r.series) : r.tmdb_id ? paths.preview(r.kind, r.tmdb_id) : null;
+  r.title_id
+    ? paths.title(r.title_id)
+    : r.series
+      ? paths.series(r.series)
+      : r.tmdb_id
+        ? paths.preview(r.kind, r.tmdb_id)
+        : null;
 
 /** Cancellable while it's still being searched for (nothing downloading yet). */
 const cancellable = (r: MyRequest) => {
@@ -34,7 +40,7 @@ const cancellable = (r: MyRequest) => {
 export default function MyList() {
   const requests = load(() => api.myRequests().catch(() => [] as MyRequest[]), { live: true });
   const list = load(() => api.myList().catch(() => [] as MyListEntry[]), { live: true });
-  const shown = () => (requests.value() ?? []).filter(r => !r.listed);
+  const shown = () => (requests.value() ?? []).filter((r) => !r.listed);
 
   const cancel = async (r: MyRequest) => {
     if (!(await confirmAction(r.title, t("Cancel this request?"), t("Cancel request"), true))) return;
@@ -54,10 +60,12 @@ export default function MyList() {
           </div>
           <div class="request-list">
             <For each={shown()}>
-              {r => (
+              {(r) => (
                 <div class="request-row">
                   <a class="request-poster" href={requestPath(r) ? href(requestPath(r)!) : undefined}>
-                    <Show when={imageUrl(r.poster)}>{src => <img src={src()} alt="" loading="lazy" />}</Show>
+                    <Show when={imageUrl(r.poster)}>
+                      {(src) => <img src={src()} alt="" loading="lazy" />}
+                    </Show>
                   </a>
                   <div class="request-text">
                     <a href={requestPath(r) ? href(requestPath(r)!) : undefined}>
@@ -88,7 +96,7 @@ export default function MyList() {
           </div>
           <div class="poster-grid">
             <For each={list.value()!}>
-              {m => (
+              {(m) => (
                 <Poster
                   image={m.poster}
                   title={m.title}
@@ -101,7 +109,9 @@ export default function MyList() {
       </Show>
       <Show when={!list.value() || !requests.value()}>
         <div class="poster-grid section">
-          <For each={[0, 1, 2, 3, 4, 5]}>{() => <div class="ghost" style={{ "aspect-ratio": "2 / 3" }} />}</For>
+          <For each={[0, 1, 2, 3, 4, 5]}>
+            {() => <div class="ghost" style={{ "aspect-ratio": "2 / 3" }} />}
+          </For>
         </div>
       </Show>
       <Show when={list.value() && requests.value() && !shown().length && !list.value()!.length}>

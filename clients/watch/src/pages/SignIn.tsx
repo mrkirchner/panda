@@ -2,16 +2,18 @@
 // checks and limits): the browser joins the account as a device, and lands on Who's watching
 // when the account has several profiles. Served by Panda, a browser already signed in to Panda's
 // web pages skips this (session.ts).
+import { useSearchParams } from "@solidjs/router";
 import { api, landingPath } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { Show, createSignal } from "solid-js";
 import { message } from "../data";
-import { go, href } from "../nav";
+import { go, href, nextPath } from "../nav";
 import { SERVED_BY_PANDA, browserName, signedIn } from "../session";
 
 export default function SignIn() {
+  const [search] = useSearchParams<{ next?: string }>();
   const [username, setUsername] = createSignal("");
   const [password, setPassword] = createSignal("");
   const [busy, setBusy] = createSignal(false);
@@ -24,7 +26,15 @@ export default function SignIn() {
     setError("");
     try {
       signedIn(await api.deviceLogin(username().trim(), password(), browserName(), getDeviceSecret()));
-      go(await landingPath(), { replace: true });
+      const landing = await landingPath();
+      go(
+        landing === "/"
+          ? nextPath(search.next)
+          : `${landing}${search.next ? `?next=${encodeURIComponent(search.next)}` : ""}`,
+        {
+          replace: true,
+        },
+      );
     } catch (err) {
       setError(message(err));
     } finally {
@@ -34,7 +44,7 @@ export default function SignIn() {
 
   return (
     <div class="center-page">
-      <form class="panel" onSubmit={e => void submit(e)}>
+      <form class="panel" onSubmit={(e) => void submit(e)}>
         <div class="brand">
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
           <span>Panda</span>
@@ -51,7 +61,7 @@ export default function SignIn() {
             autocomplete="username"
             autocapitalize="none"
             value={username()}
-            onInput={e => setUsername(e.currentTarget.value)}
+            onInput={(e) => setUsername(e.currentTarget.value)}
           />
         </div>
         <div class="field">
@@ -62,13 +72,17 @@ export default function SignIn() {
             type="password"
             autocomplete="current-password"
             value={password()}
-            onInput={e => setPassword(e.currentTarget.value)}
+            onInput={(e) => setPassword(e.currentTarget.value)}
           />
         </div>
         <Show when={error()}>
           <p class="error">{error()}</p>
         </Show>
-        <button class="btn primary block" type="submit" disabled={busy() || !username().trim() || !password()}>
+        <button
+          class="btn primary block"
+          type="submit"
+          disabled={busy() || !username().trim() || !password()}
+        >
           {busy() ? t("Signing in...") : t("Sign in")}
         </button>
         <Show when={!SERVED_BY_PANDA}>

@@ -27,6 +27,10 @@ export function back(fallback = "/") {
 export const appPath = (pathname: string) =>
   (BASE && pathname.startsWith(BASE) ? pathname.slice(BASE.length) : pathname) || "/";
 
+/** Where to go after signing in or choosing a profile (`?next=`): an app path, never another site. */
+export const nextPath = (next: string | undefined) =>
+  next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+
 /** An app path as an href (with the base), for real links. */
 export const href = (path: string) => `${BASE}${path}`;
 
@@ -43,7 +47,8 @@ export const paths = {
   connect: "/connect",
   title: (id: string) => `/title/${enc(id)}`,
   series: (name: string) => `/series/${enc(name)}`,
-  spot: (s: Pick<Spot, "kind" | "id">) => (s.kind === "movie" ? `/title/${enc(s.id)}` : `/series/${enc(s.id)}`),
+  spot: (s: Pick<Spot, "kind" | "id">) =>
+    s.kind === "movie" ? `/title/${enc(s.id)}` : `/series/${enc(s.id)}`,
   person: (id: number) => `/person/${id}`,
   preview: (kind: "movie" | "series", tmdbId: number) => `/discover/${kind}/${tmdbId}`,
   genre: (name: string) => `/genre/${enc(name)}`,

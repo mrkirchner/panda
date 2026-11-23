@@ -13,10 +13,14 @@ export default function About() {
       <h1>{t("About Panda")}</h1>
       <p class="muted">{t("Titles, artwork, episodes and ratings come from these services:")}</p>
       <For each={credits.value() ?? []}>
-        {c => (
+        {(c) => (
           <div class="form-section setting-row" style={{ "justify-content": "flex-start" }}>
             <Show when={c.id === "tmdb"}>
-              <img src={`${import.meta.env.BASE_URL}images/tmdb.svg`} alt="TMDB" style={{ height: "14px", width: "auto" }} />
+              <img
+                src={`${import.meta.env.BASE_URL}images/tmdb.svg`}
+                alt="TMDB"
+                style={{ height: "14px", width: "auto" }}
+              />
             </Show>
             <div>
               <a href={c.site} target="_blank" rel="noreferrer">

@@ -93,7 +93,9 @@ export class Engine {
     } catch (e) {
       // 503: the library's storage (NAS) is offline; said plainly.
       if (e instanceof HttpError && e.status === 503) {
-        throw new Error(t("This title's storage isn't reachable right now. Check that the NAS is on and connected."));
+        throw new Error(
+          t("This title's storage isn't reachable right now. Check that the NAS is on and connected."),
+        );
       }
       throw e;
     }
@@ -108,7 +110,7 @@ export class Engine {
     player.configure({
       streaming: { bufferingGoal: 60, rebufferingGoal: 2, bufferBehind: 30 },
     });
-    player.addEventListener("buffering", e => {
+    player.addEventListener("buffering", (e) => {
       this.watchStalls(Boolean((e as unknown as { buffering?: boolean }).buffering));
       this.events.onState();
     });
@@ -154,7 +156,7 @@ export class Engine {
       this.pending = null;
     }
     api.item(this.pb!.item_id).then(
-      i => {
+      (i) => {
         this.info = i;
         this.events.onState();
       },
@@ -215,7 +217,8 @@ export class Engine {
   bufferedEnd(): number {
     const b = this.video.buffered;
     const now = this.video.currentTime;
-    for (let i = 0; i < b.length; i++) if (b.start(i) <= now + 0.5 && b.end(i) >= now) return this.offset + b.end(i);
+    for (let i = 0; i < b.length; i++)
+      if (b.start(i) <= now + 0.5 && b.end(i) >= now) return this.offset + b.end(i);
     return this.position();
   }
 
@@ -273,7 +276,9 @@ export class Engine {
     const next = stepDownBudget(this.pb?.stream.bitrate_kbps);
     if (next === null) return;
     this.stallCap = next;
-    this.events.onToast(t("Slow connection: lowering quality to {mbps} Mbps", { mbps: (next / 1000).toFixed(1) }));
+    this.events.onToast(
+      t("Slow connection: lowering quality to {mbps} Mbps", { mbps: (next / 1000).toFixed(1) }),
+    );
     void this.restart(this.position());
   }
 
@@ -281,7 +286,7 @@ export class Engine {
    * times a minute, then stop and say why. */
   private recover() {
     const now = Date.now();
-    this.retries = this.retries.filter(at => now - at < 60_000);
+    this.retries = this.retries.filter((at) => now - at < 60_000);
     if (this.retries.length >= 3) {
       this.events.onFatal(t("Playback stopped. Check that the NAS is on and connected, then try again."));
       return;

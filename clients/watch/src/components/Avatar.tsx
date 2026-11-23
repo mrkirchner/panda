@@ -18,8 +18,22 @@ export const ART = "art:";
 /** The bundled pictures (the TV's public/images/avatars; keep in step with AVATARS in
  * routes/auth.rs). */
 export const AVATARS = [
-  "fox", "panda", "owl", "cat", "dog", "bear", "rabbit", "penguin",
-  "frog", "lion", "whale", "koala", "robot", "alien", "rocket", "cactus",
+  "fox",
+  "panda",
+  "owl",
+  "cat",
+  "dog",
+  "bear",
+  "rabbit",
+  "penguin",
+  "frog",
+  "lion",
+  "whale",
+  "koala",
+  "robot",
+  "alien",
+  "rocket",
+  "cactus",
 ] as const;
 
 export const avatarSrc = (picture: string | null | undefined): string | undefined => {
@@ -29,7 +43,12 @@ export const avatarSrc = (picture: string | null | undefined): string | undefine
     : `${import.meta.env.BASE_URL}images/avatars/${picture}.svg`;
 };
 
-export function Avatar(props: { name: string; picture: string | null | undefined; size: number; class?: string }) {
+export function Avatar(props: {
+  name: string;
+  picture: string | null | undefined;
+  size: number;
+  class?: string;
+}) {
   return (
     <span
       class={["avatar", props.class]}
@@ -42,7 +61,7 @@ export function Avatar(props: { name: string; picture: string | null | undefined
     >
       <span class="avatar-initial">{props.name.slice(0, 1).toUpperCase() || "?"}</span>
       <Show when={avatarSrc(props.picture)}>
-        {src => (
+        {(src) => (
           <img
             class={["avatar-img", { art: !!props.picture?.startsWith(ART) }]}
             src={src()}
