@@ -1,39 +1,18 @@
 // Home, as on the TV (`/api/home`, then `/api/home/more`): featured titles to swipe through,
 // Continue Watching, My List, holidays in season, recently added movies, genres, recently added
 // shows, a spotlight, top picks, and today's themes.
-import { Screen, type ScrollView } from "@nativescript/core";
-import { api, ensureSession, imageUrl } from "@tv/api/client";
-import type { ContinueEntry, Featured, Home as HomeData, HomeMore, Spot, ThemedRow, Title } from "@tv/api/types";
+import { api, ensureSession } from "@tv/api/client";
+import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { load } from "../data";
 import { play } from "../player";
 import { Banner, GenreTile, Poster, Row, WideCard } from "./cards";
-import { openGenre, openPreview, openSeries, openSpot, openTitle } from "./links";
+import { Hero } from "./Hero";
+import { featuredSlide } from "./heroSlides";
+import { openGenre, openPreview, peekMovie, peekShow, peekSpot } from "./links";
 import { bestProgress } from "../requests";
 import type { MyRequest } from "@tv/api/types";
-
-const asFeatured = (f: Featured | Title): Featured =>
-  "kind" in f ? { reason: "Recently added", movie: f } : f;
-
-/** A hero slide as a Spot (what it is, why it's featured). */
-function heroSpot(f: Featured): Spot {
-  const m = f.movie;
-  const s = f.series;
-  return {
-    kind: m ? "movie" : "series",
-    id: m ? m.id : (s?.series ?? ""),
-    title: m ? m.title : (s?.meta_title ?? s?.series ?? ""),
-    year: m ? m.year : (s?.year ?? null),
-    genres: m ? m.genres : (s?.genres ?? null),
-    rating: m ? m.rating : (s?.rating ?? null),
-    poster: m ? m.poster : (s?.poster ?? null),
-    backdrop: m ? m.backdrop : (s?.backdrop ?? null),
-    logo: f.logo ?? null,
-    reason: f.reason,
-    reason_title: null,
-  };
-}
 
 function resume(e: ContinueEntry) {
   const at = e.up_next ? 0 : e.position_secs;
@@ -42,40 +21,12 @@ function resume(e: ContinueEntry) {
   play(target, at).catch(err => console.log(`play failed: ${String(err)}`));
 }
 
-/** Featured titles, one screen wide each, swiped like pages. */
-function Hero(props: { slides: Spot[] }) {
-  const width = Screen.mainScreen.widthDIPs;
-  return (
-    <scrollview
-      orientation="horizontal"
-      scrollBarIndicatorVisible={false}
-      on:loaded={(e: { object: ScrollView }) => {
-        (e.object.ios as UIScrollView).pagingEnabled = true;
-      }}
-    >
-      <stacklayout orientation="horizontal">
-        <For each={props.slides}>
-          {s => (
-            <stacklayout width={width} on:tap={() => openSpot(s)}>
-              <image class="hero" width={width} src={imageUrl(s.backdrop)} stretch="aspectFill" />
-              <stacklayout class="hero-text">
-                <label class="small accent" text={t(s.reason)} />
-                <label class="h1" textWrap={true} text={s.title} />
-              </stacklayout>
-            </stacklayout>
-          )}
-        </For>
-      </stacklayout>
-    </scrollview>
-  );
-}
-
 /** A themed row (Christmas, Heists): the titles you have. */
 function Themed(props: { row: ThemedRow }) {
   return (
     <Show when={props.row.items.length}>
       <Row title={t(props.row.title)}>
-        <For each={props.row.items}>{s => <Poster image={s.poster} title={s.title} onTap={() => openSpot(s)} />}</For>
+        <For each={props.row.items}>{s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}</For>
       </Row>
     </Show>
   );
@@ -119,7 +70,7 @@ export function Home() {
           <activityindicator busy={true} class="mt40" />
         </Show>
         <Show when={home()?.featured.length}>
-          <Hero slides={home()!.featured.map(f => heroSpot(asFeatured(f)))} />
+          <Hero slides={home()!.featured.map(featuredSlide)} />
         </Show>
         <Show when={home()?.continue_watching.length}>
           <Row title={t("Continue Watching")}>
@@ -154,7 +105,7 @@ export function Home() {
                 <Poster
                   image={m.poster}
                   title={m.title}
-                  onTap={() => (m.kind === "title" ? openTitle(m.id) : openSeries(m.id))}
+                  onTap={() => (m.kind === "title" ? peekMovie(m.id) : peekShow(m.id))}
                 />
               )}
             </For>
@@ -169,7 +120,7 @@ export function Home() {
                   image={m.poster}
                   title={m.title}
                   fraction={m.progress && !m.progress.finished ? m.progress.fraction : 0}
-                  onTap={() => openTitle(m.id)}
+                  onTap={() => peekMovie(m.id)}
                 />
               )}
             </For>
@@ -185,17 +136,17 @@ export function Home() {
         <Show when={home()?.recently_added_shows.length}>
           <Row title={t("Recently Added Shows")}>
             <For each={home()!.recently_added_shows}>
-              {s => <Poster image={s.poster} title={s.meta_title ?? s.series} onTap={() => openSeries(s.series)} />}
+              {s => <Poster image={s.poster} title={s.meta_title ?? s.series} onTap={() => peekShow(s.series)} />}
             </For>
           </Row>
         </Show>
         <Show when={more.value()?.spotlights[0]}>
-          <Banner spot={more.value()!.spotlights[0]} onTap={() => openSpot(more.value()!.spotlights[0])} />
+          <Banner spot={more.value()!.spotlights[0]} onTap={() => peekSpot(more.value()!.spotlights[0])} />
         </Show>
         <Show when={more.value()?.top_picks.length}>
           <Row title={t("Top picks for you")}>
             <For each={more.value()!.top_picks}>
-              {s => <Poster image={s.poster} title={s.title} onTap={() => openSpot(s)} />}
+              {s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}
             </For>
           </Row>
         </Show>

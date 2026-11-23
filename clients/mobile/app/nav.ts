@@ -5,6 +5,7 @@
 // the page: it's disposed once the page is gone (popped by Back, or dropped by a cleared history).
 import { ActionItem, Frame, type NavigatedData, Page } from "@nativescript/core";
 import { render } from "@nativescript-community/solid-js";
+import { setSheetOpen } from "./clip";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 
 let root: Frame | null = null;
@@ -61,3 +62,48 @@ export function showRoot(page: Page): void {
 }
 
 export const back = () => current?.goBack();
+
+let closeSheet: (() => void) | null = null;
+
+/**
+ * `screen` in a sheet over the current page (half the screen, pulled up for more): the phone's
+ * expanded tile. `closeSheet()` dismisses it (before playing, or opening the full page).
+ */
+export function openSheet(screen: () => JSX.Element): void {
+  const page = (current ?? root)?.currentPage;
+  if (!page) return;
+  const host = document.createElement("gridlayout") as unknown as import("@nativescript/core").GridLayout;
+  host.className = "sheet";
+  const dispose = render(screen, host as unknown as Element);
+  host.on("shownModally", () => {
+    const vc = (host as unknown as { viewController?: UIViewController }).viewController;
+    const sheet = vc?.sheetPresentationController;
+    if (sheet) {
+      sheet.detents = NSArray.arrayWithArray([
+        UISheetPresentationControllerDetent.mediumDetent(),
+        UISheetPresentationControllerDetent.largeDetent(),
+      ]) as NSArray<UISheetPresentationControllerDetent>;
+      sheet.prefersGrabberVisible = true;
+      sheet.preferredCornerRadius = 20;
+    }
+  });
+  closeSheet = () => host.closeModal();
+  setSheetOpen(true);
+  page.showModal(host, {
+    fullscreen: false,
+    animated: true,
+    closeCallback: () => {
+      closeSheet = null;
+      setSheetOpen(false);
+      dispose();
+    },
+    ios: { presentationStyle: UIModalPresentationStyle.PageSheet },
+  });
+}
+
+/** Close the sheet, then `then` (navigation waits for the sheet to be gone). */
+export function leaveSheet(then: () => void) {
+  if (!closeSheet) return then();
+  closeSheet();
+  setTimeout(then, 350);
+}

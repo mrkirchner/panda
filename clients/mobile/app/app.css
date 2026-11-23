@@ -179,3 +179,15 @@ ActionBar {
 .pick-art { width: 88; height: 88; border-radius: 44; background-color: #242427; }
 .request-poster { width: 60; height: 90; border-radius: 6; background-color: #1a1a1d; }
 .cancel-link { vertical-align: middle; margin-left: 8; }
+
+/* Hero carousel */
+.clip-host { opacity: 0; }
+.hero-scrim { background: linear-gradient(to bottom, #0d0d0f00 35%, #0d0d0fcc 72%, #0d0d0f 100%); }
+.hero-content { padding: 0 20 8 20; }
+.hero-title { font-size: 34; font-weight: bold; color: #f4f1ea; }
+.hero-logo { height: 90; horizontal-align: left; margin: 4 0; }
+.hero-buttons { margin-top: 6; }
+.hero-button { margin: 10 6 0 0; height: 46; }
+.dot { font-size: 8; color: #a39e95; margin: 0 3; }
+.dot.on { color: #d4ae6a; }
+.sheet, .peek { background-color: #0d0d0f; }

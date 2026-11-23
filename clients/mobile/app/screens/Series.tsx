@@ -11,11 +11,11 @@ import { facts, load, longDate, runtime } from "../data";
 import { features } from "../features";
 import { myListToggle } from "../myList";
 import { play } from "../player";
-import { Progress } from "./cards";
+import { ClipArt, Progress } from "./cards";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 
 /** In progress, else the first one not watched, else the first. */
-function nextUp(eps: Item[]): Item | undefined {
+export function nextUp(eps: Item[]): Item | undefined {
   return (
     eps.find(e => e.progress && !e.progress.finished && e.progress.position_secs > 30) ??
     eps.find(e => !e.progress?.finished) ??
@@ -99,7 +99,7 @@ export function seriesScreen(name: string) {
         <Show when={show.error() || episodes.error()}>
           <label class="error form" textWrap={true} text={show.error() ?? episodes.error() ?? ""} />
         </Show>
-        <image class="hero" src={imageUrl(show.value()?.backdrop)} stretch="aspectFill" />
+        <ClipArt image={show.value()?.backdrop} clip={{ kind: "series", name }} />
         <stacklayout class="form">
           <Show
             when={details.value()?.logo}

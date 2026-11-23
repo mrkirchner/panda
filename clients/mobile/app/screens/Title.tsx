@@ -11,6 +11,7 @@ import { facts, gb, load, longDate, runtime } from "../data";
 import { myListToggle } from "../myList";
 import { play } from "../player";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "./sections";
+import { ClipArt } from "./cards";
 
 export function titleScreen(id: string) {
   const data = load(() => api.title(id));
@@ -66,7 +67,7 @@ export function titleScreen(id: string) {
           <label class="error form" textWrap={true} text={data.error() ?? ""} />
         </Show>
         <Show when={title()}>
-          <image class="hero" src={imageUrl(title()!.backdrop)} stretch="aspectFill" />
+          <ClipArt image={title()!.backdrop} clip={{ kind: "title", id }} />
           <stacklayout class="form">
             <Show
               when={details.value()?.logo}

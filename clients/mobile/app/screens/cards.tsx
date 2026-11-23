@@ -4,7 +4,9 @@ import { imageUrl } from "@tv/api/client";
 import type { Spot } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
-import { Show } from "solid-js";
+import { Show, onCleanup } from "solid-js";
+import type { ContentView } from "@nativescript/core";
+import { playClip, type ClipSource } from "../clip";
 
 export function Row(props: { title: string; children: JSX.Element; action?: { text: string; tap: () => void } }) {
   return (
@@ -123,3 +125,25 @@ export function Banner(props: { spot: Spot; onTap: () => void }) {
     </stacklayout>
   );
 }
+
+/** A page's backdrop, with its preview clip fading in over it after a moment (as on the TV). */
+export function ClipArt(props: { image: string | null | undefined; clip: ClipSource; inSheet?: boolean }) {
+  let host: ContentView | undefined;
+  let clip: { stop: () => void } | null = null;
+  const timer = setTimeout(() => {
+    if (host) clip = playClip(host, props.clip, undefined, undefined, props.inSheet ?? false);
+  }, CLIP_DELAY_MS);
+  onCleanup(() => {
+    clearTimeout(timer);
+    clip?.stop();
+  });
+  return (
+    <gridlayout class="hero">
+      <image class="hero" src={imageUrl(props.image)} stretch="aspectFill" />
+      <contentview class="clip-host" ref={(el: ContentView) => (host = el)} />
+    </gridlayout>
+  );
+}
+
+/** Rest on a page this long before its clip starts. */
+const CLIP_DELAY_MS = 1_500;

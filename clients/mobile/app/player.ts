@@ -31,6 +31,7 @@ import {
 } from "@tv/playback/subtitles";
 import { previewUrl } from "@tv/playback/trickplay";
 import { phoneProfile } from "./profile";
+import { setPlayerOpen } from "./clip";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 
 /** How often progress is saved while playing. */
@@ -299,7 +300,13 @@ class PlayerSession {
   // ---- Opening and closing ----
 
   async open(startSecs: number) {
-    this.load(await this.request(startSecs), startSecs);
+    setPlayerOpen(true);
+    try {
+      this.load(await this.request(startSecs), startSecs);
+    } catch (e) {
+      setPlayerOpen(false);
+      throw e;
+    }
     readyAudioSession();
     api.item(this.pb.item_id).then(
       i => {
@@ -426,6 +433,7 @@ class PlayerSession {
     if (this.pb.method === "hls") void api.stopSession(this.pb.session_id);
     this.vc.dismissViewControllerAnimatedCompletion(true, () => {
       this.keep.length = 0;
+      setPlayerOpen(false);
     });
   }
 

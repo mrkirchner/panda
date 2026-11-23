@@ -9,6 +9,7 @@ import { editProfileScreen } from "./screens/EditProfile";
 import { Home } from "./screens/Home";
 import { browseScreen } from "./screens/Browse";
 import { Search } from "./screens/Search";
+import { openAll } from "./screens/links";
 import { showTabs } from "./tabs";
 import { Profiles } from "./screens/Profiles";
 import { SignIn } from "./screens/SignIn";
@@ -41,13 +42,13 @@ export function goHome() {
       title: "Movies",
       icon: "film",
       screen: () => browseScreen(() => api.browsePage("movies"), "movies"),
-      opts: { title: t("Movies") },
+      opts: { title: t("Movies"), actions: [{ text: t("All"), icon: "square.grid.3x3", tap: () => openAll("movies") }] },
     },
     {
       title: "Shows",
       icon: "tv",
       screen: () => browseScreen(() => api.browsePage("shows"), "shows"),
-      opts: { title: t("Shows") },
+      opts: { title: t("Shows"), actions: [{ text: t("All"), icon: "square.grid.3x3", tap: () => openAll("shows") }] },
     },
     { title: "Search", icon: "magnifyingglass", screen: () => <Search />, opts: { title: t("Search") } },
     { title: "My List", icon: "bookmark", screen: () => <MyList />, opts: { title: t("My List") } },

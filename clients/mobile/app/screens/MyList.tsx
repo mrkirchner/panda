@@ -8,7 +8,7 @@ import { For, Show } from "solid-js";
 import { load } from "../data";
 import { bestProgress } from "../requests";
 import { Poster, Progress, Row } from "./cards";
-import { openPreview, openSeries, openTitle } from "./links";
+import { openPreview, openSeries, openTitle, peekMovie, peekShow } from "./links";
 
 /** "Downloading 42%", "Searching", "Ready", "Couldn't be added". */
 function statusOf(r: MyRequest): string {
@@ -80,7 +80,7 @@ export function MyList() {
                 <Poster
                   image={m.poster}
                   title={m.title}
-                  onTap={() => (m.kind === "title" ? openTitle(m.id) : openSeries(m.id))}
+                  onTap={() => (m.kind === "title" ? peekMovie(m.id) : peekShow(m.id))}
                 />
               )}
             </For>

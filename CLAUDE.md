@@ -365,7 +365,11 @@
 - Screens are native pages (`app/nav.ts` `open()`: a Solid tree per page, disposed when the page
   is gone). Sign-in screens use the root Frame; signed in, the root shows a TabView (`app/tabs.tsx`:
   Home, Movies, Shows, Search), one Frame per tab, and `open()` pushes onto the selected tab's.
-  Links between screens live in `app/screens/links.tsx`. Styling is CSS classes in `app/app.css` (the TV palette); inline
+  Links between screens live in `app/screens/links.tsx`.
+- TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
+  (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
+  open, only the sheet's while a sheet is); the expanded tile is a sheet (`openSheet`,
+  `screens/Peek.tsx`) that row posters open. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
 - Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The

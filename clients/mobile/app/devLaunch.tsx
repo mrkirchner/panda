@@ -2,14 +2,14 @@
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
-//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile
+//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile | peek:<title id>
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";
-import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
+import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle, peekMovie } from "./screens/links";
 import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
 import { devSeek, play } from "./player";
@@ -58,6 +58,7 @@ export function devLaunch() {
     else if (what === "all") openAll(arg === "shows" ? "shows" : "movies");
     else if (what === "tab") selectTab(Number(arg));
     else if (what === "person") openPerson(Number(arg));
+    else if (what === "peek") peekMovie(arg);
     else if (what === "preview") {
       const [kind, id] = arg.split(":");
       openPreview(kind === "series" ? "series" : "movie", Number(id));

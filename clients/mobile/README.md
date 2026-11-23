@@ -17,7 +17,13 @@ Continue Watching, My List, holiday and themed rows, recently added, genre tiles
 top picks), Movies and Shows (`/api/browse/{kind}`: Featured, Top 10, Recently added, a row per
 genre, and "All" as a poster grid), Search (`/api/find`; before typing, top picks and the TV's Trending / "Popular on <service>"
 rows, requestable), My List (your requests with progress and Cancel, then saved titles). Home's
-profile button: Edit profile, Switch profile, Sign out. Genre pages
+profile button: Edit profile, Switch profile, Sign out.
+
+As on the TV: a hero carousel at the top of Home, Movies and Shows (`screens/Hero.tsx`: logo,
+reason, facts, ratings, Play / More info, 9 s slides), preview clips behind it and behind a
+title's page header (`app/clip.ts`: one at a time, quiet or silent per profile, none while the
+player or a sheet covers them), and the expanded tile: tapping a poster brings up a sheet with
+its clip, facts, Play, My List and More info (`screens/Peek.tsx`, `nav.ts` `openSheet`). Genre pages
 are laid out like Movies. A movie's page and a show's, as on the TV: logo, facts, ratings, Play or
 Resume, My List / Watched / Versions / More seasons, episodes, film series, More Like This, Cast &
 Crew, Information and Languages. People's pages, and pages for titles you don't have with
@@ -65,9 +71,11 @@ scripts/run-sim.sh "" ./sim-out 8 -pandaOpen title:m11423   # debug builds: open
 pnpm typecheck
 ```
 
+On your iPhone: `. scripts/env.sh && npx ns build ios` (or `npx ns prepare ios`), then open
+`platforms/ios/Panda.xcodeproj` in Xcode (there's no .xcworkspace: no CocoaPods), pick your team
+and your phone, and Run.
+
 `-pandaOpen` (debug builds only, `app/devLaunch.tsx`): `title:<id>`, `series:<name>`,
 `genre:<name>`, `all:movies|shows`, `tab:<0-3>`, `profiles`, `signin`, `connect`,
 `play-title:<id>`, `play-item:<id>[@<secs>]`, `person:<id>`, `preview:<kind>:<tmdb id>`;
-`-pandaSearch <q>`, `-pandaSeek <secs>`; `-pandaScroll <points>` scrolls the page down. On your own iPhone: open
-`platforms/ios/Panda.xcworkspace` in Xcode, pick your team and the phone, Run (free Apple
-accounts' builds last 7 days; TestFlight and the App Store need the paid program).
+`-pandaSearch <q>`, `-pandaSeek <secs>`; `-pandaScroll <points>` scrolls the page down. Free Apple accounts' builds last 7 days; TestFlight and the App Store need the paid program.
