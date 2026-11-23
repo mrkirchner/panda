@@ -6,7 +6,7 @@ import { installDiscovery } from "@appletv/discovery";
 import { AuthError, ensureSession } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, getToken } from "@tv/api/session";
-import { open, setFrame } from "./nav";
+import { open, setRootFrame } from "./nav";
 import { Connect } from "./screens/Connect";
 import { goHome, goProfiles, goSignIn } from "./session";
 import { devLaunch } from "./devLaunch";
@@ -30,7 +30,7 @@ function start() {
 Application.run({
   create: () => {
     const frame = new Frame();
-    setFrame(frame);
+    setRootFrame(frame);
     frame.on("loaded", start);
     return frame;
   },

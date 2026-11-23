@@ -362,13 +362,15 @@
   reads are answered in `app/shims/` (`localStorage` = ApplicationSettings, `#device`,
   `#devices/debug`). Solid 2 here, Solid 1.9 in the TV app: shared code may only use
   `createSignal` plain values (both versions agree on that).
-- Screens are native pages on one Frame (`app/nav.ts` `open()`: a Solid tree per page, disposed
-  when the page is gone). Styling is CSS classes in `app/app.css` (the TV palette); inline
+- Screens are native pages (`app/nav.ts` `open()`: a Solid tree per page, disposed when the page
+  is gone). Sign-in screens use the root Frame; signed in, the root shows a TabView (`app/tabs.tsx`:
+  Home, Movies, Shows, Search), one Frame per tab, and `open()` pushes onto the selected tab's.
+  Links between screens live in `app/screens/links.tsx`. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
 - Playback: AVPlayerViewController (`app/player.ts`), the device profile in `app/profile.ts`,
   progress every 10 s and on close, HLS sessions stopped on close.
-- Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` (debug builds;
-  `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
+- Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` and
+  `-pandaScroll <points>` (debug builds; `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
 
 ## Logo (clients/brand)
 - Sources: `panda-mark.svg` (panda in front of an orange play triangle; groups `#play` and

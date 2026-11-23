@@ -60,7 +60,6 @@ ActionBar {
   height: 168;
   border-radius: 8;
   background-color: #1a1a1d;
-  margin-right: 10;
 }
 .wide {
   width: 240;
@@ -103,7 +102,7 @@ ActionBar {
 .mt40 { margin-top: 40; }
 .center { text-align: center; }
 .profile-cell { margin: 14; width: 120; }
-.home { padding-bottom: 40; }
+.home { padding-bottom: 110; }
 .row-items { padding: 0 16; }
 .wide-cell { margin-right: 10; width: 240; }
 .card-sub { width: 240; }
@@ -112,3 +111,30 @@ ActionBar {
 .flush { margin-left: 0; margin-right: 0; }
 .episode-text { margin-left: 12; }
 .still-progress { width: 140; }
+
+/* Rows and cards */
+.section-head { margin: 22 16 10 16; }
+.section-title-text { font-size: 19; font-weight: bold; color: #f4f1ea; }
+.section-action { vertical-align: bottom; }
+.poster-cell { margin-right: 10; width: 112; }
+.poster-name { vertical-align: middle; padding: 6; }
+.rank {
+  font-size: 34; font-weight: bold; color: #f4f1ea;
+  horizontal-align: left; vertical-align: bottom; margin: 0 0 2 6;
+  text-shadow: 0 0 4 #000000;
+}
+.spot-cell { margin-right: 12; width: 300; }
+.spot { width: 300; height: 169; border-radius: 10; background-color: #1a1a1d; }
+.genre-tile { width: 170; height: 96; border-radius: 10; margin-right: 10; background-color: #1a1a1d; }
+.genre-scrim { background-color: #00000080; border-radius: 10; }
+.genre-name { font-size: 17; font-weight: bold; color: #f4f1ea; text-align: center; vertical-align: middle; }
+.banner { margin: 26 16 0 16; }
+.banner-image { height: 190; border-radius: 12; background-color: #1a1a1d; }
+.browse-all { margin: 12 16 0 16; }
+.grid-page { padding: 16 16 110 16; }
+.grid-note { margin-bottom: 10; }
+.grid-cell { margin-bottom: 10; border-radius: 8; background-color: #1a1a1d; }
+.grid-poster { border-radius: 8; }
+.search { background-color: #0d0d0f; color: #f4f1ea; }
+.search-note { margin: 16 16 0 16; }
+.tabs { background-color: #0d0d0f; selected-tab-text-color: #d4ae6a; tab-text-color: #a39e95; }
