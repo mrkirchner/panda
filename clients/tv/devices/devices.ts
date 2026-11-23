@@ -1,4 +1,4 @@
-import type { ClientProfile } from "../src/api/types";
+import type { Discovery, PlaybackProfile } from "../src/platform/types";
 import type { KeyMap, Config as LightningConfig } from "@solidtv/solid";
 
 export enum EDevicePlatform {
@@ -25,6 +25,11 @@ export interface QualityConfig {
   };
 }
 
+/**
+ * A TV platform (one folder per target here, chosen by `#device` at build time). The
+ * capabilities every Panda app shares are typed by ../src/platform/types.ts; the rest is the
+ * TV's own (renderer options, remote keys).
+ */
 export interface DeviceConfig {
   name: string;
   lightning?: Partial<typeof LightningConfig>;
@@ -32,12 +37,12 @@ export interface DeviceConfig {
   quality: QualityConfig;
   keys: Partial<KeyMap>;
   /** What this device plays, when the browser can't be asked (no MediaSource, e.g. Apple TV). */
-  playbackProfile?: () => ClientProfile;
+  playbackProfile?: PlaybackProfile["profile"];
   /** Back on Home (top bar focused) leaves the app, as tvOS expects of Menu. */
   exitOnRootBack?: boolean;
   /** What this device can tell about Panda servers nearby (src/api/discover.ts): servers it
    * found by name (Bonjour/NSD) and/or its own address, whose network is then scanned. */
-  discover?: () => Promise<{ urls: string[]; localIp?: string }>;
+  discover?: Discovery["find"];
 }
 
 export interface Device {

@@ -26,6 +26,8 @@ import { closeOverlay, overlayOpen, pick, type Choice } from "../components/ui";
 import { message, refreshAll } from "../data";
 import { features } from "../features";
 import { back, go } from "../nav";
+import { nowPlayingInfo, type NowPlayingSession } from "@tv/platform/types";
+import { nowPlaying } from "../platform/nowPlaying";
 import { Engine } from "./engine";
 import type { PlayTarget } from "./launch";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
@@ -340,6 +342,11 @@ export default function Player() {
     void features().then((f) => setCanSearch(!!f?.subtitle_search));
 
     const clock = setInterval(bump, 250);
+    // The system's controls follow along once a second (their skip buttons step from here).
+    const mediaClock = setInterval(
+      () => engine && media?.setPosition(engine.position(), engine.playing()),
+      1000,
+    );
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLInputElement) return;
@@ -396,6 +403,7 @@ export default function Player() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       clearInterval(clock);
+      clearInterval(mediaClock);
       clearTimeout(hideTimer);
       clearTimeout(toastTimer);
       clearTimeout(previewTimer);
@@ -412,40 +420,22 @@ export default function Player() {
         setPlayerOpen(false);
         refreshAll();
       }
-      if ("mediaSession" in navigator) {
-        const ms = navigator.mediaSession;
-        ms.metadata = null;
-        for (const a of ["play", "pause", "seekbackward", "seekforward", "seekto"] as const) {
-          try {
-            ms.setActionHandler(a, null);
-          } catch {
-            // Not every browser knows every action.
-          }
-        }
-      }
+      media?.end();
     };
   });
 
   /** The system's media controls (keyboard media keys, lock screen, notifications). */
+  let media: NowPlayingSession | null = null;
   const mediaSession = () => {
-    if (!("mediaSession" in navigator) || !engine) return;
-    const ms = navigator.mediaSession;
+    if (!engine) return;
     const i = engine.info;
-    const art = i ? (i.backdrop ?? i.poster) : null;
-    ms.metadata = new MediaMetadata({
-      title: i ? (i.kind === "episode" ? (i.episode_title ?? i.title) : (i.meta_title ?? i.title)) : "Panda",
-      artist: i?.kind === "episode" ? `${i.series ?? ""} S${i.season ?? 0}:E${i.episode ?? 0}` : "",
-      artwork: imageUrl(art) ? [{ src: imageUrl(art)! }] : [],
+    const info = nowPlayingInfo(i, imageUrl(i ? (i.backdrop ?? i.poster) : null) ?? null);
+    if (media) return media.setInfo(info);
+    media = nowPlaying.start(info, {
+      play: () => engine?.play(),
+      pause: () => engine?.pause(),
+      seekTo: (secs) => engine?.seekTo(secs),
     });
-    ms.setActionHandler("play", () => engine?.play());
-    ms.setActionHandler("pause", () => engine?.pause());
-    ms.setActionHandler("seekbackward", () => engine?.seekTo(engine.position() - SKIP_SECS));
-    ms.setActionHandler("seekforward", () => engine?.seekTo(engine.position() + SKIP_SECS));
-    try {
-      ms.setActionHandler("seekto", (d) => d.seekTime !== undefined && engine?.seekTo(d.seekTime));
-    } catch {
-      // Not every browser knows seekto.
-    }
   };
 
   const fraction = (secs: number) => (duration() > 0 ? Math.min(1, Math.max(0, secs / duration())) : 0);

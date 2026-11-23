@@ -38,6 +38,8 @@ import { setPlayerOpen } from "./clip.ios";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
 import { audioChoice, read, write } from "@tv/platform/settings";
 import type { PlayTarget } from "./platformTypes";
+import { nowPlaying } from "./nowPlaying.ios";
+import { nowPlayingInfo, type NowPlayingSession } from "@tv/platform/types";
 
 /** How often progress is saved while playing. */
 const SAVE_EVERY_MS = 10_000;
@@ -168,8 +170,8 @@ class PlayerSession {
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
   private previewTimer: ReturnType<typeof setTimeout> | undefined;
   private observer: unknown = null;
-  private readonly remoteTargets: { command: MPRemoteCommand; token: unknown }[] = [];
-  private artwork: MPMediaItemArtwork | null = null;
+  /** The lock screen and Control Center (nowPlaying.ios.ts). */
+  private nowPlaying: NowPlayingSession | null = null;
   private readonly appEvents: [string, (...a: unknown[]) => void][] = [];
   /** The TV's stall rules: too many or too long, and the stream steps down a quality. */
   private readonly stalls = new StallMonitor();
@@ -356,7 +358,7 @@ class PlayerSession {
           i.kind === "episode"
             ? `${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}  ${i.episode_title ?? ""}`.trim()
             : (i.meta_title ?? i.title);
-        this.loadArtwork(i.backdrop ?? i.poster);
+        this.updateNowPlaying();
       },
       () => {},
     );
@@ -381,7 +383,11 @@ class PlayerSession {
       setInterval(() => this.updateNowPlaying(), 1000),
     );
     this.startBackground();
-    this.startRemoteCommands();
+    this.nowPlaying = nowPlaying.start(this.nowPlayingInfo(), {
+      play: () => this.player.play(),
+      pause: () => this.player.pause(),
+      seekTo: secs => this.seekTo(secs),
+    });
   }
 
   // ---- In the background, and on the lock screen ----
@@ -399,61 +405,16 @@ class PlayerSession {
     for (const [name, fn] of this.appEvents) Application.on(name, fn);
   }
 
-  private startRemoteCommands() {
-    const center = MPRemoteCommandCenter.sharedCommandCenter();
-    const on = (command: MPRemoteCommand, fn: (e: MPRemoteCommandEvent) => void) => {
-      command.enabled = true;
-      const token = command.addTargetWithHandler(e => {
-        fn(e);
-        this.updateNowPlaying();
-        return MPRemoteCommandHandlerStatus.Success;
-      });
-      this.remoteTargets.push({ command, token });
-    };
-    on(center.playCommand, () => this.player.play());
-    on(center.pauseCommand, () => this.player.pause());
-    on(center.togglePlayPauseCommand, () => (this.player.rate !== 0 ? this.player.pause() : this.player.play()));
-    center.skipForwardCommand.preferredIntervals = NSArray.arrayWithObject(SKIP_SECS) as NSArray<number>;
-    center.skipBackwardCommand.preferredIntervals = NSArray.arrayWithObject(SKIP_SECS) as NSArray<number>;
-    on(center.skipForwardCommand, () => this.seekTo(this.position() + SKIP_SECS));
-    on(center.skipBackwardCommand, () => this.seekTo(this.position() - SKIP_SECS));
-    on(center.changePlaybackPositionCommand, e =>
-      this.seekTo((e as MPChangePlaybackPositionCommandEvent).positionTime),
-    );
-  }
-
-  private loadArtwork(key: string | null) {
-    const url = imageUrl(key);
-    if (!url) return;
-    ImageSource.fromUrl(url).then(
-      src => {
-        const image = src.ios as UIImage;
-        this.artwork = MPMediaItemArtwork.alloc().initWithBoundsSizeRequestHandler(image.size, () => image);
-        this.updateNowPlaying();
-      },
-      () => {},
-    );
+  private nowPlayingInfo() {
+    const art = this.info ? (this.info.backdrop ?? this.info.poster) : null;
+    return nowPlayingInfo(this.info, imageUrl(art) ?? null, this.duration());
   }
 
   /** What the lock screen and Control Center show: title, show, artwork, where it's at. */
   private updateNowPlaying() {
-    if (this.closed) return;
-    const info = NSMutableDictionary.new<string, unknown>();
-    const i = this.info;
-    info.setObjectForKey(
-      i ? (i.kind === "episode" ? (i.episode_title ?? i.title) : (i.meta_title ?? i.title)) : "Panda",
-      MPMediaItemPropertyTitle,
-    );
-    if (i?.kind === "episode") {
-      info.setObjectForKey(`${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}`.trim(), MPMediaItemPropertyArtist);
-    }
-    const dur = this.duration();
-    if (dur > 0) info.setObjectForKey(dur, MPMediaItemPropertyPlaybackDuration);
-    info.setObjectForKey(this.position(), MPNowPlayingInfoPropertyElapsedPlaybackTime);
-    info.setObjectForKey(this.player.rate, MPNowPlayingInfoPropertyPlaybackRate);
-    info.setObjectForKey(MPNowPlayingInfoMediaType.Video, MPNowPlayingInfoPropertyMediaType);
-    if (this.artwork) info.setObjectForKey(this.artwork, MPMediaItemPropertyArtwork);
-    MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = info as unknown as NSDictionary<string, unknown>;
+    if (this.closed || !this.nowPlaying) return;
+    this.nowPlaying.setInfo(this.nowPlayingInfo());
+    this.nowPlaying.setPosition(this.position(), this.player.rate !== 0);
   }
 
   private close() {
@@ -468,8 +429,7 @@ class PlayerSession {
     this.subs?.close();
     if (this.observer) this.player.removeTimeObserver(this.observer);
     for (const [name, fn] of this.appEvents) Application.off(name, fn);
-    for (const { command, token } of this.remoteTargets) command.removeTarget(token);
-    MPNowPlayingInfoCenter.defaultCenter().nowPlayingInfo = null;
+    this.nowPlaying?.end();
     this.pip?.stopPictureInPicture();
     this.player.pause();
     this.player.replaceCurrentItemWithPlayerItem(null);

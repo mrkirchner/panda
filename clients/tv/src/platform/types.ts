@@ -74,10 +74,15 @@ export interface NowPlaying {
 }
 
 /** The title and subtitle every platform shows for an item. */
-export function nowPlayingInfo(i: Item | null, artworkUrl: string | null, durationSecs?: number): NowPlayingInfo {
+export function nowPlayingInfo(
+  i: Item | null,
+  artworkUrl: string | null,
+  durationSecs?: number,
+): NowPlayingInfo {
   return {
     title: i ? (i.kind === "episode" ? (i.episode_title ?? i.title) : (i.meta_title ?? i.title)) : "Panda",
-    subtitle: i?.kind === "episode" ? `${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}`.trim() : undefined,
+    subtitle:
+      i?.kind === "episode" ? `${i.series ?? ""}  S${i.season ?? 0}:E${i.episode ?? 0}`.trim() : undefined,
     artworkUrl,
     durationSecs: durationSecs && durationSecs > 0 ? durationSecs : undefined,
   };

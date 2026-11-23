@@ -204,6 +204,19 @@
 - Colors are the TV app's palette as CSS variables in `styles.css` (gold accent, warm neutrals;
   `--link` is a deeper gold for text on light backgrounds). Keep the two in step.
 
+## Platform contract (all apps)
+- What an app needs from its platform is typed once in `clients/tv/src/platform/types.ts`
+  (`PlaybackProfile`, `Discovery`, `Voice`, `NowPlaying` with `nowPlayingInfo()` for the wording,
+  `Notifications`: no app shows any yet; push needs server work first). Each client answers it: the TV's
+  `DeviceConfig` (`tv/devices/devices.ts`, one folder per target), the phone's `platform.ios.ts` /
+  `platform.android.ts` (`satisfies PhonePlatform`, `app/platformTypes.ts`; screens import only
+  `./platform`), the web app's `src/platform/`. Optional capabilities left out turn their feature
+  off (Android has no `nowPlaying` yet: lock-screen controls need a media notification service).
+  A new platform implements the object and the type check lists what's missing.
+- Everything kept on a device goes through `clients/tv/src/platform/settings.ts` (`SETTINGS`,
+  `audioChoice()`, `read`/`write`; typed, storage failures swallowed). Never call `localStorage`
+  directly and never rename a key (devices have them).
+
 ## TV client (clients/tv)
 - SolidJS on SolidTV: `@solidtv/solid` (1.7) + `@solidtv/renderer` (2.x). The same source
   runs on Apple TV via NativeScript (clients/appletv). Renderer 2.x always draws with WebGL and
@@ -392,8 +405,8 @@
   TV's `theme.space`; no spacing in inline styles.
 
 ## Phone app (clients/mobile)
-- NativeScript 9 + SolidJS 2 via `@nativescript-community/solid-js` (native iOS views; Android
-  later, same project). Not the TV app's SolidTV canvas: phones need touch and portrait layouts.
+- NativeScript 9 + SolidJS 2 via `@nativescript-community/solid-js` (native iOS and Android views,
+  one project; OS code in `*.ios.ts` / `*.android.ts`, gathered in `platform.<os>.ts`). Not the TV app's SolidTV canvas: phones need touch and portrait layouts.
 - Shares the TV client's non-UI code as source: webpack alias `@tv` -> `../tv/src` (api, session,
   discover, i18n, types) and `@appletv` -> `../appletv/app` (Bonjour). Browser/TV globals that code
   reads are answered in `app/shims/` (`localStorage` = ApplicationSettings, `#device`,
@@ -404,7 +417,7 @@
   Home, Movies, Shows, Search), one Frame per tab, and `open()` pushes onto the selected tab's.
   Links between screens live in `app/screens/links.tsx`.
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
-  (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
+  (`clip.<os>.ts`, `platform.clips.play` returns a handle: stop only your own clip; none while the player is
   open, only the sheet's while a sheet is); Recently Added rows have a fixed focus spot at the left (`ExpandRow`:
   one layout function of a fractional spot position drives drag and settle alike (sizes follow the
   finger; the settle is our own 60 fps ease-out: NativeScript's width animation grows views about
@@ -434,7 +447,10 @@
   (700 ms, 2+ letters) and draws results only when idle.
 - Loading states: ghosts, as the TV's GhostRow (`GhostRow`, `GhostHero` in `screens/cards.tsx`, the
   `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
-- Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController
+- Android: Media3 ExoPlayer (`media3.android.ts`, a TextureView; its HLS picture is still black on
+  the emulator), NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
+  (`res/drawable/sym_*.xml`). Build: JDK 17 + `ANDROID_HOME`, `npx ns build android`.
+- Playback (`player.ios.ts`; `player.android.tsx` alike): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The
   timeline is the file's length; seeks go through the TV's `planSeek` (restart outside the
   stream). Subtitles drawn over `layer.videoRect` (`app/subtitles.ts`, the TV's windowed/file/PGS
