@@ -368,7 +368,10 @@
   Links between screens live in `app/screens/links.tsx`. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
 - Playback: AVPlayerViewController (`app/player.ts`), the device profile in `app/profile.ts`,
-  progress every 10 s and on close, HLS sessions stopped on close.
+  progress every 10 s and on close, HLS sessions stopped on close. Subtitles are drawn in its
+  `contentOverlayView` (`app/subtitles.ts`, the TV's windowed/file/PGS loading and `@tv/playback`
+  parsers); a tap shows our "Audio and subtitles" button (native action sheets). A build whose Xcode
+  step was cut short can be unsigned or stale: `scripts/run-sim.sh` refuses an unsigned app.
 - Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` and
   `-pandaScroll <points>` (debug builds; `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
 

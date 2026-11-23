@@ -24,8 +24,16 @@ MP4/MOV with H.264/HEVC direct, the rest remuxed to HLS) and AVPlayerViewControl
 iOS's controls, AirPlay and Picture in Picture. Progress is saved every 10 s and on close, so
 resume and Continue Watching follow you between the phone and the TVs.
 
-Not yet: subtitles and audio track choice, requests, people pages, My List editing, avatars,
-Android.
+Subtitles and audio (`app/subtitles.ts`): iOS's player has no place for our own menus, so a tap
+also shows an "Audio and subtitles" button (under iOS's mute button) that opens native menus.
+Subtitles are drawn over the picture (`contentOverlayView`), loaded as the TV loads them: built-in
+text tracks in 10-minute windows (`?from=`), subtitle files whole, image (PGS) tracks from the
+manifest the server fills in as it extracts them, placed where they were authored. Parsing and
+labels are the TV's (`@tv/playback/*`). The subtitle language is remembered across titles (else a
+forced track in the audio's language shows); the audio track per title (the TV's key). Another
+audio track restarts the stream there, as on the TV.
+
+Not yet: subtitle timing, requests, people pages, My List editing, avatars, Android.
 
 ## Running
 
@@ -39,6 +47,6 @@ pnpm typecheck
 
 `-pandaOpen` (debug builds only, `app/devLaunch.tsx`): `title:<id>`, `series:<name>`,
 `genre:<name>`, `all:movies|shows`, `tab:<0-3>`, `profiles`, `signin`, `connect`,
-`play-title:<id>`; `-pandaScroll <points>` scrolls the page down. On your own iPhone: open
+`play-title:<id>`, `play-item:<id>[@<secs>]`; `-pandaScroll <points>` scrolls the page down. On your own iPhone: open
 `platforms/ios/Panda.xcworkspace` in Xcode, pick your team and the phone, Run (free Apple
 accounts' builds last 7 days; TestFlight and the App Store need the paid program).

@@ -1,10 +1,11 @@
-import { createSignal } from "solid-js";
+import { createSignal, untrack } from "solid-js";
 
-/** A screen's data: loads once, `value` until then undefined, `error` if it failed. */
+/** A screen's data: loads once, `value` until then undefined, `error` if it failed. The request
+ * starts untracked (it reads the server address, a signal, once). */
 export function load<T>(fetcher: () => Promise<T>) {
   const [value, setValue] = createSignal<T | undefined>(undefined);
   const [error, setError] = createSignal<string | null>(null);
-  fetcher().then(
+  untrack(fetcher).then(
     v => setValue(() => v),
     (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
   );

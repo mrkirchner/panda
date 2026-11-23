@@ -1,7 +1,7 @@
 // Debug builds only: open a screen at launch, for checking screens in the simulator without
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
-//              profiles | signin | connect | play-title:<id>
+//              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
 //   -pandaScroll <points>   then scroll the page down that far
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
@@ -48,5 +48,9 @@ export function devLaunch() {
     else if (what === "signin") goSignIn();
     else if (what === "connect") open(() => <Connect />, { clear: true });
     else if (what === "play-title") play({ kind: "title", id: arg }).catch(e => console.log(`play failed: ${String(e)}`));
+    else if (what === "play-item") {
+      const [id, at] = arg.split("@");
+      play({ kind: "item", id: Number(id) }, Number(at ?? 0)).catch(e => console.log(`play failed: ${String(e)}`));
+    }
   }, 300);
 }

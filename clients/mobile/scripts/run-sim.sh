@@ -11,6 +11,8 @@ BUNDLE=app.panda.mobile; NAME=Panda
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
 APP=$(find platforms/ios/build -maxdepth 3 -type d -name "$NAME.app" | grep -i simulator | head -1)
 [ -z "$APP" ] && { echo "no simulator build; run: . scripts/env.sh && npx ns build ios --emulator"; exit 1; }
+# An interrupted Xcode step can leave the app unsigned (iOS then refuses to start it) or stale.
+codesign -v "$APP" 2>/dev/null || { echo "$APP isn't signed: build again"; exit 1; }
 xcrun simctl boot "$UDID" 2>/dev/null; open -a Simulator --args -CurrentDeviceUDID "$UDID"
 xcrun simctl bootstatus "$UDID" -b >/dev/null
 xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1
