@@ -5,6 +5,7 @@ import type { MyListEntry, MyRequest } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal, onSettled } from "solid-js";
 import { Poster, Progress } from "../components/cards";
+import { VirtualGrid } from "../components/VirtualGrid";
 import { confirmAction, toast } from "../components/ui";
 import { load, message, refreshAll } from "../data";
 import { href, paths } from "../nav";
@@ -98,17 +99,17 @@ export default function MyList() {
           <div class="section-head">
             <h2 class="section-title">{t("Saved")}</h2>
           </div>
-          <div class="poster-grid">
-            <For each={list.value()!}>
-              {(m) => (
-                <Poster
-                  image={m.poster}
-                  title={m.title}
-                  href={href(m.kind === "title" ? paths.title(m.id) : paths.series(m.id))}
-                />
-              )}
-            </For>
-          </div>
+          {/* Virtual, like the All grid: only the rows near the screen exist, however long it gets. */}
+          <VirtualGrid
+            items={list.value()!}
+            cell={(m) => (
+              <Poster
+                image={m().poster}
+                title={m().title}
+                href={href(m().kind === "title" ? paths.title(m().id) : paths.series(m().id))}
+              />
+            )}
+          />
         </section>
       </Show>
       <Show when={!list.value() || !requestsLoaded()}>

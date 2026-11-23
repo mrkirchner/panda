@@ -381,8 +381,8 @@
   with a mouse (`(hover: hover)`): a moving snap target repaints its row every frame. The expanding
   row is a track of fixed-size cards: the open card's wide part fades in while the cards after it
   slide (`transform`); backdrops are fetched ahead (lazy loading never fetches a hidden picture).
-  Rows off screen use `content-visibility: auto`; unbounded lists (My List's grid, episodes) skip
-  each item off screen; the All grid is virtual with rows keyed by row number (keyed by position,
+  Rows off screen use `content-visibility: auto`; a season's episodes skip each item off
+  screen; the All grid and My List are virtual (`components/VirtualGrid.tsx`) with rows keyed by row number (keyed by position,
   every row switches titles and repaints when the window moves). Fixed/sticky bars, hero slides,
   grid rows and the player's controls are layers; the player's clock and scrub bar only update
   while the controls show. Not layered: shadows (`::after`) and the All grid's cards (layers there

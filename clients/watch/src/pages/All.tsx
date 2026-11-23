@@ -15,8 +15,9 @@ import {
   type BrowseEntry,
   type SortBy,
 } from "@tv/library/browse";
-import { For, Show, createMemo, createSignal, onSettled, untrack } from "solid-js";
+import { For, Show, createMemo, untrack } from "solid-js";
 import { Poster } from "../components/cards";
+import { VirtualGrid, type GridControls } from "../components/VirtualGrid";
 import { Icon } from "../components/icons";
 import { pick } from "../components/ui";
 import { load } from "../data";
@@ -37,9 +38,6 @@ interface Entry extends BrowseEntry {
   progress: number;
   href: string;
 }
-
-/** Rows drawn above and below the screen. */
-const BUFFER_ROWS = 3;
 
 function AllGrid(props: { kind: "movies" | "shows" }) {
   const [params, setParams] = useSearchParams<{
@@ -122,57 +120,13 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
     if (i >= 0) set({ library: options[i].id === null ? undefined : String(options[i].id) });
   };
 
-  // ---- The virtual grid ----
-  let grid: HTMLDivElement | undefined;
-  const [cols, setCols] = createSignal(3);
-  const [rowH, setRowH] = createSignal(240);
-  const [range, setRange] = createSignal<[number, number]>([0, 6]);
-  const rowCount = () => Math.ceil(entries().length / cols());
-  const measure = () => {
-    if (!grid) return;
-    const style = getComputedStyle(grid);
-    const gap = parseFloat(style.getPropertyValue("--gap")) || 12;
-    const minW = parseFloat(style.getPropertyValue("--poster-w")) || 140;
-    const width = grid.clientWidth;
-    const n = Math.max(2, Math.floor((width + gap) / (minW + gap)));
-    const cellW = (width - gap * (n - 1)) / n;
-    setCols(n);
-    setRowH(Math.round(cellW * 1.5 + gap));
-    update();
-  };
-  const update = () => {
-    if (!grid) return;
-    const top = grid.getBoundingClientRect().top;
-    const h = rowH();
-    const first = Math.max(0, Math.floor(-top / h) - BUFFER_ROWS);
-    const last = Math.ceil((window.innerHeight - top) / h) + BUFFER_ROWS;
-    const [a, b] = range();
-    if (a !== first || b !== last) setRange([first, last]);
-  };
-  onSettled(() => {
-    const ro = new ResizeObserver(measure);
-    if (grid) ro.observe(grid);
-    window.addEventListener("scroll", update, { passive: true });
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("scroll", update);
-    };
-  });
-  const rows = createMemo(() => {
-    const [a, b] = range();
-    const out: number[] = [];
-    for (let r = a; r < Math.min(b, rowCount()); r++) out.push(r);
-    return out;
-  });
-  const cells = (r: number) => entries().slice(r * cols(), (r + 1) * cols());
+  let grid: GridControls | undefined;
 
   /** The A-Z rail: the first title at or after a letter. */
   const letters = createMemo(() => new Set(entries().map((e) => letterOf(e.title))));
   const jump = (letter: string) => {
     const i = indexForLetter(entries(), letter);
-    if (i < 0 || !grid) return;
-    const y = grid.getBoundingClientRect().top + window.scrollY + Math.floor(i / cols()) * rowH();
-    window.scrollTo({ top: y - 120, behavior: "smooth" });
+    if (i >= 0) grid?.scrollToIndex(i);
   };
 
   return (
@@ -221,51 +175,20 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
       <Show when={list.value() && !entries().length}>
         <p class="empty">{t("Nothing matches these filters.")}</p>
       </Show>
-      <div
-        class={["vgrid", { "with-letters": sort() === "az" && entries().length > 40 }]}
-        ref={(el) => (grid = el)}
-        style={{ height: list.value() ? `${rowCount() * rowH()}px` : "auto" }}
-      >
-        <Show
-          when={list.value()}
-          fallback={
-            <div
-              class="vgrid-row"
-              style={{ position: "static", "grid-template-columns": `repeat(${cols()}, 1fr)` }}
-            >
-              <For each={Array.from({ length: cols() * 3 }, (_, n) => n)}>
-                {() => <div class="ghost" style={{ "aspect-ratio": "2 / 3" }} />}
-              </For>
-            </div>
-          }
-        >
-          {/* Rows keyed by their number: a row that stays on screen keeps its posters (keyed by
-              position, every row would switch titles, and repaint, whenever the window moved). */}
-          <For each={rows()}>
-            {(r) => (
-              <div
-                class="vgrid-row"
-                style={{
-                  transform: `translateY(${r * rowH()}px)`,
-                  "grid-template-columns": `repeat(${cols()}, 1fr)`,
-                }}
-              >
-                <For each={cells(r)} keyed={false}>
-                  {(e) => (
-                    <Poster
-                      image={e().poster}
-                      title={e().title}
-                      fraction={e().progress}
-                      watched={e().watched}
-                      href={e().href}
-                    />
-                  )}
-                </For>
-              </div>
-            )}
-          </For>
-        </Show>
-      </div>
+      <VirtualGrid
+        items={list.value() ? entries() : undefined}
+        class={sort() === "az" && entries().length > 40 ? "with-letters" : undefined}
+        controls={(c) => (grid = c)}
+        cell={(e) => (
+          <Poster
+            image={e().poster}
+            title={e().title}
+            fraction={e().progress}
+            watched={e().watched}
+            href={e().href}
+          />
+        )}
+      />
       <Show when={sort() === "az" && entries().length > 40}>
         <nav class="letters" aria-label={t("Jump to letter")}>
           <For each={LETTERS}>
