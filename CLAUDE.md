@@ -379,6 +379,10 @@
   Text over artwork: black scrims plus text-shadow. A GridLayout inside a StackLayout needs
   `rows="auto"`, or its default star row takes spare height. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
+- Long lists: the All grid is a real virtual list (`app/virtual.tsx` `createVirtualList`: a
+  ListView/UITableView, cells built once from the renderer's `document.createElement` and handed new
+  items on reuse; set `rowHeight` after the class or it stays "auto"). Rows inside a scrolling page
+  can't be a table: long ones are paged ("Show more", episodes 40 at a time). Server rows are capped.
 - Loading states: ghosts, as the TV's GhostRow (`GhostRow`, `GhostHero` in `screens/cards.tsx`, the
   `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
 - Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController

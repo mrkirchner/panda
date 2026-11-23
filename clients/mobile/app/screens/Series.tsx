@@ -34,6 +34,9 @@ export function nextUp(eps: Item[]): Item | undefined {
   return started[0] ?? pool.find(e => !e.progress?.finished) ?? pool[0];
 }
 
+/** Episodes shown at once in a season (then "Show more"). */
+const EPISODES_PAGE = 40;
+
 const label = (e: Item) => `S${e.season ?? 0}:E${e.episode ?? 0}`;
 
 export function seriesScreen(name: string) {
@@ -53,7 +56,10 @@ export function seriesScreen(name: string) {
   /** Any episode watched or begun. */
   const started = () => (episodes.value() ?? []).some(e => e.progress);
   const season = () => picked() ?? next()?.season ?? seasons()[0] ?? 0;
-  const shown = () => (episodes.value() ?? []).filter(e => (e.season ?? 0) === season());
+  const inSeason = () => (episodes.value() ?? []).filter(e => (e.season ?? 0) === season());
+  /** Long seasons (shows numbered straight through) a page at a time, not hundreds of rows at once. */
+  const [limit, setLimit] = createSignal(EPISODES_PAGE);
+  const shown = () => inSeason().slice(0, limit());
   /** The seasons TMDB lists that aren't in your library (More seasons asks Sonarr for them). */
   const missing = createMemo(() => {
     const total = details.value()?.seasons ?? 0;
@@ -206,7 +212,10 @@ export function seriesScreen(name: string) {
                 <label
                   class={season() === s ? "season-tab selected" : "season-tab"}
                   text={s === 0 ? t("Specials") : t("Season {n}", { n: s })}
-                  on:tap={() => setPicked(s)}
+                  on:tap={() => {
+                    setPicked(s);
+                    setLimit(EPISODES_PAGE);
+                  }}
                 />
               )}
             </For>
@@ -239,6 +248,13 @@ export function seriesScreen(name: string) {
             </gridlayout>
           )}
         </For>
+        <Show when={inSeason().length > limit()}>
+          <button
+            class="secondary browse-all"
+            text={t("Show more")}
+            on:tap={() => setLimit(n => n + EPISODES_PAGE)}
+          />
+        </Show>
         {/* The next episode to air, greyed at the end of its season (the TV's). */}
         <Show when={upcomingInSeason() && upcomingInSeason()!.season === season()}>
           <gridlayout class="episode upcoming" columns="auto, *">

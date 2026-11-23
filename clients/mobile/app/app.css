@@ -241,3 +241,9 @@ ActionBar {
 .person-facts { padding-top: 0; }
 .ghost-line { height: 14; width: 220; border-radius: 4; margin-top: 10; horizontal-align: left; }
 .ghost-text { height: 70; border-radius: 6; margin-top: 14; }
+.all-page { padding: 0; }
+.all-chips { padding: 16 16 0 16; }
+.all-head { padding: 0 16 10 16; }
+.all-ghosts { padding: 0 16; }
+.virtual-list { background-color: #0d0d0f; }
+.grid-row { padding: 0 16; }

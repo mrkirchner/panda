@@ -11,7 +11,7 @@
 //   -pandaDrag <points>     6 s after launch, drag that row like a finger (negative: leftward)
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
-import { ScrollView, type View } from "@nativescript/core";
+import { ListView, ScrollView, type View } from "@nativescript/core";
 import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
@@ -26,11 +26,12 @@ const argAfter = (flag: string): string | null => {
   return i === NSNotFound || i + 1 >= args.count ? null : (args.objectAtIndex(i + 1) as string);
 };
 
-/** The first ScrollView in `view`'s tree (vertical ones only). */
-function firstScroll(view: View | undefined): ScrollView | null {
+/** The first ScrollView in `view`'s tree (vertical ones only), or a virtual list. */
+function firstScroll(view: View | undefined): ScrollView | ListView | null {
   if (!view) return null;
+  if (view instanceof ListView) return view;
   if (view instanceof ScrollView && view.orientation === "vertical") return view;
-  let found: ScrollView | null = null;
+  let found: ScrollView | ListView | null = null;
   view.eachChildView(child => {
     found ??= firstScroll(child);
     return !found;
@@ -47,7 +48,15 @@ export function devPrepare() {
 export function devLaunch() {
   const scroll = argAfter("-pandaScroll");
   if (scroll) {
-    setTimeout(() => firstScroll(currentFrame()?.currentPage)?.scrollToVerticalOffset(Number(scroll), false), 4000);
+    setTimeout(() => {
+      const target = firstScroll(currentFrame()?.currentPage);
+      // A virtual list scrolls by row: the offset over its row height.
+      if (target instanceof ListView) {
+        const row = typeof target.rowHeight === "number" ? target.rowHeight : 200;
+        target.scrollToIndex(Math.floor(Number(scroll) / row));
+      }
+      else target?.scrollToVerticalOffset(Number(scroll), false);
+    }, 4000);
   }
   const expand = argAfter("-pandaExpand");
   if (expand) setTimeout(() => devExpand?.(Number(expand)), 4500);
