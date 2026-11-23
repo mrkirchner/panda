@@ -138,3 +138,30 @@ ActionBar {
 .search { background-color: #0d0d0f; color: #f4f1ea; }
 .search-note { margin: 16 16 0 16; }
 .tabs { background-color: #0d0d0f; selected-tab-text-color: #d4ae6a; tab-text-color: #a39e95; }
+
+/* Title pages */
+.logo { height: 70; horizontal-align: left; margin-bottom: 4; }
+.ratings { color: #d4ae6a; }
+.credits-line { font-size: 13; color: #a39e95; margin-top: 10; }
+.actions { margin-top: 18; }
+.action { width: 84; margin-right: 8; }
+.action-circle { width: 48; height: 48; border-radius: 24; background-color: #242427; horizontal-align: center; }
+.action-circle.on { background-color: #d4ae6a; }
+.action-icon { width: 22; height: 22; }
+.action-label { font-size: 12; color: #a39e95; text-align: center; margin-top: 6; }
+.badge {
+  font-size: 11; font-weight: bold; color: #141210; background-color: #d4ae6a;
+  border-radius: 4; padding: 2 6; horizontal-align: left; vertical-align: top; margin: 6;
+}
+.person-cell { width: 92; margin-right: 10; }
+.headshot { width: 84; height: 84; border-radius: 42; background-color: #242427; horizontal-align: center; }
+.headshot-initial { font-size: 30; font-weight: bold; color: #a39e95; text-align: center; vertical-align: middle; }
+.person-name { font-size: 13; color: #f4f1ea; text-align: center; margin-top: 6; }
+.person-role { text-align: center; }
+.facts-block { margin: 26 16 0 16; }
+.fact { margin-top: 10; }
+.status-line { font-size: 14; color: #d4ae6a; margin-top: 8; }
+.person-hero { height: 200; }
+.hero-scrim { background: linear-gradient(to bottom, #0d0d0f00, #0d0d0f); }
+.person-head { margin-top: -70; }
+.photo { width: 120; height: 120; border-radius: 60; background-color: #242427; horizontal-align: left; margin-bottom: 12; border-width: 3; border-color: #0d0d0f; }

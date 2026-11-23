@@ -9,7 +9,9 @@ import { For, Show } from "solid-js";
 import { load } from "../data";
 import { play } from "../player";
 import { Banner, GenreTile, Poster, Row, WideCard } from "./cards";
-import { openGenre, openSeries, openSpot, openTitle } from "./links";
+import { openGenre, openPreview, openSeries, openSpot, openTitle } from "./links";
+import { bestProgress } from "../requests";
+import type { MyRequest } from "@tv/api/types";
 
 const asFeatured = (f: Featured | Title): Featured =>
   "kind" in f ? { reason: "Recently added", movie: f } : f;
@@ -90,6 +92,20 @@ export function Home() {
     return api.homeMore().catch(() => null);
   });
   const home = () => data.value();
+  /** Requests still on their way: first in My List, with how they're going. */
+  const requests = load<MyRequest[]>(async () => {
+    await ensureSession();
+    return (await api.myRequests().catch(() => [] as MyRequest[])).filter(
+      r => !r.title_id && !r.series && r.status !== "failed",
+    );
+  });
+  const requestBadge = (r: MyRequest) => {
+    const p = bestProgress(r);
+    if (p?.state === "downloading") return t("Downloading {p}%", { p: Math.round(p.fraction * 100) });
+    if (p?.state === "importing") return t("Importing");
+    if (p?.state === "searching") return t("Searching");
+    return t("Requested");
+  };
   const seasonal = () => (more.value()?.themed ?? []).filter(r => r.seasonal);
   const daily = () => (more.value()?.themed ?? []).filter(r => !r.seasonal);
 
@@ -120,9 +136,20 @@ export function Home() {
             </For>
           </Row>
         </Show>
-        <Show when={home()?.my_list.length}>
+        <Show when={(home()?.my_list.length ?? 0) + (requests.value()?.length ?? 0) > 0}>
           <Row title={t("My List")}>
-            <For each={home()!.my_list}>
+            <For each={requests.value() ?? []}>
+              {r => (
+                <Poster
+                  image={r.poster}
+                  title={r.title}
+                  badge={requestBadge(r)}
+                  fraction={bestProgress(r)?.state === "downloading" ? bestProgress(r)!.fraction : 0}
+                  onTap={() => r.tmdb_id && openPreview(r.kind, r.tmdb_id)}
+                />
+              )}
+            </For>
+            <For each={home()?.my_list ?? []}>
               {m => (
                 <Poster
                   image={m.poster}

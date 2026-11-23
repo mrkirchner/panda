@@ -29,6 +29,8 @@ export function Poster(props: {
   title: string;
   rank?: number;
   fraction?: number;
+  /** "Requested", "Downloading 42%"... over the corner. */
+  badge?: string;
   onTap: () => void;
 }) {
   return (
@@ -40,6 +42,9 @@ export function Poster(props: {
         <image class="poster" src={imageUrl(props.image)} stretch="aspectFill" />
         <Show when={props.rank}>
           <label class="rank" text={String(props.rank)} />
+        </Show>
+        <Show when={props.badge}>
+          <label class="badge" text={props.badge ?? ""} />
         </Show>
       </gridlayout>
       <Show when={(props.fraction ?? 0) > 0}>

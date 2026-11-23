@@ -372,6 +372,10 @@
   `contentOverlayView` (`app/subtitles.ts`, the TV's windowed/file/PGS loading and `@tv/playback`
   parsers); a tap shows our "Audio and subtitles" button (native action sheets). A build whose Xcode
   step was cut short can be unsigned or stale: `scripts/run-sim.sh` refuses an unsigned app.
+- Solid 2 refuses signal writes while a component is being built (REACTIVE_WRITE_IN_OWNED_SCOPE, a
+  fatal error that leaves a black screen): start work that writes from a timeout, a promise or
+  an event. The JS engine has no Intl/locale data: language names come from iOS
+  (`Intl.DisplayNames` shim in `app/shims/globals.ts`), dates are formatted by hand (`data.ts`).
 - Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` and
   `-pandaScroll <points>` (debug builds; `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
 

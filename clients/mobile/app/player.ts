@@ -17,7 +17,8 @@ const SAVE_EVERY_MS = 10_000;
 /** The Audio and subtitles button hides this long after the last tap. */
 const BUTTON_MS = 4000;
 
-export type PlayTarget = { kind: "title"; id: string } | { kind: "item"; id: number };
+/** A movie (`version`: one of its files, else the server picks) or one file (an episode). */
+export type PlayTarget = { kind: "title"; id: string; version?: number } | { kind: "item"; id: number };
 
 let audioSessionReady = false;
 function readyAudioSession() {
@@ -84,7 +85,7 @@ function savedAudio(target: PlayTarget): number | undefined {
 async function request(target: PlayTarget, at: number, audioIndex?: number): Promise<Playback> {
   const profile = phoneProfile();
   return target.kind === "title"
-    ? api.playTitle(target.id, profile, at, undefined, audioIndex)
+    ? api.playTitle(target.id, profile, at, target.version, audioIndex)
     : api.startPlayback(target.id, profile, at, audioIndex);
 }
 

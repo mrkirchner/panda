@@ -16,7 +16,11 @@ Who's watching, then a tab bar (`app/tabs.tsx`): Home (as on the TV: featured ti
 Continue Watching, My List, holiday and themed rows, recently added, genre tiles, a spotlight,
 top picks), Movies and Shows (`/api/browse/{kind}`: Featured, Top 10, Recently added, a row per
 genre, and "All" as a poster grid), Search (`/api/find`, top picks before typing). Genre pages
-are laid out like Movies. A movie's page, and a show's (seasons and episodes). Each tab has its
+are laid out like Movies. A movie's page and a show's, as on the TV: logo, facts, ratings, Play or
+Resume, My List / Watched / Versions / More seasons, episodes, film series, More Like This, Cast &
+Crew, Information and Languages. People's pages, and pages for titles you don't have with
+Request (seasons for shows) and Cancel; Search adds those titles and People; your requests lead
+My List with their progress. Each tab has its
 own Frame (`app/nav.ts`), so it keeps its own history, with iOS's navigation bar and swipe back.
 
 Playback (`app/player.ts`): the server plans the stream for this device (`app/profile.ts`:
@@ -33,7 +37,7 @@ labels are the TV's (`@tv/playback/*`). The subtitle language is remembered acro
 forced track in the audio's language shows); the audio track per title (the TV's key). Another
 audio track restarts the stream there, as on the TV.
 
-Not yet: subtitle timing, requests, people pages, My List editing, avatars, Android.
+Not yet: subtitle timing, avatars, editing profiles, Android.
 
 ## Running
 

@@ -9,7 +9,7 @@ import { getDeviceSecret, getToken } from "@tv/api/session";
 import { open, setRootFrame } from "./nav";
 import { Connect } from "./screens/Connect";
 import { goHome, goProfiles, goSignIn } from "./session";
-import { devLaunch } from "./devLaunch";
+import { devLaunch, devPrepare } from "./devLaunch";
 
 // Bonjour: the Panda servers on this network (the Apple TV host's, same iOS APIs).
 installDiscovery();
@@ -19,6 +19,7 @@ function start() {
   if (!getServer()) return open(() => <Connect />, { clear: true });
   if (!getToken()) return getDeviceSecret() ? goProfiles() : goSignIn();
   ensureSession().then(() => {
+    if (__DEV__) devPrepare();
     goHome();
     if (__DEV__) devLaunch();
   }, (e: unknown) => {
