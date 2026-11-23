@@ -3,7 +3,7 @@
 import { Frame, Page, TabView, TabViewItem, type SelectedIndexChangedEventData } from "@nativescript/core";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { t } from "@tv/i18n";
-import { makePage, setCurrentFrame, showRoot, type ScreenOptions } from "./nav";
+import { makePage, releaseFrame, setBeforeRootReset, setCurrentFrame, showRoot, type ScreenOptions } from "./nav";
 
 interface Tab {
   title: string;
@@ -23,10 +23,17 @@ export function showTabs(tabs: Tab[]): void {
   const view = new TabView();
   view.className = "tabs";
   const frames: Frame[] = [];
+  /** A tab is built the first time it's chosen (not all five at launch, each with its requests). */
+  const built = new Set<number>();
+  const build = (i: number) => {
+    if (built.has(i)) return;
+    built.add(i);
+    const frame = frames[i];
+    frame.navigate({ create: () => makePage(tabs[i].screen, tabs[i].opts, () => frame), animated: false });
+  };
   const items = tabs.map(tab => {
     const frame = new Frame();
     frames.push(frame);
-    frame.navigate({ create: () => makePage(tab.screen, tab.opts, () => frame), animated: false });
     const item = new TabViewItem();
     item.title = t(tab.title);
     item.iconSource = `sys://${tab.icon}`;
@@ -34,8 +41,10 @@ export function showTabs(tabs: Tab[]): void {
     return item;
   });
   view.items = items;
+  build(0);
   setCurrentFrame(frames[0]);
   view.on("selectedIndexChanged", (e: SelectedIndexChangedEventData) => {
+    build(e.newIndex);
     setCurrentFrame(frames[e.newIndex]);
     onTabShown.get(tabs[e.newIndex]?.title ?? "")?.();
   });
@@ -44,4 +53,9 @@ export function showTabs(tabs: Tab[]): void {
   page.actionBarHidden = true;
   page.content = view;
   showRoot(page);
+  // Signed out or another profile: every tab's screens go with the tab bar.
+  setBeforeRootReset(() => {
+    for (const f of frames) releaseFrame(f);
+    onTabShown.clear();
+  });
 }

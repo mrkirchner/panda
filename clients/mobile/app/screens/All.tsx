@@ -9,6 +9,7 @@ import type { Library } from "@tv/api/types";
 import { t, tn } from "@tv/i18n";
 import { browse, genresOf, type BrowseEntry, type SortBy } from "@tv/library/browse";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
+import { libraries as serverLibraries } from "../features";
 import { load } from "../data";
 import { Progress } from "./cards";
 import { createVirtualList } from "../virtual";
@@ -31,7 +32,7 @@ interface Entry extends BrowseEntry {
 }
 
 export function allScreen(kind: "movies" | "shows", genre?: string, library?: number) {
-  const libraries = load(() => api.libraries().catch(() => [] as Library[]));
+  const libraries = load(() => serverLibraries());
   const list = load<Entry[]>(
     async () =>
       kind === "movies"
@@ -105,26 +106,36 @@ export function allScreen(kind: "movies" | "shows", genre?: string, library?: nu
     for (let i = 0; i < all.length; i += 3) out.push(all.slice(i, i + 3));
     return out;
   });
+  // keyed={false}: a reused row keeps its three cells and only their contents change (keyed by
+  // identity, every reuse would build three new posters, defeating the recycling).
   const grid = createVirtualList<Entry[]>(height + 10, row => (
     <stacklayout orientation="horizontal" class="grid-row">
-      <For each={row()}>
+      <For each={row()} keyed={false}>
         {(e, i) => (
-          <gridlayout class="grid-cell" width={width} height={height} marginRight={i() === 2 ? 0 : 10} rows="*, auto" on:tap={() => e.open()}>
-            <Show when={!e.poster}>
-              <label rowSpan={2} class="small center poster-name" textWrap={true} text={e.title} />
+          <gridlayout
+            class="grid-cell"
+            width={width}
+            height={height}
+            marginRight={i === 2 ? 0 : 10}
+            rows="*, auto"
+            on:tap={() => e().open()}
+          >
+            <Show when={!e().poster}>
+              <label rowSpan={2} class="small center poster-name" textWrap={true} text={e().title} />
             </Show>
-            <image loadMode="async" rowSpan={2} class="grid-poster" src={imageUrl(e.poster)} stretch="aspectFill" />
-            <Show when={e.watched}>
+            <image loadMode="async" rowSpan={2} class="grid-poster" src={imageUrl(e().poster)} stretch="aspectFill" />
+            <Show when={e().watched}>
               <label rowSpan={2} class="watched-mark" text="✓" />
             </Show>
-            <Show when={e.progress > 0}>
-              <Progress row={1} fraction={e.progress} width={width} />
+            <Show when={e().progress > 0}>
+              <Progress row={1} fraction={e().progress} width={width} />
             </Show>
           </gridlayout>
         )}
       </For>
     </stacklayout>
   ));
+
   createEffect(rows, r => grid.update(r));
 
   return (

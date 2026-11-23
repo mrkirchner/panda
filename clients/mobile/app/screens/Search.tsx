@@ -144,7 +144,7 @@ export function Search() {
       if (i >= word.length) return;
       const started = Date.now();
       field.insertText(word[i++]);
-      console.log(`TYPE now "${field.text}" (bar ${bar?.text}) focused=${field.isFirstResponder} in ${Date.now() - started} ms`);
+      if (__DEV__) console.log(`TYPE now "${field.text}" (bar ${bar?.text}) focused=${field.isFirstResponder} in ${Date.now() - started} ms`);
       setTimeout(next, 400);
     };
     setTimeout(next, 500);
@@ -170,6 +170,7 @@ export function Search() {
         text={startQuery}
         hint={t("Movies and shows")}
         ref={(el: SearchBar) => (bar = el)}
+        on:loaded={() => onTabShown.get("Search")?.()}
         on:textChange={(e: { object: SearchBar }) => search(e.object.text ?? "")}
         on:submit={(e: { object: SearchBar }) => e.object.dismissSoftInput()}
       />

@@ -317,6 +317,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
     const next = Math.max(0, Math.min(props.items.length - 1, n));
     const changed = next !== focus;
     focus = next;
+    setNear(next);
     place(next, true);
     if (!changed) return;
     clip?.stop();
@@ -349,20 +350,26 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
       release(tx, g.velocityInView(g.view).x);
     }
   };
+  let pan: UIPanGestureRecognizer | null = null;
+  /** Once: the row loads again on every tab switch and Back (more recognizers would each move it). */
   const attachPan = (row: View) => {
     const native = row.ios as UIView | undefined;
-    if (!native) return;
+    if (!native || pan) return;
     // Cards leave at the page margin, not under the screen's edge.
     native.clipsToBounds = true;
     const target = new PanTarget();
     target.fn = onPan;
-    const pan = UIPanGestureRecognizer.alloc().initWithTargetAction(target, "pan");
+    pan = UIPanGestureRecognizer.alloc().initWithTargetAction(target, "pan");
     const delegate = new Sideways();
     pan.delegate = delegate as unknown as UIGestureRecognizerDelegate;
     native.addGestureRecognizer(pan);
     keep.push(target, delegate);
+    rowView = native;
   };
   const keep: NSObject[] = [];
+  let rowView: UIView | null = null;
+  /** Backdrops only near the spot (each is a 1280 px picture): the open card and its neighbours. */
+  const [near, setNear] = createSignal(0);
 
   devExpand ??= tap;
   devScrollRow ??= (steps: number) => goTo(focus + steps);
@@ -387,6 +394,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
     clearTimeout(clipTimer);
     clearInterval(settling);
     clip?.stop();
+    if (pan) rowView?.removeGestureRecognizer(pan);
     keep.length = 0;
     if (devExpand === tap) devExpand = null;
   });
@@ -414,7 +422,12 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
               on:tap={() => tap(i())}
             >
               <gridlayout opacity={i() === 0 ? 1 : 0} ref={(el: View) => (wides[i()] = el)}>
-                <image loadMode="async" class="expanded-art" src={imageUrl(item.backdrop ?? item.poster)} stretch="aspectFill" />
+                <image
+                  loadMode="async"
+                  class="expanded-art"
+                  src={Math.abs(i() - near()) <= 1 ? imageUrl(item.backdrop ?? item.poster) : undefined}
+                  stretch="aspectFill"
+                />
                 <contentview class="clip-host expanded-art" ref={(el: ContentView) => (hosts[i()] = el)} />
                 <stacklayout class="expanded-scrim" />
                 <stacklayout class="expanded-text" verticalAlignment="bottom">

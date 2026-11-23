@@ -5,3 +5,10 @@ import { api } from "@tv/api/client";
 type Features = Awaited<ReturnType<typeof api.features>>;
 let asked: Promise<Features | null> | null = null;
 export const features = () => (asked ??= api.features().catch(() => null));
+
+/** The server's libraries (asked once: Movies, Shows and the All grid all want them). */
+let libs: ReturnType<typeof api.libraries> | null = null;
+export const libraries = () => (libs ??= api.libraries().catch(() => {
+  libs = null;
+  return [];
+}));

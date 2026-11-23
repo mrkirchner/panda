@@ -383,6 +383,17 @@
   ListView/UITableView, cells built once from the renderer's `document.createElement` and handed new
   items on reuse; set `rowHeight` after the class or it stays "auto"). Rows inside a scrolling page
   can't be a table: long ones are paged ("Show more", episodes 40 at a time). Server rows are capped.
+- Speed on device (checked in a full review): run Release builds on the phone
+  (`scripts/run-device.sh`; Debug is 5.6 MB of unminified JS with Solid's dev checks); every
+  `<image>` gets `loadMode="async"`; `NSURLCache` is 50 MB/300 MB (app.tsx); tabs are built on first
+  open and released on sign-out/profile switch (`setBeforeRootReset`); lists keyed by a stable id
+  (`MoreRow` `keyed={keyOf}`, virtual cells `keyed={false}`), row items in `createMemo`, never
+  `.map` in JSX props that are read on gestures; native gesture recognizers attached once and
+  removed on cleanup; timers/pollers stop when signed out, off screen or in the background;
+  big images only near what's shown (focus row backdrops); clips use the Ambient audio session,
+  the player takes Playback and releases it on close; shared stores for My List, requests and
+  libraries (`refreshHooks`) instead of a fetch per page. Search waits for typing to pause
+  (700 ms, 2+ letters) and draws results only when idle.
 - Loading states: ghosts, as the TV's GhostRow (`GhostRow`, `GhostHero` in `screens/cards.tsx`, the
   `.ghost` pulse in app.css) hold a page's shape until its data arrives; no spinners on content pages.
 - Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController

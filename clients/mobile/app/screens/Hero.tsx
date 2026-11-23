@@ -69,7 +69,13 @@ export function Hero(props: { slides: HeroSlide[] }) {
       );
     }, CLIP_DELAY_MS);
   };
-  setTimeout(() => arrive(0), 0);
+  /** Off screen (another page, another tab): no timers, no clip; back on screen: start again. */
+  const pause = () => {
+    clearTimeout(settle);
+    clearTimeout(advance);
+    clip?.stop();
+    clip = null;
+  };
   onCleanup(() => {
     clearTimeout(settle);
     clearTimeout(advance);
@@ -83,8 +89,10 @@ export function Hero(props: { slides: HeroSlide[] }) {
         orientation="horizontal"
         scrollBarIndicatorVisible={false}
         ref={(el: ScrollView) => (scroller = el)}
+        on:unloaded={pause}
         on:loaded={(e: { object: ScrollView }) => {
           (e.object.ios as UIScrollView).pagingEnabled = true;
+          arrive(index());
         }}
         on:scroll={(e: { scrollX: number }) => {
           const i = Math.round(e.scrollX / width);

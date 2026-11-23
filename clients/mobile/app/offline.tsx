@@ -1,6 +1,8 @@
 // Libraries whose storage is offline right now (`/api/libraries/offline`), checked every minute
 // as the TV's top bar does, shown as a banner on Home, Movies and Shows.
+import { Application } from "@nativescript/core";
 import { api } from "@tv/api/client";
+import { getToken } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { Show, createRoot, createSignal } from "solid-js";
 
@@ -10,7 +12,10 @@ const store = createRoot(() => {
   return { names, setNames };
 });
 let started = false;
+let away = false;
 function check() {
+  // Signed out (a 401 would send the sign-in screen back to its start) or in the background.
+  if (!getToken() || away) return;
   api.offlineLibraries().then(
     n => store.setNames(n),
     () => {},
@@ -23,6 +28,11 @@ export function OfflineBanner() {
     started = true;
     check();
     setInterval(check, CHECK_MS);
+    Application.on(Application.backgroundEvent, () => (away = true));
+    Application.on(Application.foregroundEvent, () => {
+      away = false;
+      check();
+    });
   }
   return (
     <Show when={store.names().length}>

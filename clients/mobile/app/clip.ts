@@ -3,7 +3,7 @@
 // the hero, a title's page and the expanded card. One at a time; quiet, or silent when the
 // profile says so (Edit profile's Preview sound). The artwork stays until frames show, so
 // nothing flashes black; at the end the clip fades back to it.
-import type { View } from "@nativescript/core";
+import { Application, type View } from "@nativescript/core";
 import { api } from "@tv/api/client";
 import { currentUser } from "@tv/api/session";
 import { refreshAll } from "./data";
@@ -30,6 +30,9 @@ export function setSheetOpen(open: boolean) {
   sheetOpen = open;
   stopClip();
 }
+
+// Leaving the app: no clip keeps playing (or polling) in the background.
+Application.on(Application.backgroundEvent, () => stopClip());
 
 /** Stop whatever clip is playing (a title starting, the screen going away). */
 export function stopClip() {
@@ -96,10 +99,22 @@ export function playClip(
       host.on("layoutChanged", fit);
       player.play();
       let shown = false;
+      let stalledSince = 0;
       poll = setInterval(() => {
         const p = player;
         if (!p) return;
         const t = CMTimeGetSeconds(p.currentTime());
+        // Paused or stuck (an interruption, a stall) for a few seconds: it's over.
+        if (shown && p.timeControlStatus !== AVPlayerTimeControlStatus.Playing) {
+          stalledSince ||= Date.now();
+          if (Date.now() - stalledSince > 3000) {
+            clearInterval(poll);
+            if (current === job) stopClip();
+            else job.stop();
+            onEnded?.();
+            return;
+          }
+        } else stalledSince = 0;
         if (!shown && p.timeControlStatus === AVPlayerTimeControlStatus.Playing && t > 0) {
           shown = true;
           UIView.animateWithDurationAnimations(0.6, () => (native.alpha = 1));
@@ -123,9 +138,15 @@ export function playClip(
     },
   );
   // Gone from the screen (another page, another tab): the clip stops with it.
-  host.once("unloaded", () => {
+  const gone = () => {
     if (current === job) stopClip();
-  });
+  };
+  host.once("unloaded", gone);
+  const plainStop = job.stop;
+  job.stop = () => {
+    host.off("unloaded", gone);
+    plainStop();
+  };
   // The caller's handle stops this clip only (not one another screen started since).
   return {
     stop: () => {

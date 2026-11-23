@@ -6,6 +6,7 @@ import { api } from "@tv/api/client";
 import type { GenrePage, Library } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
+import { libraries as serverLibraries } from "../features";
 import { load } from "../data";
 import { open } from "../nav";
 import { OfflineBanner } from "../offline";
@@ -23,7 +24,7 @@ export type BrowseKind =
 export function browseScreen(fetchPage: () => Promise<GenrePage>, what: BrowseKind) {
   const page = load(fetchPage);
   const libraries = load(() =>
-    what.of === "kind" ? api.libraries().catch(() => [] as Library[]) : Promise.resolve([] as Library[]),
+    what.of === "kind" ? serverLibraries() : Promise.resolve([] as Library[]),
   );
   const ofKind = () => (what.of === "kind" ? (libraries.value() ?? []).filter(l => l.kind === what.kind) : []);
   const seeAll = () => {

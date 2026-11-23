@@ -61,9 +61,7 @@ function topController(): UIViewController | null {
   return vc;
 }
 
-let audioSessionReady = false;
 function readyAudioSession() {
-  if (audioSessionReady) return;
   // Sound plays with the ringer switch on silent, and keeps playing in Picture in Picture.
   const session = AVAudioSession.sharedInstance();
   session.setCategoryModeOptionsError(
@@ -72,8 +70,17 @@ function readyAudioSession() {
     0 as AVAudioSessionCategoryOptions,
   );
   session.setActiveError(true);
-  audioSessionReady = true;
 }
+
+/** The player closed: give the sound back (others' music resumes) and let clips mix quietly. */
+function releaseAudioSession() {
+  const session = AVAudioSession.sharedInstance();
+  session.setActiveWithOptionsError(false, AVAudioSessionSetActiveOptions.NotifyOthersOnDeactivation);
+  session.setCategoryModeOptionsError(AVAudioSessionCategoryAmbient, AVAudioSessionModeDefault, 0 as AVAudioSessionCategoryOptions);
+}
+
+/** Decoded image-subtitle pictures kept (the one showing and a few around it). */
+const SUB_IMAGES_KEPT = 8;
 
 // ---- Objective-C glue ----
 
@@ -466,6 +473,8 @@ class PlayerSession {
     this.player.pause();
     this.player.replaceCurrentItemWithPlayerItem(null);
     if (this.pb.method === "hls") void api.stopSession(this.pb.session_id);
+    releaseAudioSession();
+    this.imageCache.clear();
     this.vc.dismissViewControllerAnimatedCompletion(true, () => {
       this.keep.length = 0;
       setPlayerOpen(false);
@@ -883,6 +892,10 @@ class PlayerSession {
           ImageSource.fromUrl(url).then(
             src => {
               this.imageCache.set(url, src.ios as UIImage);
+              // The oldest go first (a film's worth would be hundreds of MB).
+              while (this.imageCache.size > SUB_IMAGES_KEPT) {
+                this.imageCache.delete(this.imageCache.keys().next().value as string);
+              }
               this.shownKey = "x";
             },
             () => this.imageCache.delete(url),

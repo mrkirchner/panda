@@ -71,38 +71,47 @@ export interface MoreItem {
   suggestion?: Discover;
 }
 
+/** What a row's item is, for matching it across reloads (new objects each time, same title). */
+const keyOf = (i: MoreItem) =>
+  i.title ? `t:${i.title.id}` : i.spot ? `s:${i.spot.kind}:${i.spot.id}` : i.show ? `w:${i.show.series}` : `d:${i.suggestion?.kind}:${i.suggestion?.tmdb_id}`;
+
+/** A row of posters: yours (with progress) and ones you could request (with their status).
+ * Matched by title across reloads, so a refresh updates the posters instead of rebuilding them. */
 export function MoreRow(props: { title: string; items: MoreItem[] }) {
   return (
     <Show when={props.items.length}>
       <Row title={props.title}>
-        <For each={props.items}>
-          {i =>
-            i.title ? (
-              <Poster
-                image={i.title.poster}
-                title={i.title.title}
-                fraction={i.title.progress && !i.title.progress.finished ? i.title.progress.fraction : 0}
-                watched={i.title.progress?.finished}
-                onTap={() => openTitle(i.title!.id)}
-              />
-            ) : i.spot ? (
-              <Poster image={i.spot.poster} title={i.spot.title} onTap={() => openSpot(i.spot!)} />
-            ) : i.show ? (
-              <Poster
-                image={i.show.poster}
-                title={i.show.meta_title ?? i.show.series}
-                onTap={() => openSeries(i.show!.series)}
-              />
-            ) : (
-              <Poster
-                image={i.suggestion!.poster}
-                title={i.suggestion!.title}
-                badge={discoverStatus(i.suggestion!).label}
-                fraction={discoverStatus(i.suggestion!).progress}
-                onTap={() => openPreview(i.suggestion!.kind, i.suggestion!.tmdb_id)}
-              />
-            )
-          }
+        <For each={props.items} keyed={keyOf}>
+          {item => {
+            const i = () => item();
+            return (
+              <Show
+                when={i().suggestion}
+                fallback={
+                  <Poster
+                    image={i().title?.poster ?? i().spot?.poster ?? i().show?.poster ?? null}
+                    title={i().title?.title ?? i().spot?.title ?? i().show?.meta_title ?? i().show?.series ?? ""}
+                    fraction={i().title?.progress && !i().title!.progress!.finished ? i().title!.progress!.fraction : 0}
+                    watched={i().title?.progress?.finished}
+                    onTap={() => {
+                      const it = i();
+                      if (it.title) openTitle(it.title.id);
+                      else if (it.spot) openSpot(it.spot);
+                      else if (it.show) openSeries(it.show.series);
+                    }}
+                  />
+                }
+              >
+                <Poster
+                  image={i().suggestion!.poster}
+                  title={i().suggestion!.title}
+                  badge={discoverStatus(i().suggestion!).label}
+                  fraction={discoverStatus(i().suggestion!).progress}
+                  onTap={() => openPreview(i().suggestion!.kind, i().suggestion!.tmdb_id)}
+                />
+              </Show>
+            );
+          }}
         </For>
       </Row>
     </Show>

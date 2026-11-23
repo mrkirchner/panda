@@ -58,24 +58,47 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
       }
     });
   }
+  let disposed = false;
+  const release = () => {
+    if (disposed) return;
+    disposed = true;
+    dispose();
+  };
+  (page as Page & { release?: () => void }).release = release;
   page.on("navigatedFrom", (e: NavigatedData) => {
     const f = frame();
-    if (e.isBackNavigation || !f?.backStack.some(entry => entry.resolvedPage === page)) dispose();
+    if (e.isBackNavigation || !f?.backStack.some(entry => entry.resolvedPage === page)) release();
   });
   return page;
 }
+
+/** Every page of `frame` (shown and in its history) lets go of its screen. */
+export function releaseFrame(frame: Frame) {
+  const pages = [frame.currentPage, ...frame.backStack.map(e => e.resolvedPage)];
+  for (const p of pages) (p as (Page & { release?: () => void }) | undefined)?.release?.();
+}
+
+/** Called before the root starts over (sign-out, another profile): the tabs let go of theirs. */
+let beforeRootReset: (() => void) | null = null;
+export const setBeforeRootReset = (fn: (() => void) | null) => (beforeRootReset = fn);
 
 /** Push `screen` onto the frame in use (or, with `clear`, start the app's root over with it). */
 export function open(screen: () => JSX.Element, opts: ScreenOptions = {}): void {
   const frame = opts.clear ? root : current;
   if (!frame) throw new Error("no frame yet");
-  if (opts.clear) current = root;
+  if (opts.clear) {
+    current = root;
+    beforeRootReset?.();
+    beforeRootReset = null;
+  }
   const page = makePage(screen, opts, () => frame);
   frame.navigate({ create: () => page, clearHistory: opts.clear ?? false, animated: !opts.clear });
 }
 
 /** Show `page` as the root's only page (the tab bar). */
 export function showRoot(page: Page): void {
+  beforeRootReset?.();
+  beforeRootReset = null;
   root?.navigate({ create: () => page, clearHistory: true, animated: false });
 }
 

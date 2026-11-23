@@ -4,7 +4,7 @@
 import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/api/types";
 import { t, tServer } from "@tv/i18n";
-import { For, Show } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { facts, load, runtime } from "../data";
 import { play } from "../player";
 import { Banner, ExpandRow, GenreTile, GhostHero, GhostRow, Poster, Row, WideCard } from "./cards";
@@ -59,6 +59,29 @@ export function Home() {
   };
   const openRequest = (r: MyRequest) =>
     r.title_id ? openTitle(r.title_id) : r.series ? openSeries(r.series) : r.tmdb_id && openPreview(r.kind, r.tmdb_id);
+  // Computed once per load (not on every read: the rows read their items while you swipe).
+  const heroSlides = createMemo(() =>
+    (home()?.featured.length ? home()!.featured : (home()?.recently_added_movies ?? []).slice(0, 5)).map(featuredSlide),
+  );
+  const movieCards = createMemo(() => (home() ? home()!.recently_added_movies.map(m => ({
+              key: m.id,
+              title: m.title,
+              poster: m.poster,
+              backdrop: m.backdrop,
+              meta: facts([m.year, runtime(m.duration_secs), (m.genres ?? "").split(/,\s*/)[0]]),
+              clip: { kind: "title" as const, id: m.id },
+              fraction: m.progress && !m.progress.finished ? m.progress.fraction : 0,
+              open: () => openTitle(m.id),
+            })) : []));
+  const showCards = createMemo(() => (home() ? home()!.recently_added_shows.map(s => ({
+              key: s.series,
+              title: s.meta_title ?? s.series,
+              poster: s.poster,
+              backdrop: s.backdrop,
+              meta: facts([s.year, t("{n} seasons", { n: s.seasons }), (s.genres ?? "").split(/,\s*/)[0]]),
+              clip: { kind: "series" as const, name: s.series },
+              open: () => openSeries(s.series),
+            })) : []));
   const seasonal = () => (more.value()?.themed ?? []).filter(r => r.seasonal);
   const daily = () => (more.value()?.themed ?? []).filter(r => !r.seasonal);
 
@@ -78,11 +101,7 @@ export function Home() {
         <OfflineBanner />
         {/* Nothing featured: the newest movies take the hero (as the TV does). */}
         <Show when={home()?.featured.length || home()?.recently_added_movies.length}>
-          <Hero
-            slides={(home()!.featured.length ? home()!.featured : home()!.recently_added_movies.slice(0, 5)).map(
-              featuredSlide,
-            )}
-          />
+          <Hero slides={heroSlides()} />
         </Show>
         <Show when={home()?.continue_watching.length}>
           <Row title={t("Continue Watching")}>
@@ -127,16 +146,7 @@ export function Home() {
         <Show when={home()?.recently_added_movies.length}>
           <ExpandRow
             title={t("Recently Added Movies")}
-            items={home()!.recently_added_movies.map(m => ({
-              key: m.id,
-              title: m.title,
-              poster: m.poster,
-              backdrop: m.backdrop,
-              meta: facts([m.year, runtime(m.duration_secs), (m.genres ?? "").split(/,\s*/)[0]]),
-              clip: { kind: "title" as const, id: m.id },
-              fraction: m.progress && !m.progress.finished ? m.progress.fraction : 0,
-              open: () => openTitle(m.id),
-            }))}
+            items={movieCards()}
           />
         </Show>
         <Show when={more.value()?.genres.length}>
@@ -149,15 +159,7 @@ export function Home() {
         <Show when={home()?.recently_added_shows.length}>
           <ExpandRow
             title={t("Recently Added Shows")}
-            items={home()!.recently_added_shows.map(s => ({
-              key: s.series,
-              title: s.meta_title ?? s.series,
-              poster: s.poster,
-              backdrop: s.backdrop,
-              meta: facts([s.year, t("{n} seasons", { n: s.seasons }), (s.genres ?? "").split(/,\s*/)[0]]),
-              clip: { kind: "series" as const, name: s.series },
-              open: () => openSeries(s.series),
-            }))}
+            items={showCards()}
           />
         </Show>
         <Show when={more.value()?.spotlights[0]}>
