@@ -3,12 +3,12 @@
 import { api, imageUrl } from "@tv/api/client";
 import type { MyListEntry, MyRequest } from "@tv/api/types";
 import { t } from "@tv/i18n";
-import { For, Show } from "solid-js";
+import { For, Show, createSignal, onSettled } from "solid-js";
 import { Poster, Progress } from "../components/cards";
 import { confirmAction, toast } from "../components/ui";
 import { load, message, refreshAll } from "../data";
 import { href, paths } from "../nav";
-import { bestProgress } from "../requests";
+import { bestProgress, myRequests, refreshRequests } from "../requests";
 
 /** "Downloading 42%", "Searching", "Ready", "Failed: ...". */
 function statusOf(r: MyRequest): string {
@@ -38,9 +38,13 @@ const cancellable = (r: MyRequest) => {
 };
 
 export default function MyList() {
-  const requests = load(() => api.myRequests().catch(() => [] as MyRequest[]), { live: true });
+  // The shared store (polled every 20 s while anything is on its way, as the TV does).
+  const [requestsLoaded, setRequestsLoaded] = createSignal(false);
+  onSettled(() => {
+    void refreshRequests().finally(() => setRequestsLoaded(true));
+  });
   const list = load(() => api.myList().catch(() => [] as MyListEntry[]), { live: true });
-  const shown = () => (requests.value() ?? []).filter((r) => !r.listed);
+  const shown = () => myRequests().filter((r) => !r.listed);
 
   const cancel = async (r: MyRequest) => {
     if (!(await confirmAction(r.title, t("Cancel this request?"), t("Cancel request"), true))) return;
@@ -49,7 +53,7 @@ export default function MyList() {
   };
 
   return (
-    <div style={{ "padding-top": "calc(var(--topbar-h) + 12px)" }}>
+    <div class="page-top">
       <div class="page-head">
         <h1>{t("My List")}</h1>
       </div>
@@ -107,14 +111,14 @@ export default function MyList() {
           </div>
         </section>
       </Show>
-      <Show when={!list.value() || !requests.value()}>
+      <Show when={!list.value() || !requestsLoaded()}>
         <div class="poster-grid section">
           <For each={[0, 1, 2, 3, 4, 5]}>
             {() => <div class="ghost" style={{ "aspect-ratio": "2 / 3" }} />}
           </For>
         </div>
       </Show>
-      <Show when={list.value() && requests.value() && !shown().length && !list.value()!.length}>
+      <Show when={list.value() && requestsLoaded() && !shown().length && !list.value()!.length}>
         <p class="empty">{t("Titles you add with My List, and the ones you request, show up here.")}</p>
       </Show>
     </div>

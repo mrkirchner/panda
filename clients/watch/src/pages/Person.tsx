@@ -41,7 +41,7 @@ function PersonView(props: { id: number; knownName?: string; knownImage?: string
                 {name().slice(0, 1)}
                 <Show when={photo()}>{(src) => <img src={src()} alt="" />}</Show>
               </div>
-              <div style={{ display: "grid", gap: "8px" }}>
+              <div class="stack tight">
                 <h1 class="detail-title">{name()}</h1>
                 <Show when={p()} fallback={<div class="ghost ghost-line" />}>
                   <span class="facts-line">

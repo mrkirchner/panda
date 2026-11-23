@@ -152,6 +152,10 @@ export function initialTrack(tracks: SubtitleTrack[], audioLanguage: string | nu
     const pick = mine.find(t => t.hearing_impaired === pref.sdh) ?? mine[0];
     if (pick) return pick;
   }
+  // Turned off last time: only a forced track (signs, foreign dialogue) in the language heard.
+  if (pref && pref.language === null) {
+    return usable.find(t => t.forced && (!audioLanguage || t.language === audioLanguage)) ?? null;
+  }
   // Else the file's own choice (as the TV picks): a forced track in the language heard, then one
   // the file marks as default.
   return (

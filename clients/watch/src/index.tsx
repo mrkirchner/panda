@@ -5,7 +5,7 @@ import { createRouter, useLocation, useNavigate } from "@solidjs/router";
 import { Show, createSignal, lazy, onSettled } from "solid-js";
 import { Shell } from "./components/Shell";
 import { Overlays, closeOverlay } from "./components/ui";
-import { appPath, go, setNavigator } from "./nav";
+import { appPath, go, markFirstEntry, setNavigator } from "./nav";
 import { boot } from "./session";
 import Home from "./pages/Home";
 
@@ -63,13 +63,19 @@ function Root(props: { children?: JSX.Element }) {
   const [ready, setReady] = createSignal(false);
   onSettled(() => {
     const here = appPath(location.pathname);
-    void boot(here).then((dest) => {
-      // Sent to sign in or pick a profile on the way to a page: back to it afterwards.
-      const comeBack = (dest === "/sign-in" || dest === "/profiles") && here !== "/" && !bare(here);
-      if (dest)
-        go(comeBack ? `${dest}?next=${encodeURIComponent(here + location.search)}` : dest, { replace: true });
-      setReady(true);
-    });
+    void boot(here).then(
+      (dest) => {
+        // Sent to sign in or pick a profile on the way to a page: back to it afterwards.
+        const comeBack = (dest === "/sign-in" || dest === "/profiles") && here !== "/" && !bare(here);
+        if (dest)
+          go(comeBack ? `${dest}?next=${encodeURIComponent(here + location.search)}` : dest, {
+            replace: true,
+          });
+        setReady(true);
+      },
+      () => setReady(true),
+    );
+    markFirstEntry();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && closeOverlay()) e.preventDefault();
     };

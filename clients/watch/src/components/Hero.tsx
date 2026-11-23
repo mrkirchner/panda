@@ -59,6 +59,7 @@ export function Hero(props: { slides: HeroSlide[] }) {
     if (!visible) return;
     advance = setTimeout(() => go(i + 1), SLIDE_MS);
     settle = setTimeout(() => {
+      let played = false;
       const host = hosts[i];
       const slide = props.slides[i];
       if (!host || !slide) return;
@@ -66,11 +67,15 @@ export function Hero(props: { slides: HeroSlide[] }) {
         host,
         slide.clip,
         () => {
-          if (gone) return;
+          // Only a clip that played moves the hero on early; no clip keeps the slide's time.
+          if (gone || !played) return;
           clearTimeout(advance);
           advance = setTimeout(() => go(i + 1), 1500);
         },
-        () => clearTimeout(advance),
+        () => {
+          played = true;
+          clearTimeout(advance);
+        },
       );
     }, CLIP_DELAY_MS);
   };

@@ -13,6 +13,7 @@ import {
   setUnauthorizedHandler,
 } from "@tv/api/session";
 import { refreshAll } from "./data";
+import { resetStores } from "./features";
 import { appPath, go } from "./nav";
 
 /** Built to be served by Panda at /watch/ (vite.config.ts). */
@@ -58,6 +59,7 @@ export function signedIn(res: { token: string; device_token: string | null }) {
  * are asked again rather than showing the last profile's. */
 export function profileChanged() {
   resetSession();
+  resetStores();
   refreshAll();
 }
 
@@ -73,7 +75,9 @@ export async function boot(path: string): Promise<string | null> {
     const next = OPEN_PATHS.some((p) => here.startsWith(p)) ? "" : `?next=${encodeURIComponent(here)}`;
     go(`${getDeviceSecret() ? "/profiles" : "/sign-in"}${next}`, { replace: true });
   });
-  if (!getServer()) return path === "/connect" ? null : "/connect";
+  // Hosted elsewhere, the shared module guesses "this host on :8096": until an address is chosen
+  // (Connect keeps it), ask for it first.
+  if (!getServer() || (!SERVED_BY_PANDA && !chosenServer())) return path === "/connect" ? null : "/connect";
   if (!getToken()) {
     if (getDeviceSecret()) return OPEN_PATHS.includes(path) ? null : "/profiles";
     if (SERVED_BY_PANDA) {
@@ -94,16 +98,32 @@ export async function boot(path: string): Promise<string | null> {
     return null;
   }
   // Launch on Home: pick a profile first when the account has several.
-  if (path === "/" && !sessionStorage.getItem("panda.watch.landed")) {
-    try {
-      sessionStorage.setItem("panda.watch.landed", "1");
-    } catch {
-      // Asked again next time.
-    }
+  if (path === "/" && !firstLanding()) {
     const landing = await landingPath();
     if (landing !== "/") return landing;
   }
   return null;
+}
+
+/** The server address Connect kept (the shared module stores it as "panda.server"). */
+function chosenServer(): boolean {
+  try {
+    return !!localStorage.getItem("panda.server");
+  } catch {
+    return false;
+  }
+}
+
+/** Already landed once in this tab (Who's watching shows on the first visit only); storage can
+ * be blocked (Safari's "Block all cookies"), so it's tried and noted. */
+function firstLanding(): boolean {
+  try {
+    if (sessionStorage.getItem("panda.watch.landed")) return true;
+    sessionStorage.setItem("panda.watch.landed", "1");
+  } catch {
+    // Without storage, every visit to Home starts there.
+  }
+  return false;
 }
 
 /** Sign this browser out completely (its device credential too). */
@@ -111,5 +131,6 @@ export function signOutBrowser() {
   setToken(null);
   setDeviceSecret(null);
   resetSession();
+  resetStores();
   go("/sign-in", { replace: true });
 }

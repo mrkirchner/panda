@@ -9,12 +9,12 @@ import { load } from "../data";
 export default function About() {
   const credits = load(() => api.credits().catch(() => [] as Credit[]));
   return (
-    <div class="form-page" style={{ "padding-top": "calc(var(--topbar-h) + 16px)" }}>
+    <div class="form-page page-top">
       <h1>{t("About Panda")}</h1>
       <p class="muted">{t("Titles, artwork, episodes and ratings come from these services:")}</p>
       <For each={credits.value() ?? []}>
         {(c) => (
-          <div class="form-section setting-row" style={{ "justify-content": "flex-start" }}>
+          <div class="form-section setting-row start">
             <Show when={c.id === "tmdb"}>
               <img
                 src={`${import.meta.env.BASE_URL}images/tmdb.svg`}
@@ -26,14 +26,12 @@ export default function About() {
               <a href={c.site} target="_blank" rel="noreferrer">
                 <b>{c.name}</b>
               </a>
-              <div class="muted" style={{ "font-size": "14px" }}>
-                {c.credit}
-              </div>
+              <div class="hint">{c.credit}</div>
             </div>
           </div>
         )}
       </For>
-      <p class="muted" style={{ "margin-top": "24px" }}>
+      <p class="note">
         {t(
           "Panda is open source under the Apache License 2.0. It uses FFmpeg (LGPL/GPL), Roboto (Apache 2.0) and Noto Sans (SIL OFL 1.1). Full credits and licenses: LEGAL.md in the source.",
         )}

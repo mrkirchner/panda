@@ -310,8 +310,11 @@ export function ExpandRow(props: {
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
   const hoverable = matchMedia("(hover: hover)").matches;
 
+  /** The card whose clip is playing or about to (the first card starts open with none). */
+  let clipFor = -1;
   const openAt = (i: number) => {
-    if (i === open()) return;
+    if (i === open() && clipFor === i) return;
+    clipFor = i;
     setOpen(i);
     clip?.stop();
     clip = null;

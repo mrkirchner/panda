@@ -160,19 +160,17 @@ export default function EditProfile() {
   };
 
   return (
-    <div class="form-page" style={{ "padding-top": "calc(var(--topbar-h) + 16px)" }}>
+    <div class="form-page page-top">
       <h1>{t("Edit profile")}</h1>
       <Show when={me()}>
         {(m) => (
           <>
             <div class="form-section">
-              <div class="setting-row" style={{ "justify-content": "flex-start" }}>
+              <div class="setting-row start">
                 <Avatar name={m().name} picture={m().avatar} size={96} />
-                <div style={{ display: "grid", gap: "8px", flex: "1" }}>
-                  <label class="field" style={{ margin: "0" }}>
-                    <span class="muted" style={{ "font-size": "13px" }}>
-                      {t("Name")}
-                    </span>
+                <div class="grow">
+                  <label class="field flush">
+                    <span>{t("Name")}</span>
                     <input
                       class="input"
                       maxlength={32}
@@ -206,7 +204,7 @@ export default function EditProfile() {
                   )}
                 </For>
               </div>
-              <div style={{ "margin-top": "16px" }}>
+              <div class="after-grid">
                 <Show
                   when={showArt()}
                   fallback={
@@ -215,7 +213,7 @@ export default function EditProfile() {
                     </button>
                   }
                 >
-                  <h2 style={{ "margin-top": "8px" }}>{t("From your library")}</h2>
+                  <h2>{t("From your library")}</h2>
                   <div class="avatar-grid">
                     <For each={art()}>
                       {(key) => (
@@ -244,9 +242,7 @@ export default function EditProfile() {
             <div class="form-section setting-row">
               <div>
                 <b>{t("Preview sound")}</b>
-                <div class="muted" style={{ "font-size": "14px" }}>
-                  {t("Previews on Home play quietly, or silent.")}
-                </div>
+                <div class="hint">{t("Previews on Home play quietly, or silent.")}</div>
               </div>
               <button
                 class={["toggle", { on: m().previewSound !== false }]}
@@ -259,9 +255,7 @@ export default function EditProfile() {
             <div class="form-section setting-row">
               <div>
                 <b>{t("PIN")}</b>
-                <div class="muted" style={{ "font-size": "14px" }}>
-                  {hasPin() ? t("On") : t("Off")}
-                </div>
+                <div class="hint">{hasPin() ? t("On") : t("Off")}</div>
               </div>
               <button class="btn small" onClick={(e) => void pin(e)}>
                 {hasPin() ? t("Change") : t("Set PIN")}
@@ -272,9 +266,7 @@ export default function EditProfile() {
               <div class="form-section setting-row">
                 <div>
                   <b>{t("Sign-in")}</b>
-                  <div class="muted" style={{ "font-size": "14px" }}>
-                    {m().canSignIn ? (m().email ?? t("On")) : t("Off")}
-                  </div>
+                  <div class="hint">{m().canSignIn ? (m().email ?? t("On")) : t("Off")}</div>
                 </div>
                 <button class="btn small" onClick={() => void signIn()}>
                   {m().canSignIn ? t("Turn off sign-in") : t("Set up")}
@@ -282,14 +274,12 @@ export default function EditProfile() {
               </div>
             </Show>
             <Show when={note()}>
-              <p class="muted" style={{ "word-break": "break-all" }}>
-                {note()}
-              </p>
+              <p class="hint breakable">{note()}</p>
             </Show>
             <Show when={error()}>
               <p class="error">{error()}</p>
             </Show>
-            <div class="actions" style={{ "margin-top": "20px" }}>
+            <div class="actions form-end">
               <button class="btn primary" onClick={() => go("/")}>
                 {t("Done")}
               </button>

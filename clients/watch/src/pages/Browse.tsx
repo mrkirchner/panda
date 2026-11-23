@@ -67,9 +67,7 @@ function BrowseView(props: { what: What; fetch: () => Promise<Page> }) {
   return (
     <>
       <Show when={page.error()}>
-        <p class="empty error" style={{ "padding-top": "calc(var(--topbar-h) + 32px)" }}>
-          {page.error()}
-        </p>
+        <p class="empty error page-top">{page.error()}</p>
       </Show>
       <Show when={!p() && !page.error()}>
         <GhostHero />
@@ -93,10 +91,7 @@ function BrowseView(props: { what: What; fetch: () => Promise<Page> }) {
         <Hero slides={slides()} />
       </Show>
       <Show when={props.what.of !== "genre" && p()}>
-        <div
-          class="page-head section"
-          style={{ "margin-top": slides().length ? "8px" : "calc(var(--topbar-h) + 16px)" }}
-        >
+        <div class={["page-head", slides().length ? "after-hero" : "page-top"]}>
           <h1>{name()}</h1>
           <a class="btn small" href={allHref()}>
             {seeAll()}

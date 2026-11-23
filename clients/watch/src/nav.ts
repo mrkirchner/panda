@@ -18,9 +18,15 @@ export function go(path: string, opts: { replace?: boolean } = {}) {
 
 /** Back to the previous page, or Home when this is the first page of the visit. */
 export function back(fallback = "/") {
-  const idx = (history.state as { _depth?: number } | null)?._depth;
-  if (history.length > 1 && idx !== 0) history.back();
+  const depth = (history.state as { _depth?: number } | null)?._depth;
+  if (depth !== undefined && firstDepth !== null && depth > firstDepth) history.back();
   else go(fallback, { replace: true });
+}
+
+/** The history depth of this visit's first page (the router's `_depth` counts the whole tab's). */
+let firstDepth: number | null = null;
+export function markFirstEntry() {
+  firstDepth ??= (history.state as { _depth?: number } | null)?._depth ?? 0;
 }
 
 /** The router's pathname (which includes the base) as an app path: "/watch/title/m1" -> "/title/m1". */

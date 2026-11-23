@@ -745,7 +745,7 @@ export default function Player() {
               +0.5
             </button>
           </div>
-          <div class="dialog-actions" style={{ "margin-top": "12px" }}>
+          <div class="dialog-actions">
             <button class="btn small" onClick={() => nudge(null)}>
               {t("No adjustment")}
             </button>

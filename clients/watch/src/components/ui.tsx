@@ -183,9 +183,7 @@ function AskDialog(props: { o: Extract<Overlay, { kind: "ask" }> }) {
       <form class="dialog" role="dialog" aria-label={props.o.title} onSubmit={submit}>
         <h2>{props.o.title}</h2>
         <Show when={props.o.message}>
-          <p class="muted" style={{ margin: "0 0 12px" }}>
-            {props.o.message}
-          </p>
+          <p class="lede">{props.o.message}</p>
         </Show>
         <Show when={props.o.input}>
           {(input) => (
@@ -234,7 +232,7 @@ function ManyDialog(props: { o: Extract<Overlay, { kind: "many" }> }) {
     <div class="backdrop-dim" onClick={(e) => e.target === e.currentTarget && props.o.resolve(null)}>
       <div class="dialog" role="dialog" aria-label={props.o.title}>
         <h2>{props.o.title}</h2>
-        <div class="chips" style={{ margin: "12px 0" }}>
+        <div class="chips">
           <button
             class={["chip", { on: all() }]}
             onClick={() => setChosen(all() ? new Set<number>() : new Set(props.o.options.map((_, i) => i)))}

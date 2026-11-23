@@ -111,9 +111,7 @@ export default function Home() {
   return (
     <>
       <Show when={data.error()}>
-        <p class="empty error" style={{ "padding-top": "calc(var(--topbar-h) + 32px)" }}>
-          {data.error()}
-        </p>
+        <p class="empty error page-top">{data.error()}</p>
       </Show>
       {/* First visit: ghosts hold the page's shape until it arrives (the TV's). */}
       <Show when={!home() && !data.error()}>

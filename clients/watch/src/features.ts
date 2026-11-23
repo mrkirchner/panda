@@ -4,7 +4,12 @@ import { api } from "@tv/api/client";
 
 type Features = Awaited<ReturnType<typeof api.features>>;
 let asked: Promise<Features | null> | null = null;
-export const features = () => (asked ??= api.features().catch(() => null));
+/** Asked once per sign-in; a failed lookup is asked again next time (not kept as "nothing"). */
+export const features = () =>
+  (asked ??= api.features().catch(() => {
+    asked = null;
+    return null;
+  }));
 
 /** The server's libraries (asked once: Movies, Shows and the All grid all want them). */
 let libs: ReturnType<typeof api.libraries> | null = null;
@@ -13,3 +18,9 @@ export const libraries = () =>
     libs = null;
     return [];
   }));
+
+/** Another profile, account or server: features and libraries are asked again. */
+export function resetStores() {
+  asked = null;
+  libs = null;
+}

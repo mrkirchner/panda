@@ -119,7 +119,7 @@ export default function Search() {
   const shown = () => (query() ? results() : (picks.value() ?? null));
 
   return (
-    <div style={{ "padding-top": "calc(var(--topbar-h) + 12px)" }}>
+    <div class="page-top">
       <form
         class="search-bar"
         role="search"

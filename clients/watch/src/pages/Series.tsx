@@ -111,9 +111,7 @@ function SeriesView(props: { name: string }) {
   return (
     <>
       <Show when={show.error() || episodes.error()}>
-        <p class="empty error" style={{ "padding-top": "calc(var(--topbar-h) + 32px)" }}>
-          {show.error() ?? episodes.error()}
-        </p>
+        <p class="empty error page-top">{show.error() ?? episodes.error()}</p>
       </Show>
       <section class="detail-hero">
         <DetailArt image={art()?.backdrop ?? show.value()?.backdrop} clip={{ kind: "series", name }} />
@@ -252,7 +250,7 @@ function SeriesView(props: { name: string }) {
             </Show>
           </div>
           <Show when={inSeason().length > limit()}>
-            <div style={{ padding: "16px var(--gutter) 0" }}>
+            <div class="after-list">
               <button class="btn" onClick={() => setLimit((n) => n + EPISODES_PAGE)}>
                 {t("Show more")}
               </button>

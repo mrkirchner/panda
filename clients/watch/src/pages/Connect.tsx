@@ -4,6 +4,7 @@ import { getServer, normalizeServer, setServer } from "@tv/api/server";
 import { setDeviceSecret, setToken } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { Show, createSignal } from "solid-js";
+import { resetStores } from "../features";
 import { go } from "../nav";
 
 export default function Connect() {
@@ -27,6 +28,7 @@ export default function Connect() {
         setDeviceSecret(null);
       }
       setServer(url);
+      resetStores();
       go("/sign-in", { replace: true });
     } catch {
       setError(t("No Panda server answered at that address."));
@@ -43,9 +45,7 @@ export default function Connect() {
           <span>Panda</span>
         </div>
         <h1>{t("Connect to your server")}</h1>
-        <p class="muted" style={{ "margin-top": "0" }}>
-          {t("Its address, like 192.168.1.20 or panda.example.com.")}
-        </p>
+        <p class="lede">{t("Its address, like 192.168.1.20 or panda.example.com.")}</p>
         <div class="field">
           <label for="server">{t("Server address")}</label>
           <input

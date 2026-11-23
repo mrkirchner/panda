@@ -114,9 +114,5 @@ export function Shell(props: { children?: JSX.Element }) {
 
 /** A plain heading area for pages without art at the top (Search, My List, All...). */
 export function PageTop(props: { children?: JSX.Element }) {
-  return (
-    <div class="below-bar-pad" style={{ "padding-top": "calc(var(--topbar-h) + 12px)" }}>
-      {props.children}
-    </div>
-  );
+  return <div class="page-top">{props.children}</div>;
 }

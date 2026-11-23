@@ -3,7 +3,7 @@
 // limit), or edit one (signs in as it first). Sign out of this browser at the bottom.
 import { useSearchParams } from "@solidjs/router";
 import { api, ensureSession, HttpError } from "@tv/api/client";
-import { setToken } from "@tv/api/session";
+import { setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
@@ -19,7 +19,17 @@ const MAX_PROFILES = 8;
 
 export default function Profiles() {
   const [search] = useSearchParams<{ next?: string }>();
-  const data = load(() => api.deviceProfiles());
+  // This browser was removed from the account (401): forget it and sign in again (the TV's rule).
+  const data = load(() =>
+    api.deviceProfiles().catch((e: unknown) => {
+      if (e instanceof HttpError && e.status === 401) {
+        setDeviceSecret(null);
+        setToken(null);
+        go(`/sign-in${search.next ? `?next=${encodeURIComponent(search.next)}` : ""}`, { replace: true });
+      }
+      throw e;
+    }),
+  );
   const [editing, setEditing] = createSignal(false);
   const [error, setError] = createSignal("");
 
@@ -106,7 +116,7 @@ export default function Profiles() {
           </For>
         </Show>
       </div>
-      <div class="actions" style={{ "justify-content": "center" }}>
+      <div class="actions center">
         <button class={["btn", { primary: editing() }]} onClick={() => setEditing((e) => !e)}>
           {editing() ? t("Done") : t("Edit profiles")}
         </button>

@@ -84,9 +84,7 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
   return (
     <>
       <Show when={data.error()}>
-        <p class="empty error" style={{ "padding-top": "calc(var(--topbar-h) + 32px)" }}>
-          {data.error()}
-        </p>
+        <p class="empty error page-top">{data.error()}</p>
       </Show>
       <Show
         when={p()}

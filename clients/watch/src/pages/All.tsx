@@ -176,7 +176,7 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
   };
 
   return (
-    <div style={{ "padding-top": "calc(var(--topbar-h) + 8px)" }}>
+    <div class="page-top">
       <div class="page-head">
         <h1>{props.kind === "movies" ? t("All movies") : t("All shows")}</h1>
       </div>

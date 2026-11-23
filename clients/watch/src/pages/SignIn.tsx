@@ -50,9 +50,7 @@ export default function SignIn() {
           <span>Panda</span>
         </div>
         <h1>{t("Sign in")}</h1>
-        <p class="muted" style={{ "margin-top": "0" }}>
-          {SERVED_BY_PANDA ? t("With your Panda account.") : (getServer() ?? "")}
-        </p>
+        <p class="lede">{SERVED_BY_PANDA ? t("With your Panda account.") : (getServer() ?? "")}</p>
         <div class="field">
           <label for="username">{t("Email or username")}</label>
           <input
@@ -86,7 +84,7 @@ export default function SignIn() {
           {busy() ? t("Signing in...") : t("Sign in")}
         </button>
         <Show when={!SERVED_BY_PANDA}>
-          <p class="muted" style={{ "text-align": "center", "margin-bottom": "0" }}>
+          <p class="panel-foot">
             <a class="link-btn" href={href("/connect")}>
               {t("Another server")}
             </a>
