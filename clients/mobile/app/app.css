@@ -218,3 +218,11 @@ ActionBar {
   width: 22; height: 22; border-radius: 11; text-align: center;
   horizontal-align: right; vertical-align: top; margin: 6;
 }
+.genre-wash { border-radius: 10; }
+.library-chips { margin-top: 14; }
+.offline-banner { font-size: 14; color: #141210; background-color: #f5a524; padding: 10 16; }
+.sheet-form { padding-top: 28; }
+.check { font-size: 18; font-weight: bold; color: #d4ae6a; }
+.upcoming { opacity: 0.55; }
+.credit { margin-top: 24; }
+.link-code { font-size: 44; font-weight: bold; color: #d4ae6a; letter-spacing: 0.2; margin-top: 24; }

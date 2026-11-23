@@ -87,7 +87,7 @@ let closeSheet: (() => void) | null = null;
  * `screen` in a sheet over the current page (half the screen, pulled up for more): the phone's
  * expanded tile. `closeSheet()` dismisses it (before playing, or opening the full page).
  */
-export function openSheet(screen: () => JSX.Element): void {
+export function openSheet(screen: () => JSX.Element, onClosed?: () => void): void {
   const page = (current ?? root)?.currentPage;
   if (!page) return;
   const host = document.createElement("gridlayout") as unknown as import("@nativescript/core").GridLayout;
@@ -113,6 +113,7 @@ export function openSheet(screen: () => JSX.Element): void {
     closeCallback: () => {
       closeSheet = null;
       setSheetOpen(false);
+      onClosed?.();
       dispose();
     },
     ios: { presentationStyle: UIModalPresentationStyle.PageSheet },

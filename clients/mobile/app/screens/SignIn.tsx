@@ -9,6 +9,7 @@ import { Show, createSignal } from "solid-js";
 import { open } from "../nav";
 import { afterSignIn } from "../session";
 import { Connect } from "./Connect";
+import { linkCodeScreen } from "./LinkCode";
 
 export function SignIn() {
   const [error, setError] = createSignal<string | null>(null);
@@ -66,6 +67,7 @@ export function SignIn() {
           <label class="error mt10"  textWrap={true} text={error() ?? ""} />
         </Show>
         <button class="primary" text={busy() ? t("Signing in...") : t("Sign in")} isEnabled={!busy()} on:tap={signIn} />
+        <button class="secondary" text={t("Use a code instead")} on:tap={() => open(() => linkCodeScreen(), { title: "" })} />
         <button class="secondary" text={t("Another server")} on:tap={() => open(() => <Connect />, { clear: true })} />
       </stacklayout>
     </scrollview>

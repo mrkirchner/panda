@@ -8,7 +8,11 @@ const live = new Set<() => void>();
  * live screen asks again. Tab pages stay alive, so without this they'd go stale. */
 export function refreshAll() {
   for (const reload of live) reload();
+  for (const hook of refreshHooks) hook();
 }
+
+/** App-wide stores (requests, offline libraries) that also refresh on `refreshAll()`. */
+export const refreshHooks = new Set<() => void>();
 
 /** A screen's data: loads once, `value` until then undefined, `error` if it failed. The request
  * starts untracked (it reads the server address, a signal, once). `live`: asked again on

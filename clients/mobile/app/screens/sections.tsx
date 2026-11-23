@@ -1,12 +1,13 @@
 // The parts of a movie's, show's, person's or preview page below the header: ratings, round
 // action buttons, rows of titles (yours and ones you could request), the cast, and facts.
 import { imageUrl } from "@tv/api/client";
-import type { Discover, Person, SeriesSummary, Title, TitleRating, TrackInfo } from "@tv/api/types";
+import type { Discover, Person, SeriesSummary, Spot, Title, TitleRating, TrackInfo } from "@tv/api/types";
+import { discoverStatus } from "../requests";
 import { languageName } from "@tv/format";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { Poster, Row } from "./cards";
-import { openPerson, openPreview, openSeries, openTitle } from "./links";
+import { openPerson, openPreview, openSeries, openTitle, peekSpot } from "./links";
 
 /** TMDB's logo is 273.42 x 35.52 (images/tmdb.svg). */
 const TMDB_H = 11;
@@ -65,6 +66,8 @@ export function Action(props: { icon: string; label: string; onTap: () => void; 
 export interface MoreItem {
   title?: Title;
   show?: SeriesSummary;
+  /** One of yours as the server features it (themed rows). */
+  spot?: Spot;
   suggestion?: Discover;
 }
 
@@ -75,7 +78,15 @@ export function MoreRow(props: { title: string; items: MoreItem[] }) {
         <For each={props.items}>
           {i =>
             i.title ? (
-              <Poster image={i.title.poster} title={i.title.title} onTap={() => openTitle(i.title!.id)} />
+              <Poster
+                image={i.title.poster}
+                title={i.title.title}
+                fraction={i.title.progress && !i.title.progress.finished ? i.title.progress.fraction : 0}
+                watched={i.title.progress?.finished}
+                onTap={() => openTitle(i.title!.id)}
+              />
+            ) : i.spot ? (
+              <Poster image={i.spot.poster} title={i.spot.title} onTap={() => peekSpot(i.spot!)} />
             ) : i.show ? (
               <Poster
                 image={i.show.poster}
@@ -86,7 +97,8 @@ export function MoreRow(props: { title: string; items: MoreItem[] }) {
               <Poster
                 image={i.suggestion!.poster}
                 title={i.suggestion!.title}
-                badge={i.suggestion!.requested ? t("Requested") : undefined}
+                badge={discoverStatus(i.suggestion!).label}
+                fraction={discoverStatus(i.suggestion!).progress}
                 onTap={() => openPreview(i.suggestion!.kind, i.suggestion!.tmdb_id)}
               />
             )
@@ -98,10 +110,10 @@ export function MoreRow(props: { title: string; items: MoreItem[] }) {
 }
 
 /** Cast & Crew: round photos, names and roles; each opens their page. */
-export function PeopleRow(props: { people: Person[] }) {
+export function PeopleRow(props: { people: Person[]; title?: string }) {
   return (
     <Show when={props.people.length}>
-      <Row title={t("Cast & Crew")}>
+      <Row title={props.title ?? t("Cast & Crew")}>
         <For each={props.people}>
           {p => (
             <stacklayout class="person-cell" on:tap={() => p.id && openPerson(p.id)}>

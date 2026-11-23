@@ -3,7 +3,7 @@
 // shows, a spotlight, top picks, and today's themes.
 import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/api/types";
-import { t } from "@tv/i18n";
+import { t, tServer } from "@tv/i18n";
 import { For, Show } from "solid-js";
 import { facts, load, runtime } from "../data";
 import { play } from "../player";
@@ -11,24 +11,28 @@ import { Banner, ExpandRow, GenreTile, Poster, Row, WideCard } from "./cards";
 import { Hero } from "./Hero";
 import { featuredSlide } from "./heroSlides";
 import { openGenre, openPreview, openSeries, openTitle, peekMovie, peekShow, peekSpot } from "./links";
-import { bestProgress } from "../requests";
+import { bestProgress, myRequests, requestBadge } from "../requests";
+import { OfflineBanner } from "../offline";
+import { MoreRow } from "./sections";
+import { Dialogs } from "@nativescript/core";
 import type { MyRequest } from "@tv/api/types";
 
+/** Continue Watching: play from where you were, then land on its page (as the TV does). */
 function resume(e: ContinueEntry) {
   const at = e.up_next ? 0 : e.position_secs;
   const target =
     e.kind === "movie" && e.title_id ? { kind: "title" as const, id: e.title_id } : { kind: "item" as const, id: e.item_id };
-  play(target, at).catch(err => console.log(`play failed: ${String(err)}`));
+  const page = e.title_id ? () => openTitle(e.title_id!) : e.series ? () => openSeries(e.series!) : undefined;
+  play(target, at, page).catch(err => void Dialogs.alert(err instanceof Error ? err.message : String(err)));
 }
 
-/** A themed row (Christmas, Heists): the titles you have. */
+/** A themed row (Christmas, Heists): the titles you have, then popular ones you could request. */
 function Themed(props: { row: ThemedRow }) {
   return (
-    <Show when={props.row.items.length}>
-      <Row title={t(props.row.title)}>
-        <For each={props.row.items}>{s => <Poster image={s.poster} title={s.title} onTap={() => peekSpot(s)} />}</For>
-      </Row>
-    </Show>
+    <MoreRow
+      title={tServer(props.row.title)}
+      items={[...props.row.items.map(spot => ({ spot })), ...props.row.more.map(suggestion => ({ suggestion }))]}
+    />
   );
 }
 
@@ -46,23 +50,15 @@ export function Home() {
     return api.homeMore().catch(() => null);
   });
   const home = () => data.value();
-  /** Requests still on their way: first in My List, with how they're going. */
-  const requests = load<MyRequest[]>(
-    async () => {
-      await ensureSession();
-      return (await api.myRequests().catch(() => [] as MyRequest[])).filter(
-        r => !r.title_id && !r.series && r.status !== "failed",
-      );
-    },
-    { live: true },
-  );
-  const requestBadge = (r: MyRequest) => {
-    const p = bestProgress(r);
-    if (p?.state === "downloading") return t("Downloading {p}%", { p: Math.round(p.fraction * 100) });
-    if (p?.state === "importing") return t("Importing");
-    if (p?.state === "searching") return t("Searching");
-    return t("Requested");
+  /** My List on Home (the TV's): requests not saved yet first (with their badge: on its way,
+   * Ready, Failed), then saved titles a request doesn't already show. */
+  const listRequests = () => myRequests().filter(r => !r.listed);
+  const listEntries = () => {
+    const shown = new Set(listRequests().flatMap(r => [r.title_id, r.series].filter(Boolean)));
+    return (home()?.my_list ?? []).filter(m => !shown.has(m.id));
   };
+  const openRequest = (r: MyRequest) =>
+    r.title_id ? openTitle(r.title_id) : r.series ? openSeries(r.series) : r.tmdb_id && openPreview(r.kind, r.tmdb_id);
   const seasonal = () => (more.value()?.themed ?? []).filter(r => r.seasonal);
   const daily = () => (more.value()?.themed ?? []).filter(r => !r.seasonal);
 
@@ -75,8 +71,14 @@ export function Home() {
         <Show when={!home() && !data.error()}>
           <activityindicator busy={true} class="mt40" />
         </Show>
-        <Show when={home()?.featured.length}>
-          <Hero slides={home()!.featured.map(featuredSlide)} />
+        <OfflineBanner />
+        {/* Nothing featured: the newest movies take the hero (as the TV does). */}
+        <Show when={home()?.featured.length || home()?.recently_added_movies.length}>
+          <Hero
+            slides={(home()!.featured.length ? home()!.featured : home()!.recently_added_movies.slice(0, 5)).map(
+              featuredSlide,
+            )}
+          />
         </Show>
         <Show when={home()?.continue_watching.length}>
           <Row title={t("Continue Watching")}>
@@ -93,20 +95,20 @@ export function Home() {
             </For>
           </Row>
         </Show>
-        <Show when={(home()?.my_list.length ?? 0) + (requests.value()?.length ?? 0) > 0}>
+        <Show when={listEntries().length + listRequests().length > 0}>
           <Row title={t("My List")}>
-            <For each={requests.value() ?? []}>
+            <For each={listRequests()}>
               {r => (
                 <Poster
                   image={r.poster}
                   title={r.title}
                   badge={requestBadge(r)}
                   fraction={bestProgress(r)?.state === "downloading" ? bestProgress(r)!.fraction : 0}
-                  onTap={() => r.tmdb_id && openPreview(r.kind, r.tmdb_id)}
+                  onTap={() => openRequest(r)}
                 />
               )}
             </For>
-            <For each={home()?.my_list ?? []}>
+            <For each={listEntries()}>
               {m => (
                 <Poster
                   image={m.poster}

@@ -3,6 +3,7 @@
 import { imageUrl } from "@tv/api/client";
 import type { Spot } from "@tv/api/types";
 import { t } from "@tv/i18n";
+import { genreTint } from "@tv/theme";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import type { ContentView } from "@nativescript/core";
@@ -33,6 +34,8 @@ export function Poster(props: {
   fraction?: number;
   /** "Requested", "Downloading 42%"... over the corner. */
   badge?: string;
+  /** Watched all the way: a check in the corner (as the TV's tiles). */
+  watched?: boolean;
   onTap: () => void;
 }) {
   return (
@@ -47,6 +50,9 @@ export function Poster(props: {
         </Show>
         <Show when={props.badge}>
           <label class="badge" text={props.badge ?? ""} />
+        </Show>
+        <Show when={props.watched}>
+          <label class="watched-mark" text="✓" />
         </Show>
       </gridlayout>
       <Show when={(props.fraction ?? 0) > 0}>
@@ -104,12 +110,17 @@ export function SpotCard(props: { spot: Spot; onTap: () => void }) {
 /** "Because you watched Alien" etc. (the server's English, translated). */
 export const reason = (s: Spot) => t(s.reason, { title: s.reason_title ?? "" });
 
-/** A genre: its name over a darkened backdrop. */
+/** A genre's tint (the TV's `genreTint`, 0xRRGGBBAA) as CSS, at `alpha` (0-255). */
+export const tintCss = (genre: string, alpha: number) =>
+  `#${(genreTint(genre) >>> 8).toString(16).padStart(6, "0")}${alpha.toString(16).padStart(2, "0")}`;
+
+/** A genre: its name over its backdrop, washed in the genre's color (as on the TV). */
 export function GenreTile(props: { name: string; image: string | null; onTap: () => void }) {
   return (
     <gridlayout class="genre-tile" on:tap={props.onTap}>
       <image class="genre-tile" src={imageUrl(props.image)} stretch="aspectFill" />
       <stacklayout class="genre-scrim" />
+      <stacklayout class="genre-wash" backgroundColor={tintCss(props.name, 0x66)} />
       <label class="genre-name" text={t(props.name)} />
     </gridlayout>
   );

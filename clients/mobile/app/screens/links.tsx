@@ -15,9 +15,9 @@ export const openTitle = (id: string) => open(() => titleScreen(id), { title: ""
 export const openSeries = (name: string) => open(() => seriesScreen(name), { title: "" });
 export const openSpot = (s: Spot) => (s.kind === "movie" ? openTitle(s.id) : openSeries(s.id));
 export const openGenre = (name: string) =>
-  open(() => browseScreen(() => api.genrePage(name), null), { title: t(name) });
-export const openAll = (kind: "movies" | "shows", genre?: string) =>
-  open(() => allScreen(kind, genre), { title: kind === "movies" ? t("All movies") : t("All shows") });
+  open(() => browseScreen(() => api.genrePage(name), { of: "genre", name }), { title: t(name) });
+export const openAll = (kind: "movies" | "shows", genre?: string, library?: number) =>
+  open(() => allScreen(kind, genre, library), { title: kind === "movies" ? t("All movies") : t("All shows") });
 export const openPerson = (id: number) => open(() => personScreen(id), { title: "" });
 /** A title you don't have: its page, with Request. */
 export const openPreview = (kind: "movie" | "series", tmdbId: number) =>

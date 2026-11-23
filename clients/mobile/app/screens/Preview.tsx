@@ -9,15 +9,15 @@ import { tmdbRating } from "@tv/format";
 import { t } from "@tv/i18n";
 import { Show, createSignal } from "solid-js";
 import { facts, load, longDate, refreshAll, runtime } from "../data";
-import { bestProgress, requestStatus } from "../requests";
-import { Facts, MoreRow, PeopleRow, Ratings } from "./sections";
+import { bestProgress, discoverStatus, refreshRequests, requestFor } from "../requests";
+import { Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 import { Logo } from "./cards";
+import { pickSeasons } from "./SeasonPicker";
 import { seriesScreen } from "./Series";
 import { titleScreen } from "./Title";
 
 export function previewScreen(kind: "movie" | "series", tmdbId: number) {
   const data = load<Preview>(() => api.preview(kind, tmdbId));
-  const status = requestStatus();
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal("");
   const p = () => data.value();
@@ -28,19 +28,20 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
     if (!i?.can_request || busy()) return;
     let seasons: number[] | null = null;
     if (i.kind === "series" && (i.seasons ?? 0) > 1) {
-      const all = t("All seasons");
-      const options = [all, ...Array.from({ length: i.seasons! }, (_, n) => t("Season {n}", { n: n + 1 }))];
-      const pick = await Dialogs.action({ title: t("Request"), cancelButtonText: t("Cancel"), actions: options });
-      const n = options.indexOf(pick);
-      if (n < 0) return;
-      if (n > 0) seasons = [n];
+      // The TV's picker: All, or any of them.
+      const picked = await pickSeasons(
+        Array.from({ length: i.seasons! }, (_, n) => n + 1),
+        i.title,
+        t("Request"),
+      );
+      if (picked === undefined) return;
+      seasons = picked;
     }
     setBusy(true);
     setError("");
     try {
       await api.request(i, seasons);
       data.reload();
-      void status.refresh();
       refreshAll();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -51,7 +52,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
   /** Your request while nothing has come of it yet (searching): it can be cancelled. */
   const cancellable = () => {
     const i = p();
-    const r = i ? status.find(i) : undefined;
+    const r = i ? requestFor(i) : undefined;
     if (!r || i!.downloaded) return undefined;
     const prog = bestProgress(r);
     return !prog || prog.state === "searching" ? r : undefined;
@@ -61,7 +62,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
     if (!r) return;
     try {
       await api.cancelRequest(r.id);
-      await status.refresh();
+      await refreshRequests();
       data.reload();
       refreshAll();
     } catch (e) {
@@ -93,15 +94,22 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
                   p()!.seasons ? t("{n} seasons", { n: p()!.seasons! }) : runtime((p()!.runtime_mins ?? 0) * 60),
                   p()!.details.certification,
                   (p()!.genres ?? "").split(/,\s*/).slice(0, 3).join(", "),
+                  p()!.details.next_episode
+                    ? t("Next: S{s} E{e}, {date}", {
+                        s: p()!.details.next_episode!.season,
+                        e: p()!.details.next_episode!.episode,
+                        date: longDate(p()!.details.next_episode!.air_date) ?? t("soon"),
+                      })
+                    : null,
                 ])}
               />
               <Ratings ratings={p()!.details.ratings?.length ? p()!.details.ratings! : tmdbRating(p()!.rating)} />
               <label class="status-line" text={t("Not in your library")} />
-              <Show when={status(p()!).label}>
+              <Show when={discoverStatus(p()!).label}>
                 <button
-                  class={status(p()!).action ? "primary" : "secondary"}
-                  text={busy() ? t("Requesting...") : (status(p()!).label ?? "")}
-                  isEnabled={status(p()!).action && !busy()}
+                  class={discoverStatus(p()!).action ? "primary" : "secondary"}
+                  text={busy() ? t("Requesting...") : (discoverStatus(p()!).label ?? "")}
+                  isEnabled={discoverStatus(p()!).action && !busy()}
                   on:tap={() => void request()}
                 />
               </Show>
@@ -115,6 +123,20 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
                 <label class="body accent mt24" textWrap={true} text={p()!.details.tagline ?? ""} />
               </Show>
               <label class="overview" textWrap={true} text={p()!.overview ?? ""} />
+              <label
+                class="credits-line"
+                textWrap={true}
+                text={[
+                  p()!.details.cast.length
+                    ? `${t("Starring")}: ${p()!.details.cast.slice(0, 3).map(c => c.name).join(", ")}`
+                    : "",
+                  p()!.details.directors.length
+                    ? `${p()!.kind === "series" ? t("Created by") : t("Director")}: ${p()!.details.directors.map(c => c.name).join(", ")}`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join("\n")}
+              />
             </stacklayout>
             <Show when={(p()!.collection?.items.length ?? 0) > 1}>
               <MoreRow
@@ -122,7 +144,15 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
                 items={p()!.collection!.items.map(i => ({ title: i.title, suggestion: i.suggestion }))}
               />
             </Show>
-            <MoreRow title={t("More Like This")} items={(p()!.more ?? []).map(suggestion => ({ suggestion }))} />
+            {/* Similar titles, minus the ones the series row already shows. */}
+            <MoreRow
+              title={t("More Like This")}
+              items={(p()!.more ?? [])
+                .filter(
+                  d => !(p()!.collection?.items ?? []).some(c => (c.suggestion?.tmdb_id ?? c.title?.id) === d.tmdb_id),
+                )
+                .map(suggestion => ({ suggestion }))}
+            />
             <PeopleRow people={[...p()!.details.directors, ...p()!.details.cast]} />
             <Facts
               title={t("Information")}
@@ -135,6 +165,31 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
                 { label: t("Rated"), value: p()!.details.certification },
                 { label: t("Status"), value: p()!.details.status },
                 { label: t("Region of origin"), value: p()!.details.countries?.join(", ") },
+              ]}
+            />
+            <Facts
+              title={t("Languages")}
+              facts={[
+                {
+                  label: t("Original language"),
+                  value: p()!.details.original_language
+                    ? trackList([{ language: p()!.details.original_language!, detail: null }])
+                    : null,
+                },
+              ]}
+            />
+            <Facts
+              title={t("Files")}
+              facts={[
+                {
+                  label: t("In your library"),
+                  value: busy()
+                    ? t("Requesting...")
+                    : p()!.requested || p()!.downloaded
+                      ? (discoverStatus(p()!).label ?? null)
+                      : t("Not yet"),
+                },
+                { label: t("Seasons"), value: p()!.seasons ? String(p()!.seasons) : null },
               ]}
             />
           </Show>

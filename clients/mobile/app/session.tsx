@@ -5,6 +5,7 @@ import { Dialogs } from "@nativescript/core";
 import { t } from "@tv/i18n";
 import { back, open } from "./nav";
 import { MyList } from "./screens/MyList";
+import { aboutScreen } from "./screens/About";
 import { Avatar } from "./avatar";
 import { editProfileScreen } from "./screens/EditProfile";
 import { Home } from "./screens/Home";
@@ -20,13 +21,15 @@ async function profileMenu() {
   const edit = t("Edit profile");
   const change = t("Switch profile");
   const out = t("Sign out of this phone");
+  const about = t("About Panda");
   const pick = await Dialogs.action({
     title: currentUser()?.name ?? "",
     cancelButtonText: t("Cancel"),
-    actions: getDeviceSecret() ? [edit, change, out] : [edit, out],
+    actions: getDeviceSecret() ? [edit, change, about, out] : [edit, about, out],
   });
   if (pick === edit) open(() => editProfileScreen(back), { title: t("Edit profile") });
   else if (pick === change) goProfiles();
+  else if (pick === about) open(() => aboutScreen(), { title: t("About Panda") });
   else if (pick === out) {
     setToken(null);
     setDeviceSecret(null);
@@ -49,13 +52,13 @@ export function goHome() {
     {
       title: "Movies",
       icon: "film",
-      screen: () => browseScreen(() => api.browsePage("movies"), "movies"),
+      screen: () => browseScreen(() => api.browsePage("movies"), { of: "kind", kind: "movies" }),
       opts: { title: t("Movies"), actions: [{ text: t("All"), icon: "square.grid.3x3", tap: () => openAll("movies") }] },
     },
     {
       title: "Shows",
       icon: "tv",
-      screen: () => browseScreen(() => api.browsePage("shows"), "shows"),
+      screen: () => browseScreen(() => api.browsePage("shows"), { of: "kind", kind: "shows" }),
       opts: { title: t("Shows"), actions: [{ text: t("All"), icon: "square.grid.3x3", tap: () => openAll("shows") }] },
     },
     { title: "Search", icon: "magnifyingglass", screen: () => <Search />, opts: { title: t("Search") } },

@@ -22,7 +22,7 @@ import { languageName } from "@tv/format";
 import { DEFAULT_STALLS, StallMonitor, stepDownBudget } from "@tv/playback/stalls";
 import { features } from "./features";
 import { audioLabels } from "@tv/playback/audio";
-import { QUALITIES, profileFor, saveQuality, savedQuality, type QualityId } from "@tv/playback/quality";
+import { QUALITIES, describeStream, profileFor, saveQuality, savedQuality, type QualityId } from "@tv/playback/quality";
 import { planSeek } from "@tv/playback/seek";
 import {
   clampTiming,
@@ -128,8 +128,9 @@ function textLabel(size: number, bold = false): UILabel {
 }
 
 /** Start playing `target` from `startSecs` (its saved position, or 0). Rejects if the server says no. */
-export async function play(target: PlayTarget, startSecs = 0): Promise<void> {
-  const p = new PlayerSession(target);
+/** `onClose`: after the player closes (Continue Watching lands on the title's page, as on the TV). */
+export async function play(target: PlayTarget, startSecs = 0, onClose?: () => void): Promise<void> {
+  const p = new PlayerSession(target, onClose);
   current = p;
   await p.open(startSecs);
 }
@@ -186,6 +187,8 @@ class PlayerSession {
   private readonly controls = UIView.new();
   private readonly closeButton = symbolButton("xmark", 20);
   private readonly titleLabel = textLabel(16, true);
+  /** "Auto · 1080p HEVC 2.4 Mbps (videotoolbox)": the quality chosen and what's streaming. */
+  private readonly streamLabel = textLabel(12);
   private readonly route = AVRoutePickerView.new();
   private readonly pipButton = symbolButton("pip.enter", 20);
   private readonly backButton = symbolButton("gobackward.10", 30);
@@ -205,7 +208,10 @@ class PlayerSession {
   private readonly toastLabel = UILabel.new();
   private pip: AVPictureInPictureController | null = null;
 
-  constructor(private readonly target: PlayTarget) {
+  constructor(
+    private readonly target: PlayTarget,
+    private readonly onClose?: () => void,
+  ) {
     const saved = this.savedAudio();
     this.audioIndex = saved;
   }
@@ -463,6 +469,7 @@ class PlayerSession {
     this.vc.dismissViewControllerAnimatedCompletion(true, () => {
       this.keep.length = 0;
       setPlayerOpen(false);
+      this.onClose?.();
     });
   }
 
@@ -563,6 +570,7 @@ class PlayerSession {
     for (const v of [
       this.closeButton,
       this.titleLabel,
+      this.streamLabel,
       this.route,
       this.pipButton,
       this.backButton,
@@ -686,7 +694,8 @@ class PlayerSession {
     this.closeButton.frame = CGRectMake(left, top, 44, 44);
     this.pipButton.frame = CGRectMake(b.width - right - 44, top, 44, 44);
     this.route.frame = CGRectMake(b.width - right - (this.pipButton.hidden ? 44 : 96), top, 44, 44);
-    this.titleLabel.frame = CGRectMake(left + 56, top, b.width - left - right - 56 - 110, 44);
+    this.titleLabel.frame = CGRectMake(left + 56, top - 6, b.width - left - right - 56 - 110, 34);
+    this.streamLabel.frame = CGRectMake(left + 56, top + 22, b.width - left - right - 56 - 110, 18);
 
     const cy = b.height / 2;
     this.playButton.frame = CGRectMake(b.width / 2 - 36, cy - 36, 72, 72);
@@ -713,6 +722,8 @@ class PlayerSession {
   // ---- Controls ----
 
   private showControls() {
+    const quality = QUALITIES.find(q => q.id === this.quality)?.label ?? this.quality;
+    this.streamLabel.text = `${t(quality)}  ·  ${describeStream(this.pb.stream)}`;
     this.subsButton.hidden = !this.pb.subtitles.some(s => s.url) && !this.canFind();
     this.audioButton.hidden = (this.pb.audio?.length ?? 0) < 2;
     this.layout();

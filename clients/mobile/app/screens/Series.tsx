@@ -12,6 +12,7 @@ import { features } from "../features";
 import { myListToggle } from "../myList";
 import { play } from "../player";
 import { ClipArt, Logo, Progress } from "./cards";
+import { pickSeasons } from "./SeasonPicker";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 
 /** Episode order, Specials (season 0) last, as the TV lists them. */
@@ -69,14 +70,12 @@ export function seriesScreen(name: string) {
   };
 
   const moreSeasons = async () => {
-    const all = t("All missing seasons");
-    const options = missing().length > 1 ? [all, ...missing().map(n => t("Season {n}", { n }))] : [];
     let seasonsToGet = missing();
-    if (options.length) {
-      const pick = await Dialogs.action({ title: t("More seasons"), cancelButtonText: t("Cancel"), actions: options });
-      const i = options.indexOf(pick);
-      if (i < 0) return;
-      if (i > 0) seasonsToGet = [missing()[i - 1]];
+    if (seasonsToGet.length > 1) {
+      // The TV's picker: All, or any of them.
+      const picked = await pickSeasons(seasonsToGet, t("More seasons"), t("Get seasons"));
+      if (picked === undefined) return;
+      if (picked) seasonsToGet = picked;
     }
     try {
       await api.moreSeasons(name, seasonsToGet);
@@ -90,10 +89,24 @@ export function seriesScreen(name: string) {
     }
   };
 
-  /** "S2:E5 'The Name' airs March 3, 2024". */
-  const nextAiring = () => {
+  /** A season that is another TMDB show's story (an anthology): its own name, art and text. */
+  const art = () => details.value()?.season_art?.find(a => a.season === season());
+  /** TMDB's next episode to air, unless it's already in your library. */
+  const upcoming = () => {
     const n = details.value()?.next_episode;
-    if (!n) return "";
+    if (!n) return null;
+    const have = (episodes.value() ?? []).some(e => e.season === n.season && e.episode === n.episode);
+    return have ? null : n;
+  };
+  /** Its season is in the library: a greyed card at the end of it (else said in the facts). */
+  const upcomingInSeason = () => {
+    const n = upcoming();
+    return n && seasons().includes(n.season) ? n : null;
+  };
+  /** "Next: S2:E5 "The Name" airs March 3, 2024" (when its season isn't in the library). */
+  const nextAiring = () => {
+    const n = upcoming();
+    if (!n || upcomingInSeason()) return "";
     const when = longDate(n.air_date);
     return [
       `${t("Next")}: S${n.season}:E${n.episode}${n.name ? ` "${n.name}"` : ""}`,
@@ -109,11 +122,11 @@ export function seriesScreen(name: string) {
         <Show when={show.error() || episodes.error()}>
           <label class="error form" textWrap={true} text={show.error() ?? episodes.error() ?? ""} />
         </Show>
-        <ClipArt image={show.value()?.backdrop} clip={{ kind: "series", name }} />
+        <ClipArt image={art()?.backdrop ?? show.value()?.backdrop} clip={{ kind: "series", name }} />
         <stacklayout class="form">
           <Show
-            when={details.value()?.logo}
-            fallback={<label class="h1" textWrap={true} text={show.value()?.meta_title ?? name} />}
+            when={details.value()?.logo && !art()}
+            fallback={<label class="h1" textWrap={true} text={art()?.title ?? show.value()?.meta_title ?? name} />}
           >
             <Logo image={details.value()!.logo} height={70} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />
           </Show>
@@ -163,9 +176,10 @@ export function seriesScreen(name: string) {
             class="overview"
             textWrap={true}
             text={
-              started() && next()
+              art()?.overview ??
+              (started() && next()
                 ? `${label(next()!)} · ${next()!.episode_title ?? next()!.title}${next()!.episode_overview ? `: ${next()!.episode_overview}` : ""}`
-                : (show.value()?.overview ?? "")
+                : (show.value()?.overview ?? ""))
             }
           />
           <Show when={details.value()}>
@@ -209,12 +223,44 @@ export function seriesScreen(name: string) {
               </stacklayout>
               <stacklayout col={1} class="episode-text">
                 <label class="body" textWrap={true} text={`${e.episode ?? ""}. ${e.episode_title ?? e.title}`} />
-                <label class="small" text={facts([runtime(e.duration_secs), e.progress?.finished ? t("Watched") : null])} />
+                <label
+                  class="small"
+                  text={facts([
+                    runtime(e.duration_secs),
+                    e.progress?.finished
+                      ? t("Watched")
+                      : e.progress && e.duration_secs
+                        ? t("{t} left", { t: runtime(e.duration_secs - e.progress.position_secs) })
+                        : null,
+                  ])}
+                />
                 <label class="small" textWrap={true} maxLines={2} text={e.episode_overview ?? ""} />
               </stacklayout>
             </gridlayout>
           )}
         </For>
+        {/* The next episode to air, greyed at the end of its season (the TV's). */}
+        <Show when={upcomingInSeason() && upcomingInSeason()!.season === season()}>
+          <gridlayout class="episode upcoming" columns="auto, *">
+            <stacklayout col={0} class="still" />
+            <stacklayout col={1} class="episode-text">
+              <label
+                class="body"
+                textWrap={true}
+                text={`${upcomingInSeason()!.episode}. ${upcomingInSeason()!.name ?? t("Episode {n}", { n: upcomingInSeason()!.episode })}`}
+              />
+              <label
+                class="small accent"
+                text={
+                  upcomingInSeason()!.air_date
+                    ? t("Coming {date}", { date: longDate(upcomingInSeason()!.air_date) ?? "" })
+                    : t("Coming soon")
+                }
+              />
+              <label class="small" textWrap={true} maxLines={2} text={upcomingInSeason()!.overview ?? ""} />
+            </stacklayout>
+          </gridlayout>
+        </Show>
         {/* Your shows first (one per show across libraries), then ones you could request. */}
         <MoreRow
           title={t("More Like This")}
@@ -237,7 +283,7 @@ export function seriesScreen(name: string) {
             {
               label: t("In your library"),
               value: episodes.value()
-                ? t("{seasons} seasons, {episodes} episodes", { seasons: seasons().length, episodes: episodes.value()!.length })
+                ? `${t("{seasons} seasons, {episodes} episodes", { seasons: seasons().length, episodes: episodes.value()!.length })}, ${t("{n} watched", { n: episodes.value()!.filter(e => e.progress?.finished).length })}`
                 : null,
             },
           ]}

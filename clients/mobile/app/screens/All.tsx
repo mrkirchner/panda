@@ -31,7 +31,7 @@ interface Entry extends BrowseEntry {
   open: () => void;
 }
 
-export function allScreen(kind: "movies" | "shows", genre?: string) {
+export function allScreen(kind: "movies" | "shows", genre?: string, library?: number) {
   const libraries = load(() => api.libraries().catch(() => [] as Library[]));
   const list = load<Entry[]>(
     async () =>
@@ -65,7 +65,7 @@ export function allScreen(kind: "movies" | "shows", genre?: string) {
   );
   const [sort, setSort] = createSignal<SortBy>("az");
   const [genreSel, setGenre] = createSignal<string | null>(genre ?? null);
-  const [only, setOnly] = createSignal<number | null>(null);
+  const [only, setOnly] = createSignal<number | null>(library ?? null);
   const [shown, setShown] = createSignal(PAGE);
   /** This kind's libraries: a Library choice only when there are several. */
   const ofKind = () => (libraries.value() ?? []).filter(l => l.kind === kind);
