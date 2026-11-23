@@ -1,6 +1,8 @@
-// A virtual list: iOS's own table (NativeScript's ListView, a UITableView) keeps only the rows on
+// A virtual list: the platform's own recycling list (NativeScript's ListView: a UITableView on
+// iOS, an Android ListView reusing rows through its adapter's convertView) keeps only the rows on
 // screen and reuses them while scrolling, as the TV's VirtualColumn/VirtualGrid do. Each cell
-// holds one Solid view that is told its new item when the cell is reused.
+// holds one Solid view that is told its new item when the cell is reused (`args.view` comes back
+// on both platforms).
 import { ListView, type GridLayout, type ItemEventData, type View } from "@nativescript/core";
 import { render } from "@nativescript-community/solid-js";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
@@ -20,6 +22,7 @@ export function createVirtualList<T>(rowHeight: number | "auto", row: (item: () 
   // A style property: set after the class (which would otherwise reset it to "auto").
   list.style.setProperty?.("rowHeight", rowHeight);
   list.rowHeight = rowHeight;
+  // iOS needs a guess for rows it measures itself; Android measures each row as it comes.
   if (rowHeight === "auto") list.iosEstimatedRowHeight = 180;
   let items: T[] = [];
   const cells: Cell<T>[] = [];
