@@ -8,6 +8,9 @@ import { t } from "@tv/i18n";
 import { createRoot, createSignal } from "solid-js";
 import { refreshHooks } from "./data";
 
+/** The TV's badge tones: something to do (Request), on its way, downloaded. */
+export type BadgeTone = "action" | "pending" | "done";
+
 /** The TV's polling while something is on its way. */
 const REQUESTS_POLL_MS = 20_000;
 
@@ -73,9 +76,12 @@ export function requestLabel(r: MyRequest): string {
 }
 
 /** The badge on a request's tile: Downloaded once a server has it, else its label. */
-export function requestBadge(r: MyRequest): string | undefined {
+/** What a request's tile shows (the TV's requestBadge): Downloaded once a server has it, else
+ * how it's going; nothing once it's in the library. */
+export function requestBadge(r: MyRequest): { label: string; tone: BadgeTone } | undefined {
   if (r.title_id || r.series) return undefined;
-  return bestProgress(r)?.state === "available" ? t("Downloaded") : requestLabel(r);
+  const available = bestProgress(r)?.state === "available";
+  return { label: available ? t("Downloaded") : requestLabel(r), tone: available ? "done" : "pending" };
 }
 
 /** What a title you don't have says: its label, the download's progress, and whether it can be
@@ -83,22 +89,24 @@ export function requestBadge(r: MyRequest): string | undefined {
 export function discoverStatus(d: Discover): {
   label: string | undefined;
   action: boolean;
+  tone: BadgeTone;
   progress: number;
 } {
-  if (d.downloaded) return { label: t("Downloaded"), action: false, progress: 0 };
+  if (d.downloaded) return { label: t("Downloaded"), action: false, tone: "done", progress: 0 };
   const r = myRequests().find((x) => x.kind === d.kind && x.tmdb_id === d.tmdb_id);
   const p = r ? bestProgress(r) : null;
   if (p?.state === "downloading")
     return {
       label: t("Downloading {p}%", { p: Math.round(p.fraction * 100) }),
       action: false,
+      tone: "pending",
       progress: p.fraction,
     };
-  if (p?.state === "importing") return { label: t("Importing"), action: false, progress: 0 };
-  if (p?.state === "searching") return { label: t("Searching"), action: false, progress: 0 };
-  if (d.requested || r) return { label: t("Requested"), action: false, progress: 0 };
-  if (d.can_request) return { label: t("Request"), action: true, progress: 0 };
-  return { label: undefined, action: false, progress: 0 };
+  if (p?.state === "importing") return { label: t("Importing"), action: false, tone: "pending", progress: 0 };
+  if (p?.state === "searching") return { label: t("Searching"), action: false, tone: "pending", progress: 0 };
+  if (d.requested || r) return { label: t("Requested"), action: false, tone: "pending", progress: 0 };
+  if (d.can_request) return { label: t("Request"), action: true, tone: "action", progress: 0 };
+  return { label: undefined, action: false, tone: "pending", progress: 0 };
 }
 
 /** Your request for `d`, if you made one. */

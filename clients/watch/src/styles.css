@@ -673,13 +673,31 @@ h3 {
 .badge {
     position: absolute;
     top: 8px;
-    left: 8px;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    background: var(--accent);
-    color: var(--accent-text);
-    font-size: 12px;
-    font-weight: 700;
+    right: 8px;
+    height: 30px;
+    min-width: 30px;
+    padding: 0 7px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgb(0 0 0 / 85%);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    max-width: calc(100% - 16px);
+}
+.badge .word {
+    display: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.card:hover .badge .word,
+.card:focus-visible .badge .word {
+    display: inline;
+    padding-left: 4px;
 }
 .watched-mark {
     position: absolute;
@@ -986,12 +1004,17 @@ h3 {
     overflow: hidden;
     background: #000;
 }
+/* Below 900: a tall hero on phones, a shorter one on small tablets. A height, never an aspect
+   ratio with a cap: capped, an aspect ratio narrows the box instead of filling the width. */
 @media (max-width: 899px) {
     .hero {
-        height: auto;
-        min-height: 0;
-        aspect-ratio: 4 / 5.6;
-        max-height: 88vh;
+        height: min(140vw, 88vh);
+        min-height: 440px;
+    }
+}
+@media (min-width: 600px) and (max-width: 899px) {
+    .hero {
+        height: min(105vw, 80vh);
     }
 }
 .hero-slide {
@@ -1222,6 +1245,16 @@ h3 {
 .detail-side b {
     color: var(--text);
     font-weight: 600;
+}
+/* Credits beside the text only where there's room for both. */
+@media (min-width: 900px) and (max-width: 1099px) {
+    .detail-body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .detail-side {
+        justify-self: start;
+        max-width: 640px;
+    }
 }
 @media (max-width: 899px) {
     .detail-hero {

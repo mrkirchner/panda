@@ -147,7 +147,8 @@ export default function Home() {
               <Poster
                 image={r.poster}
                 title={r.title}
-                badge={requestBadge(r)}
+                badge={requestBadge(r)?.label}
+                badgeTone={requestBadge(r)?.tone}
                 fraction={bestProgress(r)?.state === "downloading" ? bestProgress(r)!.fraction : 0}
                 href={href(requestHref(r))}
               />

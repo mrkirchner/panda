@@ -8,6 +8,7 @@ import type { JSX } from "@solidjs/web";
 import { For, Show, createSignal, onCleanup, onSettled } from "solid-js";
 import { playClip, type ClipSource } from "../clip";
 import { href, paths } from "../nav";
+import type { BadgeTone } from "../requests";
 import { Icon } from "./icons";
 
 /** A horizontal row with a heading; arrows page through it on wide screens with a mouse. */
@@ -99,6 +100,8 @@ export function Art(props: {
   );
 }
 
+const BADGE_ICONS = { action: "download", pending: "clock", done: "check" } as const;
+
 /** A poster: its title shows when there's no picture. `href` opens a page; `onClick` acts. */
 export function Poster(props: {
   image: string | null | undefined;
@@ -106,6 +109,8 @@ export function Poster(props: {
   href?: string;
   onClick?: () => void;
   badge?: string;
+  /** The TV's tones: something to do (Request), on its way, downloaded. */
+  badgeTone?: BadgeTone;
   fraction?: number;
   watched?: boolean;
   rank?: number;
@@ -126,8 +131,13 @@ export function Poster(props: {
         <span class="poster-name">{props.title}</span>
       </Show>
       <Art image={props.image} alt={props.title} />
+      {/* The TV's request badge: an icon in a dark disc, top right (clear of the poster's title
+          art); on hover or focus it widens into a pill with its word. */}
       <Show when={props.badge}>
-        <span class="badge">{props.badge}</span>
+        <span class={["badge", props.badgeTone ?? "pending"]} title={props.badge}>
+          <span class="word">{props.badge}</span>
+          <Icon name={BADGE_ICONS[props.badgeTone ?? "pending"]} size={16} />
+        </span>
       </Show>
       <Show when={props.watched}>
         <span class="watched-mark" title={t("Watched")}>

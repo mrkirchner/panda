@@ -38,6 +38,7 @@ const P: Record<string, string> = {
   grid: "M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   timing: "M12 7v5l3 2M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z",
+  clock: "M12 7v5l3 2M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18z",
 };
 
 export type IconName = keyof typeof P;

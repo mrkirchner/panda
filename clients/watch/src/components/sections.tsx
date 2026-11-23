@@ -121,6 +121,7 @@ export function MoreRow(props: { title: string; items: MoreItem[]; link?: { labe
                   image={s().poster}
                   title={s().title}
                   badge={discoverStatus(s()).label}
+                  badgeTone={discoverStatus(s()).tone}
                   fraction={discoverStatus(s()).progress}
                   href={href(paths.preview(s().kind, s().tmdb_id))}
                 />
