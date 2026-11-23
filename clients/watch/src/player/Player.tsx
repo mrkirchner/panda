@@ -638,8 +638,8 @@ export default function Player() {
             }}
           >
             <div class="scrub-track">
-              <div class="scrub-buffered" style={{ width: `${fraction(buffered()) * 100}%` }} />
-              <div class="scrub-played" style={{ width: `${fraction(shownAt()) * 100}%` }} />
+              <div class="scrub-buffered" style={{ transform: `scaleX(${fraction(buffered())})` }} />
+              <div class="scrub-played" style={{ transform: `scaleX(${fraction(shownAt())})` }} />
               <div class="scrub-knob" style={{ left: `${fraction(shownAt()) * 100}%` }} />
             </div>
             <Show when={hoverAt() !== null}>

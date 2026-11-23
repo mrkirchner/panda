@@ -374,6 +374,13 @@
   controls and the click that follows is swallowed (`revealedAt`). Full screen is the whole page
   (menus are drawn outside the player).
 - Every new word: `t()` with a Spanish entry in `../tv/src/i18n.ts` ("Web app" section).
+- Motion only on `transform`/`opacity` (no transitions on size, position, colour or shadow; no
+  `backdrop-filter`: over a playing clip it re-blurs every frame). The expanding row is a track of
+  fixed-size cards: a card opens by unclipping (`clip-path`) and the cards after it slide
+  (`transform`), so the row is never laid out while it moves. Rows off screen use
+  `content-visibility: auto`. Measured with a Chrome trace (paints 3006 -> ~240 on a Home walk).
+- Spacing from tokens only (`--space-item/block/list/text`, the 4 px scale, `--page-top`), as the
+  TV's `theme.space`; no spacing in inline styles.
 
 ## Phone app (clients/mobile)
 - NativeScript 9 + SolidJS 2 via `@nativescript-community/solid-js` (native iOS views; Android

@@ -209,15 +209,52 @@ export function GenreTile(props: { name: string; image: string | null | undefine
   );
 }
 
-/** A spotlight: one title, wide, with why it's picked. */
+/** A spotlight: one title, wide, with why it's picked; its preview clip plays once the banner is
+ * mostly on screen (and stops when it leaves), as the hero's does. */
 export function Banner(props: { spot: Spot }) {
+  let host: HTMLDivElement | undefined;
+  let root: HTMLElement | undefined;
+  let clip: { stop: () => void } | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  onSettled(() => {
+    const io = new IntersectionObserver(
+      ([e]) => {
+        clearTimeout(timer);
+        if (e.intersectionRatio >= 0.6) {
+          timer = setTimeout(() => {
+            if (host && !clip)
+              clip = playClip(
+                host,
+                props.spot.kind === "movie"
+                  ? { kind: "title", id: props.spot.id }
+                  : { kind: "series", name: props.spot.id },
+                () => (clip = null),
+              );
+          }, 1000);
+        } else {
+          clip?.stop();
+          clip = null;
+        }
+      },
+      { threshold: [0, 0.6] },
+    );
+    if (root) io.observe(root);
+    return () => {
+      io.disconnect();
+      clearTimeout(timer);
+      clip?.stop();
+    };
+  });
   return (
-    <section class="section">
+    <section class="section" ref={(el) => (root = el)}>
       <a class="banner" href={href(paths.spot(props.spot))}>
         <Art image={props.spot.backdrop} alt="" />
+        <div class="clip-host" ref={(el) => (host = el)} />
         <div class="banner-text">
           <span class="reason">{t(props.spot.reason, { title: props.spot.reason_title ?? "" })}</span>
-          <b>{props.spot.title}</b>
+          <Show when={props.spot.logo} fallback={<b>{props.spot.title}</b>}>
+            <Logo image={props.spot.logo} title={props.spot.title} class="banner-logo" />
+          </Show>
         </div>
       </a>
     </section>
@@ -333,45 +370,57 @@ export function ExpandRow(props: {
 
   return (
     <Row title={props.title} class="expand-row" link={props.link}>
-      <For each={props.items} keyed={(x: ExpandItem) => x.key}>
-        {(item, i) => (
-          <a
-            class={["expand-card", { open: open() === i() }]}
-            href={item().href}
-            aria-label={item().title}
-            onMouseEnter={() => {
-              if (!hoverable) return;
-              clearTimeout(hoverTimer);
-              hoverTimer = setTimeout(() => openAt(i()), HOVER_OPEN_MS);
-            }}
-            onMouseLeave={() => clearTimeout(hoverTimer)}
-            onFocus={() => openAt(i())}
-            onClick={(e) => {
-              // Touch: the first tap opens the card, the next opens its page.
-              if (!hoverable && open() !== i()) {
-                e.preventDefault();
-                openAt(i());
-                e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
-              }
-            }}
-          >
-            <div class="layer poster-layer">
-              <Art image={item().poster} alt="" />
-            </div>
-            <div class="layer wide-layer">
-              <Show when={Math.abs(i() - open()) <= 1}>
-                <Art image={item().backdrop ?? item().poster} alt="" />
-              </Show>
-              <div class="clip-host layer" ref={(el) => hosts.set(item().key, el)} />
-              <div class="card-caption">
-                <b>{item().title}</b>
-                <span>{item().meta}</span>
+      {/* Every card is drawn at its open size in its own slot; the ones after the open card slide
+          over with a transform, and a card opens by unclipping, never by changing its width: nothing
+          is laid out again while the row moves (only the compositor works). */}
+      <div class="expand-track" style={{ "--cards": String(props.items.length) }}>
+        <For each={props.items} keyed={(x: ExpandItem) => x.key}>
+          {(item, i) => (
+            <a
+              class={["expand-card", { open: open() === i() }]}
+              style={{ "--i": String(i()), "--after": i() > open() ? "1" : "0" }}
+              href={item().href}
+              aria-label={item().title}
+              onMouseEnter={() => {
+                if (!hoverable) return;
+                clearTimeout(hoverTimer);
+                hoverTimer = setTimeout(() => openAt(i()), HOVER_OPEN_MS);
+              }}
+              onMouseLeave={() => clearTimeout(hoverTimer)}
+              onFocus={() => openAt(i())}
+              onClick={(e) => {
+                // Touch: the first tap opens the card, the next opens its page.
+                if (!hoverable && open() !== i()) {
+                  e.preventDefault();
+                  openAt(i());
+                  const card = e.currentTarget;
+                  // Once it has slid into its open place.
+                  setTimeout(
+                    () => card.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" }),
+                    350,
+                  );
+                }
+              }}
+            >
+              <div class="layer poster-layer">
+                <Art image={item().poster} alt="" />
+                <Progress fraction={item().fraction ?? 0} />
               </div>
-            </div>
-            <Progress fraction={item().fraction ?? 0} />
-          </a>
-        )}
-      </For>
+              <div class="layer wide-layer">
+                <Show when={Math.abs(i() - open()) <= 1}>
+                  <Art image={item().backdrop ?? item().poster} alt="" />
+                </Show>
+                <div class="clip-host layer" ref={(el) => hosts.set(item().key, el)} />
+                <div class="card-caption">
+                  <b>{item().title}</b>
+                  <span>{item().meta}</span>
+                </div>
+                <Progress fraction={item().fraction ?? 0} />
+              </div>
+            </a>
+          )}
+        </For>
+      </div>
     </Row>
   );
 }
