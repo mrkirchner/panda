@@ -416,9 +416,10 @@
   Text over artwork: black scrims plus text-shadow. A GridLayout inside a StackLayout needs
   `rows="auto"`, or its default star row takes spare height. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
-- Long lists: the All grid is a real virtual list (`app/virtual.tsx` `createVirtualList`: a
+- Long lists: the All grid and My List are real virtual lists (`app/virtual.tsx` `createVirtualList`: a
   ListView/UITableView, cells built once from the renderer's `document.createElement` and handed new
-  items on reuse; set `rowHeight` after the class or it stays "auto"). Rows inside a scrolling page
+  items on reuse; set `rowHeight` after the class or it stays "auto"; `"auto"` for rows of different
+  kinds, as My List's headings, requests and poster rows). Rows inside a scrolling page
   can't be a table: long ones are paged ("Show more", episodes 40 at a time). Server rows are capped.
 - Speed on device (checked in a full review): run Release builds on the phone
   (`scripts/run-device.sh`; Debug is 5.6 MB of unminified JS with Solid's dev checks); every

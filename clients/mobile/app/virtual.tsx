@@ -10,15 +10,17 @@ type Cell<T> = GridLayout & { show?: (item: T) => void; dispose?: () => void };
 
 /**
  * A ListView showing `items()` with `row` (built once per visible cell, then handed new items).
- * `rowHeight`: every row's height (fixed rows scroll smoothest). Call `update` with new items.
+ * `rowHeight`: every row's height (fixed rows scroll smoothest), or "auto" for rows of different
+ * kinds (each is measured). Call `update` with new items.
  */
-export function createVirtualList<T>(rowHeight: number, row: (item: () => T) => JSX.Element) {
+export function createVirtualList<T>(rowHeight: number | "auto", row: (item: () => T) => JSX.Element) {
   const list = new ListView();
   list.className = "virtual-list";
   list.separatorColor = "transparent" as never;
   // A style property: set after the class (which would otherwise reset it to "auto").
   list.style.setProperty?.("rowHeight", rowHeight);
   list.rowHeight = rowHeight;
+  if (rowHeight === "auto") list.iosEstimatedRowHeight = 180;
   let items: T[] = [];
   const cells: Cell<T>[] = [];
   list.on("itemLoading", (args: ItemEventData) => {
