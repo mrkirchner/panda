@@ -368,9 +368,9 @@
   Links between screens live in `app/screens/links.tsx`.
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
   (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
-  open, only the sheet's while a sheet is); Recently Added rows expand in place (`ExpandRow`: a tap
-  opens a card at once, animated, the row scrolling only if it's cut off; scrolling never
-  reshapes the row: tried, it snapped and lagged). Tapping a poster
+  open, only the sheet's while a sheet is); Recently Added rows have a fixed focus spot at the left (`ExpandRow`:
+  cards absolutely placed and animated (translate + width), a sideways-only UIPanGestureRecognizer
+  moves titles through the spot; not a ScrollView: reshaping a scrolling row snapped and lagged). Tapping a poster
   opens its page (no preview sheet: the user wants straight to the info). `openSheet` is for
   pickers (seasons).
   Logos go through `Logo` (iOS centers a picture in its box: the box takes the logo's shape).

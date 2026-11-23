@@ -7,7 +7,7 @@
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
 //   -pandaExpand <n>        open card n of Home's first expanding row (as a tap)
-//   -pandaRowScroll <x>     scroll that row to x (as a finger)
+//   -pandaRowScroll <n>     swipe that row n cards along (as a finger)
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";

@@ -5,8 +5,8 @@ import type { Spot } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { genreTint } from "@tv/theme";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
-import { For, Show, createSignal, flush, onCleanup } from "solid-js";
-import type { ContentView, ScrollView } from "@nativescript/core";
+import { For, Show, createSignal, onCleanup } from "solid-js";
+import type { ContentView, ScrollView, View } from "@nativescript/core";
 import { playClip, type ClipSource } from "../clip";
 
 export function Row(props: {
@@ -202,93 +202,175 @@ export interface ExpandItem {
 
 /** Posters and the open card: the TV's 240x360 that opens to 640 wide, at phone size. */
 const EXPANDED_W = 300;
+const CARD_H = 168;
 /** A poster's width, the gap between cards, and the row's side padding (app.css). */
 const POSTER_W = 112;
 const CARD_GAP = 10;
 const ROW_PAD = 16;
+/** One poster's step along the row. */
+const STEP = POSTER_W + CARD_GAP;
 /** Rest on an opened card this long before its clip starts. */
 const EXPAND_CLIP_MS = 1_000;
+const MOVE_MS = 260;
+
+type PanState = { translationX: number; velocityX: number; state: number };
+
+/** Lets the page scroll vertically: the row's pan only starts on a mostly sideways swipe. */
+const Sideways = (NSObject as unknown as {
+  extend(methods: object, info: object): { new (): NSObject };
+}).extend(
+  {
+    gestureRecognizerShouldBegin(g: UIPanGestureRecognizer) {
+      const v = g.velocityInView(g.view);
+      return Math.abs(v.x) > Math.abs(v.y);
+    },
+  },
+  { protocols: [UIGestureRecognizerDelegate] },
+);
+const PanTarget = (NSObject as unknown as {
+  extend(methods: object, info: object): { new (): NSObject & { fn?: (g: UIPanGestureRecognizer) => void } };
+}).extend(
+  {
+    pan(this: { fn?: (g: UIPanGestureRecognizer) => void }, g: UIPanGestureRecognizer) {
+      this.fn?.(g);
+    },
+  },
+  { exposedMethods: { pan: { returns: interop.types.void, params: [UIPanGestureRecognizer] } } },
+);
 
 /**
- * A row whose open card is wide, as a focused card expands on the TV ("Recently added"): its
- * backdrop with the name and facts, and its preview clip after a moment. The first card starts
- * open; tapping another opens it at once; tapping the open one opens its page (OK on the TV).
+ * A row with a fixed focus spot at its left, as a TV row's focus (the TV's "Recently added"):
+ * the card in the spot is open (its backdrop, name and facts, and its preview clip after a
+ * moment), the rest are posters after it. Swiping moves the titles through the spot: the open
+ * one closes as it leaves, the next opens as it arrives. A tap on a poster brings it to the
+ * spot; a tap on the open card opens its page (OK on the TV).
  */
 export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
-  const [open, setOpen] = createSignal(0);
+  let focus = 0;
+  const cards: View[] = [];
+  const posters: View[] = [];
+  const wides: View[] = [];
   const hosts: ContentView[] = [];
-  let scroller: ScrollView | undefined;
   let clip: { stop: () => void } | null = null;
   let clipTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Where card `i` starts in the row, with card `opened` wide. */
-  const leftOf = (i: number, opened: number) =>
-    ROW_PAD + i * (POSTER_W + CARD_GAP) + (i > opened ? EXPANDED_W - POSTER_W : 0);
-  /** Card `i` (now wide) cut off at either side: scroll just enough to show it, nothing more. */
-  const reveal = (i: number) => {
-    const sv = scroller;
-    if (!sv) return;
-    const left = leftOf(i, i) - ROW_PAD;
-    const right = leftOf(i, i) + EXPANDED_W + ROW_PAD;
-    const x = sv.horizontalOffset;
-    const view = sv.getActualSize().width;
-    if (left < x) sv.scrollToHorizontalOffset(Math.max(0, left), true);
-    else if (right > x + view) sv.scrollToHorizontalOffset(Math.min(sv.scrollableWidth, right - view), true);
+  /** Where card `j` sits with card `f` in the spot. */
+  const xOf = (j: number, f: number) =>
+    // Cards past the spot wait fully off the left edge (no sliver showing).
+    j < f ? -ROW_PAD - (f - j) * STEP : j === f ? ROW_PAD : ROW_PAD + EXPANDED_W + CARD_GAP + (j - f - 1) * STEP;
+  /** Lay every card out for focus `f` (animated, or at once while dragging). */
+  const place = (f: number, drag = 0, animate = true) => {
+    for (let j = 0; j < cards.length; j++) {
+      const card = cards[j];
+      if (!card) continue;
+      const x = xOf(j, f) + drag;
+      const open = j === f;
+      if (!animate) {
+        card.translateX = x;
+        continue;
+      }
+      void card.animate({ translate: { x, y: 0 }, width: open ? EXPANDED_W : POSTER_W, duration: MOVE_MS, curve: "easeOut" });
+      void posters[j]?.animate({ opacity: open ? 0 : 1, duration: MOVE_MS });
+      void wides[j]?.animate({ opacity: open ? 1 : 0, duration: MOVE_MS });
+    }
   };
-  /** A tap: open that card at once (its neighbours slide over), or the open one's page (OK on
-   * the TV). Scrolling doesn't open cards: a row changing shape under your finger feels wrong. */
-  const tap = (i: number) => {
-    if (open() === i) return props.items[i]?.open();
-    const row = scroller?.ios as UIScrollView | undefined;
-    UIView.animateWithDurationAnimations(0.25, () => {
-      setOpen(i);
-      flush();
-      row?.layoutIfNeeded();
-    });
-    reveal(i);
+  /** Bring card `n` to the spot (and its clip after a moment). */
+  const goTo = (n: number) => {
+    const next = Math.max(0, Math.min(props.items.length - 1, n));
+    const changed = next !== focus;
+    focus = next;
+    place(next);
+    if (!changed) return;
     clip?.stop();
     clip = null;
     clearTimeout(clipTimer);
     clipTimer = setTimeout(() => {
-      const host = hosts[i];
-      const item = props.items[i];
-      if (host && item && open() === i) clip = playClip(host, item.clip);
+      const host = hosts[next];
+      const item = props.items[next];
+      if (host && item && focus === next) clip = playClip(host, item.clip);
     }, EXPAND_CLIP_MS);
   };
+  const tap = (i: number) => (i === focus ? props.items[i]?.open() : goTo(i));
+
+  /** The finger: the row follows it, then settles a card per poster-width swiped (a flick more). */
+  const onPan = (g: UIPanGestureRecognizer) => {
+    const tx = g.translationInView(g.view).x;
+    if (g.state === UIGestureRecognizerState.Changed) {
+      // Resisting past either end.
+      const atEnd = (focus === 0 && tx > 0) || (focus === props.items.length - 1 && tx < 0);
+      place(focus, atEnd ? tx / 3 : tx, false);
+    } else if (g.state === UIGestureRecognizerState.Ended || g.state === UIGestureRecognizerState.Cancelled) {
+      const projected = tx + g.velocityInView(g.view).x * 0.2;
+      goTo(focus - Math.round(projected / STEP));
+    }
+  };
+  const attachPan = (row: View) => {
+    const native = row.ios as UIView | undefined;
+    if (!native) return;
+    const target = new PanTarget();
+    target.fn = onPan;
+    const pan = UIPanGestureRecognizer.alloc().initWithTargetAction(target, "pan");
+    const delegate = new Sideways();
+    pan.delegate = delegate as unknown as UIGestureRecognizerDelegate;
+    native.addGestureRecognizer(pan);
+    keep.push(target, delegate);
+  };
+  const keep: NSObject[] = [];
+
   devExpand ??= tap;
-  devScrollRow ??= (x: number) => scroller?.scrollToHorizontalOffset(x, true);
+  devScrollRow ??= (steps: number) => goTo(focus + steps);
   onCleanup(() => {
     clearTimeout(clipTimer);
     clip?.stop();
+    keep.length = 0;
     if (devExpand === tap) devExpand = null;
   });
+
   return (
-    <Row title={props.title} scrollRef={el => (scroller = el)}>
-      <For each={props.items}>
-        {(item, i) => (
-          <Show
-            when={open() === i()}
-            fallback={
-              <Poster image={item.poster} title={item.title} fraction={item.fraction} onTap={() => tap(i())} />
-            }
-          >
-            <gridlayout class="expanded" width={EXPANDED_W} on:tap={() => tap(i())}>
-              <image class="expanded-art" src={imageUrl(item.backdrop ?? item.poster)} stretch="aspectFill" />
-              <contentview class="clip-host expanded-art" ref={(el: ContentView) => (hosts[i()] = el)} />
-              <stacklayout class="expanded-scrim" />
-              <stacklayout class="expanded-text" verticalAlignment="bottom">
-                <label class="expanded-title" textWrap={true} maxLines={2} text={item.title} />
-                <label class="expanded-meta" text={item.meta} />
-              </stacklayout>
+    <stacklayout>
+      <label class="section-title" text={props.title} />
+      <absolutelayout
+        class="focus-row"
+        height={CARD_H}
+        on:loaded={(e: { object: View }) => {
+          attachPan(e.object);
+          place(focus, 0, false);
+        }}
+      >
+        <For each={props.items}>
+          {(item, i) => (
+            <gridlayout
+              class="focus-card"
+              width={i() === 0 ? EXPANDED_W : POSTER_W}
+              height={CARD_H}
+              translateX={xOf(i(), 0)}
+              ref={(el: View) => (cards[i()] = el)}
+              on:tap={() => tap(i())}
+            >
+              <gridlayout opacity={i() === 0 ? 1 : 0} ref={(el: View) => (wides[i()] = el)}>
+                <image class="expanded-art" src={imageUrl(item.backdrop ?? item.poster)} stretch="aspectFill" />
+                <contentview class="clip-host expanded-art" ref={(el: ContentView) => (hosts[i()] = el)} />
+                <stacklayout class="expanded-scrim" />
+                <stacklayout class="expanded-text" verticalAlignment="bottom">
+                  <label class="expanded-title" textWrap={true} maxLines={2} text={item.title} />
+                  <label class="expanded-meta" text={item.meta} />
+                </stacklayout>
+              </gridlayout>
+              <gridlayout opacity={i() === 0 ? 0 : 1} ref={(el: View) => (posters[i()] = el)} rows="*, auto">
+                <image rowSpan={2} class="poster" src={imageUrl(item.poster)} stretch="aspectFill" />
+                <Show when={(item.fraction ?? 0) > 0}>
+                  <Progress row={1} fraction={item.fraction!} width={POSTER_W} />
+                </Show>
+              </gridlayout>
             </gridlayout>
-          </Show>
-        )}
-      </For>
-    </Row>
+          )}
+        </For>
+      </absolutelayout>
+    </stacklayout>
   );
 }
 
 /** Debug builds (devLaunch `-pandaExpand <n>`): open card n of the first expanding row, as a tap. */
 export let devExpand: ((i: number) => void) | null = null;
-/** Debug builds (`-pandaRowScroll <x>`): scroll the first expanding row as a finger would. */
-export let devScrollRow: ((x: number) => void) | null = null;
+/** Debug builds (`-pandaRowScroll <n>`): swipe the first expanding row n cards along. */
+export let devScrollRow: ((steps: number) => void) | null = null;
