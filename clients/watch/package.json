@@ -1,0 +1,35 @@
+{
+  "name": "panda-watch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Panda's web app for watching (Solid 2, responsive): the TV app's pages for phones, tablets and desktops",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.8.0",
+  "scripts": {
+    "dev": "VITE_SERVED_BY_PANDA=1 vite",
+    "build": "tsc --noEmit && VITE_SERVED_BY_PANDA=1 vite build",
+    "build:standalone": "tsc --noEmit && WATCH_STANDALONE=1 vite build --outDir dist-standalone",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@solidjs/router": "^2.0.0",
+    "@solidjs/web": "^2.0.3",
+    "shaka-player": "^4.16.11",
+    "solid-js": "^2.0.3"
+  },
+  "devDependencies": {
+    "@solidjs/vite-plugin": "^3.0.1",
+    "@types/node": "^26.6.6",
+    "prettier": "^3.10.1",
+    "typescript": "^5.9",
+    "vite": "^8",
+    "vitest": "^5.1.1"
+  }
+}

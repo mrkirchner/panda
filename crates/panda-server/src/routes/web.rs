@@ -1,4 +1,5 @@
-//! The admin web UI (a static SPA build). Built into the binary (see `build.rs`), so one
+//! The admin web UI (a static SPA build), and the TV app and the web app for watching served in
+//! a browser (`/tv`, `/watch`). Built into the binary (see `build.rs`), so one
 //! program is the whole server; `[server] web_dir` serves a folder instead (development).
 //! Hashed assets are cached forever, `index.html` never, and unknown paths fall back to
 //! `index.html` for client-side routing.
@@ -26,6 +27,10 @@ struct Bundled;
 #[folder = "$OUT_DIR/tv"]
 struct BundledTv;
 
+#[derive(Embed)]
+#[folder = "$OUT_DIR/watch"]
+struct BundledWatch;
+
 /// The TV app needs more than the admin UI: WebGL textures and video from `blob:` URLs, image
 /// decoding in workers, and media from the server (still same-origin only, no framing).
 const TV_CSP: &str = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; \
@@ -33,29 +38,64 @@ const TV_CSP: &str = "default-src 'self'; script-src 'self'; worker-src 'self' b
                       media-src 'self' blob:; connect-src 'self' blob: data:; font-src 'self' data:; \
                       object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 
-/// The TV app in a browser (`/tv`): the same app the TVs run, talking to this server. Files
-/// from its build, else `index.html` (its router is hash-based); hashed assets cached forever.
-pub(super) async fn serve_tv(req: Request) -> Response {
-    let path = req.uri().path().trim_start_matches("/tv").trim_start_matches('/');
-    if BundledTv::get("index.html").is_none() {
-        return (StatusCode::NOT_FOUND, "TV app not built. Run `pnpm build:server` in clients/tv.")
-            .into_response();
-    }
+/// The web app for watching (`/watch`): video from `blob:` URLs (shaka-player's media source),
+/// artwork and media from the server; same-origin only, no framing, no inline scripts.
+const WATCH_CSP: &str = "default-src 'self'; script-src 'self'; worker-src 'self' blob:; \
+                         style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; \
+                         media-src 'self' blob:; connect-src 'self' blob: data:; font-src 'self' data:; \
+                         object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/// One file of an embedded app served under `prefix`, else its `index.html` (client-side
+/// routing); hashed assets are cached forever, the rest revalidated.
+fn serve_embedded(
+    req: &Request,
+    prefix: &str,
+    get: fn(&str) -> Option<rust_embed::EmbeddedFile>,
+    csp: &'static str,
+    missing: &'static str,
+) -> Response {
+    let path = req.uri().path().trim_start_matches(prefix).trim_start_matches('/');
+    let Some(index) = get("index.html") else {
+        return (StatusCode::NOT_FOUND, missing).into_response();
+    };
     let is_asset = path.starts_with("assets/");
-    let file = match BundledTv::get(path) {
+    let file = match get(path) {
         Some(f) if !path.is_empty() => f,
         _ if is_asset => return StatusCode::NOT_FOUND.into_response(),
-        _ => BundledTv::get("index.html").expect("checked above"),
+        _ => index,
     };
     let mut res = Response::new(Body::from(file.data.into_owned()));
     let h = res.headers_mut();
     if let Ok(v) = HeaderValue::from_str(file.metadata.mimetype()) {
         h.insert(header::CONTENT_TYPE, v);
     }
-    h.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static(TV_CSP));
+    h.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static(csp));
     let cache = if is_asset { "public, max-age=31536000, immutable" } else { "no-cache" };
     h.insert(header::CACHE_CONTROL, HeaderValue::from_static(cache));
     res
+}
+
+/// The TV app in a browser (`/tv`): the same app the TVs run, talking to this server.
+pub(super) async fn serve_tv(req: Request) -> Response {
+    serve_embedded(
+        &req,
+        "/tv",
+        BundledTv::get,
+        TV_CSP,
+        "TV app not built. Run `pnpm build:server` in clients/tv.",
+    )
+}
+
+/// The web app for watching (`/watch`, clients/watch): history routing, so every unknown path
+/// under it is the app's `index.html`.
+pub(super) async fn serve_watch(req: Request) -> Response {
+    serve_embedded(
+        &req,
+        "/watch",
+        BundledWatch::get,
+        WATCH_CSP,
+        "Web app not built. Run `pnpm build` in clients/watch.",
+    )
 }
 
 /// Whether this binary carries the admin UI.
