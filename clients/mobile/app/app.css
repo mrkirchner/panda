@@ -238,3 +238,6 @@ ActionBar {
 .ghost-wide { width: 240; height: 135; margin-right: 10; }
 .ghost-genre { width: 170; height: 96; margin-right: 10; }
 .ghost-expand { width: 300; height: 168; margin-right: 10; }
+.person-facts { padding-top: 0; }
+.ghost-line { height: 14; width: 220; border-radius: 4; margin-top: 10; horizontal-align: left; }
+.ghost-text { height: 70; border-radius: 6; margin-top: 14; }

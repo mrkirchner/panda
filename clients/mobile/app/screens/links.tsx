@@ -17,7 +17,9 @@ export const openGenre = (name: string) =>
   open(() => browseScreen(() => api.genrePage(name), { of: "genre", name }), { title: t(name) });
 export const openAll = (kind: "movies" | "shows", genre?: string, library?: number) =>
   open(() => allScreen(kind, genre, library), { title: kind === "movies" ? t("All movies") : t("All shows") });
-export const openPerson = (id: number) => open(() => personScreen(id), { title: "" });
+/** `known`: their name and photo from the row tapped, shown at once while TMDB answers. */
+export const openPerson = (id: number, known?: { name: string; image: string | null }) =>
+  open(() => personScreen(id, known), { title: "" });
 /** A title you don't have: its page, with Request. */
 export const openPreview = (kind: "movie" | "series", tmdbId: number) =>
   open(() => previewScreen(kind, tmdbId), { title: "" });

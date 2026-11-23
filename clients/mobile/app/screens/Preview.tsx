@@ -11,7 +11,7 @@ import { Show, createSignal } from "solid-js";
 import { facts, load, longDate, refreshAll, runtime } from "../data";
 import { bestProgress, discoverStatus, refreshRequests, requestFor } from "../requests";
 import { Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
-import { Logo } from "./cards";
+import { GhostRow, Logo } from "./cards";
 import { pickSeasons } from "./SeasonPicker";
 import { seriesScreen } from "./Series";
 import { titleScreen } from "./Title";
@@ -79,6 +79,16 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
         <stacklayout class="home">
           <Show when={data.error()}>
             <label class="error form" textWrap={true} text={data.error() ?? ""} />
+          </Show>
+          {/* TMDB can take a moment: the page's shape as ghosts meanwhile. */}
+          <Show when={!p() && !data.error()}>
+            <stacklayout class="ghost hero" />
+            <stacklayout class="form">
+              <stacklayout class="ghost ghost-line" />
+              <stacklayout class="ghost ghost-line" />
+              <stacklayout class="ghost ghost-text" />
+            </stacklayout>
+            <GhostRow />
           </Show>
           <Show when={p()}>
             <image class="hero" src={imageUrl(p()!.backdrop)} stretch="aspectFill" />

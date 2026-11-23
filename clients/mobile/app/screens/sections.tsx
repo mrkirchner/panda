@@ -116,7 +116,7 @@ export function PeopleRow(props: { people: Person[]; title?: string }) {
       <Row title={props.title ?? t("Cast & Crew")}>
         <For each={props.people}>
           {p => (
-            <stacklayout class="person-cell" on:tap={() => p.id && openPerson(p.id)}>
+            <stacklayout class="person-cell" on:tap={() => p.id && openPerson(p.id, { name: p.name, image: p.image })}>
               <gridlayout class="headshot">
                 <label class="headshot-initial" text={p.name.slice(0, 1)} />
                 <image class="headshot" src={imageUrl(p.image)} stretch="aspectFill" />

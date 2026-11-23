@@ -5,6 +5,7 @@ import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
 import { facts, load, longDate } from "../data";
 import { MoreRow } from "./sections";
+import { GhostRow } from "./cards";
 
 /** Whole years from `from` to `to` (ISO dates; `to` defaults to today). */
 function yearsBetween(from: string, to?: string | null): number | null {
@@ -16,7 +17,7 @@ function yearsBetween(from: string, to?: string | null): number | null {
   return years;
 }
 
-export function personScreen(id: number) {
+export function personScreen(id: number, known?: { name: string; image: string | null }) {
   const data = load(() => api.person(id));
   const [open, setOpen] = createSignal(false);
   const p = () => data.value();
@@ -28,17 +29,29 @@ export function personScreen(id: number) {
         <Show when={data.error()}>
           <label class="error form" textWrap={true} text={data.error() ?? ""} />
         </Show>
-        <Show when={p()}>
-          <gridlayout class="person-hero" rows="*, auto">
-            <image rowSpan={2} class="hero" src={imageUrl(p()!.backdrop)} stretch="aspectFill" />
-            <stacklayout rowSpan={2} class="hero-scrim" />
+        {/* The header at once from what the row knew (name, photo); the rest as ghosts until
+            TMDB answers. */}
+        <gridlayout class={p() ? "person-hero" : "person-hero ghost"} rows="*, auto">
+          <image rowSpan={2} class="hero" src={imageUrl(p()?.backdrop)} stretch="aspectFill" />
+          <stacklayout rowSpan={2} class="hero-scrim" />
+        </gridlayout>
+        <stacklayout class="form person-head">
+          <gridlayout class="photo">
+            <label class="headshot-initial" text={(p()?.name ?? known?.name ?? "").slice(0, 1)} />
+            <image class="photo" src={imageUrl(p()?.image ?? known?.image)} stretch="aspectFill" />
           </gridlayout>
-          <stacklayout class="form person-head">
-            <gridlayout class="photo">
-              <label class="headshot-initial" text={p()!.name.slice(0, 1)} />
-              <image class="photo" src={imageUrl(p()!.image)} stretch="aspectFill" />
-            </gridlayout>
-            <label class="h1" textWrap={true} text={p()!.name} />
+          <label class="h1" textWrap={true} text={p()?.name ?? known?.name ?? ""} />
+          <Show when={!p() && !data.error()}>
+            <stacklayout class="ghost ghost-line" />
+            <stacklayout class="ghost ghost-text" />
+          </Show>
+        </stacklayout>
+        <Show when={!p() && !data.error()}>
+          <GhostRow />
+          <GhostRow />
+        </Show>
+        <Show when={p()}>
+          <stacklayout class="form person-facts">
             <label
               class="facts"
               textWrap={true}
