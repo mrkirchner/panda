@@ -22,7 +22,11 @@ profile button: Edit profile, Switch profile, Sign out.
 As on the TV: a hero carousel at the top of Home, Movies and Shows (`screens/Hero.tsx`: logo,
 reason, facts, ratings, Play / More info, 9 s slides), preview clips behind it and behind a
 title's page header (`app/clip.ts`: one at a time, quiet or silent per profile, none while the
-player or a sheet covers them), and the expanded tile: tapping a poster brings up a sheet with
+player or a sheet covers them), the TV's expanding row for Recently Added (`ExpandRow` in `screens/cards.tsx`: the open card
+shows its backdrop, name and facts, and its clip; tap another to open it, tap the open one for
+its page), rating badges as the TV draws them (TMDB's logo, IMDb/RT/MC pills; `Ratings` in
+`screens/sections.tsx`), left-aligned title logos (`Logo`), and the expanded tile as a sheet:
+tapping a poster elsewhere brings up a sheet with
 its clip, facts, Play, My List and More info (`screens/Peek.tsx`, `nav.ts` `openSheet`). Genre pages
 are laid out like Movies. A movie's page and a show's, as on the TV: logo, facts, ratings, Play or
 Resume, My List / Watched / Versions / More seasons, episodes, film series, More Like This, Cast &

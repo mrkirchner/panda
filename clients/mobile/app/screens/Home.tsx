@@ -5,12 +5,12 @@ import { api, ensureSession } from "@tv/api/client";
 import type { ContinueEntry, Home as HomeData, HomeMore, ThemedRow } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show } from "solid-js";
-import { load } from "../data";
+import { facts, load, runtime } from "../data";
 import { play } from "../player";
-import { Banner, GenreTile, Poster, Row, WideCard } from "./cards";
+import { Banner, ExpandRow, GenreTile, Poster, Row, WideCard } from "./cards";
 import { Hero } from "./Hero";
 import { featuredSlide } from "./heroSlides";
-import { openGenre, openPreview, peekMovie, peekShow, peekSpot } from "./links";
+import { openGenre, openPreview, openSeries, openTitle, peekMovie, peekShow, peekSpot } from "./links";
 import { bestProgress } from "../requests";
 import type { MyRequest } from "@tv/api/types";
 
@@ -113,18 +113,19 @@ export function Home() {
         </Show>
         <For each={seasonal()}>{row => <Themed row={row} />}</For>
         <Show when={home()?.recently_added_movies.length}>
-          <Row title={t("Recently Added Movies")}>
-            <For each={home()!.recently_added_movies}>
-              {m => (
-                <Poster
-                  image={m.poster}
-                  title={m.title}
-                  fraction={m.progress && !m.progress.finished ? m.progress.fraction : 0}
-                  onTap={() => peekMovie(m.id)}
-                />
-              )}
-            </For>
-          </Row>
+          <ExpandRow
+            title={t("Recently Added Movies")}
+            items={home()!.recently_added_movies.map(m => ({
+              key: m.id,
+              title: m.title,
+              poster: m.poster,
+              backdrop: m.backdrop,
+              meta: facts([m.year, runtime(m.duration_secs), (m.genres ?? "").split(/,\s*/)[0]]),
+              clip: { kind: "title" as const, id: m.id },
+              fraction: m.progress && !m.progress.finished ? m.progress.fraction : 0,
+              open: () => openTitle(m.id),
+            }))}
+          />
         </Show>
         <Show when={more.value()?.genres.length}>
           <Row title={t("Browse by genre")}>
@@ -134,11 +135,18 @@ export function Home() {
           </Row>
         </Show>
         <Show when={home()?.recently_added_shows.length}>
-          <Row title={t("Recently Added Shows")}>
-            <For each={home()!.recently_added_shows}>
-              {s => <Poster image={s.poster} title={s.meta_title ?? s.series} onTap={() => peekShow(s.series)} />}
-            </For>
-          </Row>
+          <ExpandRow
+            title={t("Recently Added Shows")}
+            items={home()!.recently_added_shows.map(s => ({
+              key: s.series,
+              title: s.meta_title ?? s.series,
+              poster: s.poster,
+              backdrop: s.backdrop,
+              meta: facts([s.year, t("{n} seasons", { n: s.seasons }), (s.genres ?? "").split(/,\s*/)[0]]),
+              clip: { kind: "series" as const, name: s.series },
+              open: () => openSeries(s.series),
+            }))}
+          />
         </Show>
         <Show when={more.value()?.spotlights[0]}>
           <Banner spot={more.value()!.spotlights[0]} onTap={() => peekSpot(more.value()!.spotlights[0])} />

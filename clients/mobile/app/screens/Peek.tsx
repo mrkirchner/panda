@@ -1,7 +1,7 @@
 // The expanded tile: tapping a poster brings up this sheet, as a focused card expands on the TV
 // (backdrop and preview clip, logo, facts, ratings, a few lines about it), with Play or Resume,
 // My List and More info (the full page).
-import { Dialogs } from "@nativescript/core";
+import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Item, SeriesSummary, Title, TitleDetails } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
@@ -11,7 +11,7 @@ import { facts, load, runtime } from "../data";
 import { myListToggle } from "../myList";
 import { leaveSheet } from "../nav";
 import { play } from "../player";
-import { ClipArt } from "./cards";
+import { ClipArt, Logo } from "./cards";
 import { openSeries, openTitle } from "./links";
 import { Action, Ratings } from "./sections";
 import { nextUp } from "./Series";
@@ -116,7 +116,7 @@ function Body(props: {
         <ClipArt image={props.backdrop} clip={props.clip} inSheet={true} />
         <stacklayout class="form">
           <Show when={props.logo} fallback={<label class="h1" textWrap={true} text={props.name} />}>
-            <image class="logo" height={64} src={imageUrl(props.logo)} stretch="aspectFit" />
+            <Logo image={props.logo} height={64} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />
           </Show>
           <label class="facts" textWrap={true} text={props.facts} />
           <Ratings ratings={props.ratings} />

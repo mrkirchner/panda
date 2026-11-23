@@ -8,18 +8,43 @@ import { For, Show } from "solid-js";
 import { Poster, Row } from "./cards";
 import { openPerson, openPreview, openSeries, openTitle } from "./links";
 
-/** "TMDB 7.8/10  ·  IMDb 8.3/10  ·  RT 91%". */
+/** TMDB's logo is 273.42 x 35.52 (images/tmdb.svg). */
+const TMDB_H = 11;
+const TMDB_W = Math.round((TMDB_H * 273.42) / 35.52);
+/**
+ * The other sources as badges in their own colors, with their names (not their logos: those
+ * are trademarks), as the TV draws them (MetaLine).
+ */
+const BADGES: Record<string, { fill: string; text: string }> = {
+  imdb: { fill: "#f5c518", text: "#000000" },
+  rotten_tomatoes: { fill: "#fa320a", text: "#ffffff" },
+  metacritic: { fill: "#66cc33", text: "#000000" },
+};
+
+/** [TMDB] 7.8/10  [IMDb] 8.3/10  [RT] 91%: each source's badge, then its score. */
 export function Ratings(props: { ratings: TitleRating[] }) {
   return (
     <Show when={props.ratings.length}>
-      <label
-        class="facts ratings"
-        textWrap={true}
-        text={props.ratings
-          .slice(0, 4)
-          .map(r => `${r.short} ${r.value}`)
-          .join("   ·   ")}
-      />
+      <flexboxlayout class="ratings-row" flexWrap="wrap" alignItems="center">
+        <For each={props.ratings.slice(0, 4)}>
+          {r => (
+            <stacklayout orientation="horizontal" class="rating">
+              <Show
+                when={r.source !== "tmdb"}
+                fallback={<image src="~/images/tmdb.png" width={TMDB_W} height={TMDB_H} verticalAlignment="middle" />}
+              >
+                <label
+                  class="rating-badge"
+                  text={r.short}
+                  backgroundColor={BADGES[r.source]?.fill ?? "#3a3a3e"}
+                  color={BADGES[r.source]?.text ?? "#f4f1ea"}
+                />
+              </Show>
+              <label class="rating-value" text={r.value} />
+            </stacklayout>
+          )}
+        </For>
+      </flexboxlayout>
     </Show>
   );
 }

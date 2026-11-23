@@ -1,7 +1,7 @@
 // A movie, laid out like the TV's (one scrolling page): its backdrop, logo or name, facts and
 // ratings, Play or Resume, My List / Watched / Versions, then its film series, More Like This,
 // Cast & Crew, and About, Information, Languages and Files.
-import { Dialogs } from "@nativescript/core";
+import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Discover, Title } from "@tv/api/types";
 import { formatTime, tmdbRating } from "@tv/format";
@@ -11,7 +11,7 @@ import { facts, gb, load, longDate, runtime } from "../data";
 import { myListToggle } from "../myList";
 import { play } from "../player";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList, type MoreItem } from "./sections";
-import { ClipArt } from "./cards";
+import { ClipArt, Logo } from "./cards";
 
 export function titleScreen(id: string) {
   const data = load(() => api.title(id));
@@ -73,7 +73,7 @@ export function titleScreen(id: string) {
               when={details.value()?.logo}
               fallback={<label class="h1" textWrap={true} text={title()!.title} />}
             >
-              <image class="logo" src={imageUrl(details.value()!.logo)} stretch="aspectFit" />
+              <Logo image={details.value()!.logo} height={70} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />
             </Show>
             <label
               class="facts"

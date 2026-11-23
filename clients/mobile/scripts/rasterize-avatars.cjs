@@ -1,6 +1,6 @@
 // The TV client's avatar pictures are SVGs (../tv/public/images/avatars), which iOS can't draw,
 // so they become PNGs at build time (as clients/appletv/scripts/rasterize-svgs.cjs does for the
-// Apple TV), copied into the app as images/avatars/<id>.png.
+// Apple TV), copied into the app as images/avatars/<id>.png. Also TMDB's logo for its rating badge.
 const fs = require("fs");
 const path = require("path");
 const { Resvg } = require("@resvg/resvg-js");
@@ -8,11 +8,12 @@ const { Resvg } = require("@resvg/resvg-js");
 /** Pixels across: sharp at the largest size drawn (96 pt at 3x). */
 const SIZE = 300;
 
-module.exports = function rasterizeAvatars(srcDir, outDir) {
+/** `only`: just these files of `srcDir` (default: every SVG in it). */
+module.exports = function rasterizeAvatars(srcDir, outDir, only) {
   fs.mkdirSync(outDir, { recursive: true });
   let made = 0;
   for (const name of fs.readdirSync(srcDir)) {
-    if (!name.endsWith(".svg")) continue;
+    if (!name.endsWith(".svg") || (only && !only.includes(name))) continue;
     const src = path.join(srcDir, name);
     const out = path.join(outDir, name.replace(/\.svg$/, ".png"));
     if (fs.existsSync(out) && fs.statSync(out).mtimeMs >= fs.statSync(src).mtimeMs) continue;

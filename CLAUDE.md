@@ -369,7 +369,10 @@
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
   (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
   open, only the sheet's while a sheet is); the expanded tile is a sheet (`openSheet`,
-  `screens/Peek.tsx`) that row posters open. Styling is CSS classes in `app/app.css` (the TV palette); inline
+  `screens/Peek.tsx`) that row posters open; Recently Added rows expand in place (`ExpandRow`).
+  Logos go through `Logo` (iOS centers a picture in its box: the box takes the logo's shape).
+  Text over artwork: black scrims plus text-shadow. A GridLayout inside a StackLayout needs
+  `rows="auto"`, or its default star row takes spare height. Styling is CSS classes in `app/app.css` (the TV palette); inline
   `style=` strings don't apply with this renderer. Events are `on:tap`, `on:returnPress`.
 - Playback (`app/player.ts`): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The

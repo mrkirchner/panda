@@ -9,6 +9,7 @@ import { t } from "@tv/i18n";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { playClip, type ClipSource } from "../clip";
 import { Ratings } from "./sections";
+import { Logo } from "./cards";
 
 /** The TV's slide time. */
 const SLIDE_MS = 9_000;
@@ -103,13 +104,13 @@ export function Hero(props: { slides: HeroSlide[] }) {
                 <contentview ref={(el: ContentView) => (hosts[i()] = el)} class="clip-host" />
                 <stacklayout class="hero-scrim" />
                 <stacklayout class="hero-content" verticalAlignment="bottom">
-                  <label class="small accent" text={s.reason} />
+                  <label class="hero-reason" text={s.reason} />
                   <Show when={s.logo} fallback={<label class="hero-title" textWrap={true} text={s.title} />}>
-                    <image class="hero-logo" width={width * 0.66} src={imageUrl(s.logo)} stretch="aspectFit" />
+                    <Logo class="hero-logo" image={s.logo} height={84} maxWidth={width * 0.7} />
                   </Show>
-                  <label class="facts" textWrap={true} text={s.facts} />
+                  <label class="hero-facts" textWrap={true} text={s.facts} />
                   <Ratings ratings={s.ratings} />
-                  <gridlayout columns="*, *" class="hero-buttons">
+                  <gridlayout columns="*, *" rows="auto" class="hero-buttons">
                     <button col={0} class="primary hero-button" text={s.playLabel ?? t("Play")} on:tap={s.play} />
                     <button col={1} class="secondary hero-button" text={t("More info")} on:tap={s.info} />
                   </gridlayout>

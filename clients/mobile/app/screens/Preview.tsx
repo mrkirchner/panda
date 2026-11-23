@@ -2,7 +2,7 @@
 // own (`/api/discover/{kind}/{tmdb_id}`): backdrop, facts, ratings, Request (or how the request is
 // going, and Cancel while nothing has come of it), its film series, More Like This, Cast & Crew,
 // Information. In your library after all: that page instead.
-import { Dialogs } from "@nativescript/core";
+import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Preview } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
@@ -11,6 +11,7 @@ import { Show, createSignal } from "solid-js";
 import { facts, load, longDate, runtime } from "../data";
 import { bestProgress, requestStatus } from "../requests";
 import { Facts, MoreRow, PeopleRow, Ratings } from "./sections";
+import { Logo } from "./cards";
 import { seriesScreen } from "./Series";
 import { titleScreen } from "./Title";
 
@@ -80,7 +81,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
             <image class="hero" src={imageUrl(p()!.backdrop)} stretch="aspectFill" />
             <stacklayout class="form">
               <Show when={p()!.details.logo} fallback={<label class="h1" textWrap={true} text={p()!.title} />}>
-                <image class="logo" src={imageUrl(p()!.details.logo)} stretch="aspectFit" />
+                <Logo image={p()!.details.logo} height={70} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />
               </Show>
               <label
                 class="facts"

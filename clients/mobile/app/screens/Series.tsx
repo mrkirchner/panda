@@ -1,7 +1,7 @@
 // A show, laid out like the TV's: backdrop, logo or name, facts and ratings, Play (the next
 // episode), My List and More seasons; its episodes by season; More Like This, Cast & Crew, and
 // Information and Languages.
-import { Dialogs } from "@nativescript/core";
+import { Dialogs, Screen } from "@nativescript/core";
 import { api, imageUrl } from "@tv/api/client";
 import type { Discover, Item, SeriesSummary } from "@tv/api/types";
 import { tmdbRating } from "@tv/format";
@@ -11,7 +11,7 @@ import { facts, load, longDate, runtime } from "../data";
 import { features } from "../features";
 import { myListToggle } from "../myList";
 import { play } from "../player";
-import { ClipArt, Progress } from "./cards";
+import { ClipArt, Logo, Progress } from "./cards";
 import { Action, Facts, MoreRow, PeopleRow, Ratings, trackList } from "./sections";
 
 /** In progress, else the first one not watched, else the first. */
@@ -105,7 +105,7 @@ export function seriesScreen(name: string) {
             when={details.value()?.logo}
             fallback={<label class="h1" textWrap={true} text={show.value()?.meta_title ?? name} />}
           >
-            <image class="logo" src={imageUrl(details.value()!.logo)} stretch="aspectFit" />
+            <Logo image={details.value()!.logo} height={70} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />
           </Show>
           <label
             class="facts"

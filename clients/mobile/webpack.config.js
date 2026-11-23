@@ -11,6 +11,9 @@ const APPLETV = path.resolve(__dirname, "../appletv/app");
 // Avatar pictures as PNGs (iOS draws no SVG).
 const AVATARS = path.resolve(__dirname, "platforms/raster-avatars");
 require("./scripts/rasterize-avatars.cjs")(path.resolve(__dirname, "../tv/public/images/avatars"), AVATARS);
+// TMDB's logo for its rating badge (the TV's images/tmdb.svg).
+const BADGES = path.resolve(__dirname, "platforms/raster-images");
+require("./scripts/rasterize-avatars.cjs")(path.resolve(__dirname, "../tv/public/images"), BADGES, ["tmdb.svg"]);
 
 module.exports = env => {
   webpack.init(env);
@@ -32,7 +35,10 @@ module.exports = env => {
     });
     config.plugins.delete("ForkTsCheckerWebpackPlugin");
     config.plugin("CopyWebpackPlugin").tap(args => {
-      args[0].patterns.push({ from: AVATARS, to: "images/avatars", noErrorOnMissing: true });
+      args[0].patterns.push(
+        { from: AVATARS, to: "images/avatars", noErrorOnMissing: true },
+        { from: BADGES, to: "images", noErrorOnMissing: true },
+      );
       return args;
     });
   });
