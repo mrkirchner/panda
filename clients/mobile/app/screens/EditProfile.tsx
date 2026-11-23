@@ -1,6 +1,7 @@
 // Edit profile, as on the TV (../tv/src/pages/EditProfile.tsx), for the profile signed in (Who's
 // watching signs in as a profile before editing it, PIN first): its picture (its initial, or a
-// poster from the library), name, language, PIN, its own sign-in, and Delete (not the owner's).
+// poster from the library), name, language, preview sound (clips quiet or silent), PIN, its own
+// sign-in, and Delete (not the owner's).
 import { Dialogs } from "@nativescript/core";
 import { api, ensureSession, imageUrl } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
@@ -175,12 +176,20 @@ export function editProfileScreen(done: () => void = goProfiles) {
             value={LANGS.find(l => l.value === (me()!.language ?? null))?.label ?? ""}
             onTap={() => void language()}
           />
-          <Row label={t("PIN")} value={hasPin() ? t("On") : t("Off")} onTap={() => void pin()} />
           <Row
-            label={t("Sign-in")}
-            value={me()!.canSignIn ? (me()!.email ?? t("On")) : t("Off")}
-            onTap={() => void signIn()}
+            label={t("Preview sound")}
+            value={me()!.previewSound === false ? t("Off") : t("On")}
+            onTap={() => void save({ preview_sound: me()!.previewSound === false })}
           />
+          <Row label={t("PIN")} value={hasPin() ? t("On") : t("Off")} onTap={() => void pin()} />
+          {/* The owner always signs in with their own account (the TV hides this for them too). */}
+          <Show when={!me()!.primary}>
+            <Row
+              label={t("Sign-in")}
+              value={me()!.canSignIn ? (me()!.email ?? t("On")) : t("Off")}
+              onTap={() => void signIn()}
+            />
+          </Show>
           <Show when={note()}>
             <label class="muted mt10" textWrap={true} text={note()} />
           </Show>
