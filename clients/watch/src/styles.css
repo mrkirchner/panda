@@ -616,6 +616,14 @@ h3 {
 .row-scroller::-webkit-scrollbar {
     display: none;
 }
+/* Snapping is for flicking with a finger. With a mouse it costs: a snap target that moves (a
+   card growing) makes the browser redo the row's snap areas and repaint it every frame. */
+@media (hover: hover) {
+    .row-scroller,
+    .expand-row .row-scroller {
+        scroll-snap-type: none;
+    }
+}
 .row-scroller > * {
     scroll-snap-align: start;
     flex: none;
@@ -635,6 +643,8 @@ h3 {
     background: rgb(13 13 15 / 70%);
     opacity: 0;
     transition: opacity 0.2s;
+    /* Its own layer: fading it in never repaints the page under it. */
+    will-change: opacity;
 }
 .row-arrow.prev {
     left: 0;
@@ -678,9 +688,20 @@ h3 {
     object-fit: cover;
 }
 @media (hover: hover) {
+    /* The grow fits inside the gap between cards, so it never needs to stack above them (a z-index
+       change re-layers the row). */
     .card:hover {
         transform: scale(1.04);
-        z-index: 2;
+    }
+    /* Cards that grow are on their own layers from the start: a layer made when the first card
+       moves splits the row and repaints all of it (rows off screen aren't rendered, so only the
+       rows near the screen hold layers). */
+    .card,
+    .headshot {
+        will-change: transform;
+    }
+    .card::after {
+        will-change: opacity;
     }
     .card:hover::after {
         opacity: 1;
@@ -836,33 +857,34 @@ h3 {
     left: 0;
     width: var(--opened);
     height: 100%;
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--surface);
     cursor: pointer;
-    contain: layout paint style;
+    /* Only its visible parts take the pointer (a closed card's wide part lies under the next). */
+    pointer-events: none;
     /* Its slot: one poster and gap per card before it, plus the open card's extra width after it. */
     transform: translateX(
         calc(var(--i) * (var(--poster) + var(--gap)) + var(--after) * (var(--opened) - var(--poster)))
     );
-    /* Closed, only its poster shows. */
-    clip-path: inset(0 calc(var(--opened) - var(--poster)) 0 0 round var(--radius-md));
-    transition:
-        transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1),
-        clip-path 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.expand-card.open {
-    clip-path: inset(0 0 0 0 round var(--radius-md));
-}
+/* Each part is its own rounded picture: closed, the poster; open, the wide part (fading in at its
+   full size while the cards after it slide away). No clipping or resizing is animated: opacity
+   and transform only, so the compositor does it all without a repaint. */
 .expand-card .layer {
     position: absolute;
     top: 0;
     left: 0;
     height: 100%;
+}
+/* The card's two parts (not the clip spot inside the wide one). */
+.expand-card > .layer {
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--surface);
     transition: opacity 0.3s;
 }
 .expand-card .poster-layer {
     width: var(--poster);
+    pointer-events: auto;
 }
 .expand-card .wide-layer {
     width: var(--opened);
@@ -870,9 +892,25 @@ h3 {
 }
 .expand-card.open .wide-layer {
     opacity: 1;
+    pointer-events: auto;
 }
 .expand-card.open .poster-layer {
     opacity: 0;
+}
+/* Cards and their parts on their own layers from the start (made mid-move, they repaint). */
+.expand-card {
+    will-change: transform;
+}
+.expand-card > .layer {
+    will-change: opacity;
+}
+.expand-card:focus-visible {
+    outline: none;
+}
+.expand-card:focus-visible .poster-layer,
+.expand-card.open:focus-visible .wide-layer {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
 }
 .expand-card .layer img,
 .expand-card .layer video {
@@ -1200,7 +1238,8 @@ h3 {
     right: var(--gutter);
     bottom: clamp(44px, 9vh, 114px);
     display: flex;
-    gap: 8px;
+    /* Room for the active dot's stretch (it grows 5 px each way). */
+    gap: 14px;
     z-index: 3;
 }
 @media (max-width: 899px) {
@@ -1211,19 +1250,23 @@ h3 {
         justify-content: center;
     }
 }
+/* The active dot is a long pill: the same box, colored and stretched with a transform (its
+   width never changes, so the dots never move). */
 .hero-dot {
     width: 8px;
     height: 8px;
     border: 0;
     padding: 0;
-    border-radius: 50%;
+    border-radius: 4px;
     background: rgb(255 255 255 / 35%);
     cursor: pointer;
+    transition:
+        transform 0.3s,
+        opacity 0.3s;
 }
 .hero-dot.on {
     background: var(--accent);
-    width: 22px;
-    border-radius: 4px;
+    transform: scaleX(2.25);
 }
 .hero-nav {
     position: absolute;

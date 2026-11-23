@@ -374,11 +374,15 @@
   controls and the click that follows is swallowed (`revealedAt`). Full screen is the whole page
   (menus are drawn outside the player).
 - Every new word: `t()` with a Spanish entry in `../tv/src/i18n.ts` ("Web app" section).
-- Motion only on `transform`/`opacity` (no transitions on size, position, colour or shadow; no
-  `backdrop-filter`: over a playing clip it re-blurs every frame). The expanding row is a track of
-  fixed-size cards: a card opens by unclipping (`clip-path`) and the cards after it slide
-  (`transform`), so the row is never laid out while it moves. Rows off screen use
-  `content-visibility: auto`. Measured with a Chrome trace (paints 3006 -> ~240 on a Home walk).
+- Motion only on `transform`/`opacity`, all in CSS (no transitions on size, position, clip,
+  colour or shadow; no `backdrop-filter`: over a playing clip it re-blurs every frame). Things that
+  move are on their own layers from the start (`will-change` on cards, headshots, expanding cards):
+  a layer made when the first card moves splits the row and repaints all of it. No scroll snapping
+  with a mouse (`(hover: hover)`): a moving snap target repaints its row every frame. The expanding
+  row is a track of fixed-size cards: the open card's wide part fades in while the cards after it
+  slide (`transform`); backdrops are fetched ahead (lazy loading never fetches a hidden picture).
+  Rows off screen use `content-visibility: auto`. Measured with Chrome traces (hovering a row:
+  120 paints -> 14).
 - Spacing from tokens only (`--space-item/block/list/text`, the 4 px scale, `--page-top`), as the
   TV's `theme.space`; no spacing in inline styles.
 

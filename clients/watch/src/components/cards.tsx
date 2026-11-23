@@ -347,6 +347,8 @@ export function ExpandRow(props: {
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
   const hoverable = matchMedia("(hover: hover)").matches;
 
+  /** Cards the pointer has rested on: their backdrops are fetched before they open. */
+  const [near, setNear] = createSignal<Set<number>>(new Set());
   /** The card whose clip is playing or about to (the first card starts open with none). */
   let clipFor = -1;
   const openAt = (i: number) => {
@@ -384,7 +386,9 @@ export function ExpandRow(props: {
               onMouseEnter={() => {
                 if (!hoverable) return;
                 clearTimeout(hoverTimer);
-                hoverTimer = setTimeout(() => openAt(i()), HOVER_OPEN_MS);
+                const at = i();
+                setNear((n) => (n.has(at) ? n : new Set(n).add(at)));
+                hoverTimer = setTimeout(() => openAt(at), HOVER_OPEN_MS);
               }}
               onMouseLeave={() => clearTimeout(hoverTimer)}
               onFocus={() => openAt(i())}
@@ -407,8 +411,11 @@ export function ExpandRow(props: {
                 <Progress fraction={item().fraction ?? 0} />
               </div>
               <div class="layer wide-layer">
-                <Show when={Math.abs(i() - open()) <= 1}>
-                  <Art image={item().backdrop ?? item().poster} alt="" />
+                {/* Fetched ahead for the open card, two either side and any the pointer rested on, so
+                    its hidden layer is painted before it opens (lazy loading never fetches a hidden
+                    picture). */}
+                <Show when={Math.abs(i() - open()) <= 2 || near().has(i())}>
+                  <Art image={item().backdrop ?? item().poster} alt="" eager />
                 </Show>
                 <div class="clip-host layer" ref={(el) => hosts.set(item().key, el)} />
                 <div class="card-caption">
