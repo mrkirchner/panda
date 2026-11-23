@@ -15,6 +15,7 @@ import {
 import { refreshAll } from "./data";
 import { resetStores } from "./features";
 import { appPath, go } from "./nav";
+import { SETTINGS, read } from "@tv/platform/settings";
 
 /** Built to be served by Panda at /watch/ (vite.config.ts). */
 export const SERVED_BY_PANDA = !!import.meta.env.VITE_SERVED_BY_PANDA;
@@ -105,14 +106,8 @@ export async function boot(path: string): Promise<string | null> {
   return null;
 }
 
-/** The server address Connect kept (the shared module stores it as "panda.server"). */
-function chosenServer(): boolean {
-  try {
-    return !!localStorage.getItem("panda.server");
-  } catch {
-    return false;
-  }
-}
+/** Whether Connect kept a server address. */
+const chosenServer = (): boolean => !!read(SETTINGS.server);
 
 /** Already landed once in this tab (Who's watching shows on the first visit only); storage can
  * be blocked (Safari's "Block all cookies"), so it's tried and noted. */

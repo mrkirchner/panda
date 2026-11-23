@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { SETTINGS, read, write, type Setting } from "../src/platform/settings";
 
 /**
  * Developer tools for testing devices, set per TV on the admin-only Debug page (src/pages/Debug.tsx)
@@ -12,8 +13,8 @@ import { createSignal } from "solid-js";
  *
  * Performance tier and resolution overrides live with their own modules (tier.ts, resolution.ts).
  */
-const FPS_KEY = "panda.debug.fps";
-const TRACE_KEY = "panda.debug.trace";
+const FPS_KEY = SETTINGS.debugFps;
+const TRACE_KEY = SETTINGS.debugTrace;
 
 /** Builds made for development, where the tools are on unless turned off. */
 export const devBuild: boolean = import.meta.env.DEV || import.meta.env.VITE_SHOW_FPS === "1";
@@ -26,23 +27,8 @@ function fromUrl(): boolean {
   }
 }
 
-function load(key: string): boolean | null {
-  try {
-    const v = localStorage.getItem(key);
-    return v === "1" ? true : v === "0" ? false : null;
-  } catch {
-    return null;
-  }
-}
-
-function save(key: string, on: boolean | null) {
-  try {
-    if (on === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, on ? "1" : "0");
-  } catch {
-    // No storage: it lasts until restart.
-  }
-}
+const load = (key: Setting<boolean>): boolean | null => read(key);
+const save = (key: Setting<boolean>, on: boolean | null) => write(key, on);
 
 const [fps, setFps] = createSignal<boolean>(fromUrl() || (load(FPS_KEY) ?? devBuild));
 const [tracing, setTracingSignal] = createSignal<boolean>(load(TRACE_KEY) ?? devBuild);

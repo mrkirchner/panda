@@ -36,6 +36,7 @@ import { previewUrl } from "@tv/playback/trickplay";
 import { phoneProfile } from "./profile";
 import { setPlayerOpen } from "./clip";
 import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from "./subtitles";
+import { audioChoice, read, write } from "@tv/platform/settings";
 
 /** How often progress is saved while playing. */
 const SAVE_EVERY_MS = 10_000;
@@ -994,16 +995,11 @@ class PlayerSession {
 
   /** Your audio track for this title, remembered on this phone (the TV's key). */
   private audioKey() {
-    return `panda.audio.${this.target.kind}.${this.target.id}`;
+    return audioChoice(this.target.kind, this.target.id);
   }
 
   private savedAudio(): number | undefined {
-    try {
-      const v = localStorage.getItem(this.audioKey());
-      return v === null ? undefined : Number(v);
-    } catch {
-      return undefined;
-    }
+    return read(this.audioKey()) ?? undefined;
   }
 
   private audioMenu() {
@@ -1017,11 +1013,7 @@ class PlayerSession {
         selected: a.index === this.pb.audio_index,
         pick: () => {
           this.audioIndex = a.index;
-          try {
-            localStorage.setItem(this.audioKey(), String(a.index));
-          } catch {
-            // Not remembered without storage.
-          }
+          write(this.audioKey(), a.index);
           void this.restart(this.position());
         },
       })),

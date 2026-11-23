@@ -1,45 +1,27 @@
 import { createSignal } from "solid-js";
+import { SETTINGS, read, write } from "../platform/settings";
 
 /**
- * Device session for this TV. The token comes from the device sign-in flow and is kept in
- * localStorage (storage can be unavailable on some TV browsers, hence the try/catch).
- * The token is never shown on screen or logged.
+ * Device session for this TV. The token comes from the device sign-in flow and is kept on the
+ * device (in memory only when storage is unavailable). The token is never shown on screen or
+ * logged. The device's own credential (lists/switches profiles) is separate from the profile
+ * session.
  */
-const STORAGE_KEY = "panda.device_token";
-/** This TV's own credential (lists/switches profiles). Separate from the profile session. */
-const DEVICE_KEY = "panda.device_secret";
-
-const load = (key: string) => {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-};
-const store = (key: string, value: string | null) => {
-  try {
-    if (value) localStorage.setItem(key, value);
-    else localStorage.removeItem(key);
-  } catch {
-    // Kept in memory only when storage is unavailable.
-  }
-};
-
-let token: string | null = load(STORAGE_KEY);
+let token: string | null = read(SETTINGS.deviceToken);
 // A signal so the top bar's profile button works as soon as the TV gets its credential.
-const [deviceSecret, setDeviceSecretSignal] = createSignal<string | null>(load(DEVICE_KEY));
+const [deviceSecret, setDeviceSecretSignal] = createSignal<string | null>(read(SETTINGS.deviceSecret));
 
 export const getDeviceSecret = deviceSecret;
 export function setDeviceSecret(value: string | null) {
   setDeviceSecretSignal(value);
-  store(DEVICE_KEY, value);
+  write(SETTINGS.deviceSecret, value || null);
 }
 
 export const getToken = () => token;
 
 export function setToken(value: string | null) {
   token = value;
-  store(STORAGE_KEY, value);
+  write(SETTINGS.deviceToken, value || null);
 }
 
 /** The signed-in profile, for the avatar pill. */

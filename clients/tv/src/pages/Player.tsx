@@ -59,6 +59,7 @@ const AUDIO_MENU_W = 520;
 const SUBTITLE_MENU_W = 520;
 
 import { lang, t } from "../i18n";
+import { audioChoice, read, write } from "../platform/settings";
 
 /** A scrub lands this long after the last Left/Right press (OK lands it at once). */
 const SEEK_COMMIT_MS = 900;
@@ -358,15 +359,8 @@ export default function Player() {
   }
 
   /** Your audio track for this title (or file), remembered on this TV. */
-  const audioKey = () => `panda.audio.${params.kind}.${params.id}`;
-  function savedAudio(): number | null {
-    try {
-      const v = localStorage.getItem(audioKey());
-      return v === null ? null : Number(v);
-    } catch {
-      return null;
-    }
-  }
+  const audioKey = () => audioChoice(params.kind, params.id);
+  const savedAudio = (): number | null => read(audioKey());
 
   function openAudioMenu() {
     if (audioTracks().length < 2) return void (poke(), showToast(t("This title has one audio track")));
@@ -387,11 +381,7 @@ export default function Player() {
     closeAudioMenu();
     if (index === audioSel()) return;
     setAudioSel(index);
-    try {
-      localStorage.setItem(audioKey(), String(index));
-    } catch {
-      // Not remembered; it still plays.
-    }
+    write(audioKey(), index);
     const at = audioTracks().findIndex(a => a.index === index);
     showToast(t("Audio: {name}", { name: audioLabels(audioTracks())[at] ?? "" }));
     const position = filePosition();

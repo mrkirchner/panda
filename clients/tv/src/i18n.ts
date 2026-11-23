@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import { SETTINGS, read } from "./platform/settings";
 
 /**
  * UI translations. Strings stay in English in the code, wrapped in `t("...")`; each language
@@ -449,12 +450,7 @@ function detect(): Lang {
     const l = typeof v === "string" ? v.toLowerCase() : "";
     return l.startsWith("es") ? "es" : l.startsWith("en") ? "en" : null;
   };
-  let stored: string | null = null;
-  try {
-    stored = globalThis.localStorage?.getItem("panda.lang") ?? null;
-  } catch {
-    // Storage unavailable: use the device language.
-  }
+  const stored = read(SETTINGS.language);
   // Outside a browser (tests) there's no location or navigator: English.
   if (typeof location === "undefined") return "en";
   const fromUrl =

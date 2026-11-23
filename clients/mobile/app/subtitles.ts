@@ -7,6 +7,7 @@ import { api } from "@tv/api/client";
 import type { SubtitleTrack } from "@tv/api/types";
 import { activeBitmapCue, type BitmapCue, type BitmapManifest } from "@tv/playback/bitmapSubs";
 import { activeText, parseWebVtt, type Cue } from "@tv/playback/webvtt";
+import { SETTINGS, read, write, type SubtitlePref } from "@tv/platform/settings";
 
 /** Built-in text subtitles come in windows of this many seconds (the server's SUBTITLE_WINDOW). */
 const TEXT_WINDOW = 600;
@@ -114,30 +115,13 @@ export class SubtitleSource {
 
 // ---- Which track to show, remembered on this phone ----
 
-const PREF_KEY = "panda.mobile.subtitles";
-interface Pref {
-  /** ISO 639 code, or null: off. */
-  language: string | null;
-  sdh: boolean;
-}
-
-function readPref(): Pref | null {
-  try {
-    const v = localStorage.getItem(PREF_KEY);
-    return v ? (JSON.parse(v) as Pref) : null;
-  } catch {
-    return null;
-  }
-}
+type Pref = SubtitlePref;
+const readPref = (): Pref | null => read(SETTINGS.phoneSubtitles);
 
 /** Remember the choice (by language, so it carries over to the next title and episode). */
 export function rememberSubtitles(track: SubtitleTrack | null) {
   const pref: Pref = { language: track?.language ?? null, sdh: track?.hearing_impaired ?? false };
-  try {
-    localStorage.setItem(PREF_KEY, JSON.stringify(pref));
-  } catch {
-    // Not remembered without storage.
-  }
+  write(SETTINGS.phoneSubtitles, pref);
 }
 
 /**

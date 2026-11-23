@@ -1,19 +1,12 @@
 import { createSignal } from "solid-js";
+import { SETTINGS, read, write } from "../platform/settings";
 
 /**
  * Which Panda server this TV talks to. Packaged TV apps (LG, Samsung, Android) don't run from
  * the server's own address, so the person enters it once on the Connect screen; it's kept on
  * the device. Dev builds default to `VITE_PANDA_SERVER`, or this host on :8096.
  */
-const KEY = "panda.server";
-
-const stored = (() => {
-  try {
-    return localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-})();
+const stored = read(SETTINGS.server);
 
 const fallback = (): string | null => {
   // Served by the Panda server itself (`/tv`, `pnpm build:server`): it's this very address.
@@ -32,11 +25,7 @@ export const getServer = server;
 
 export function setServer(value: string) {
   setServerSignal(value);
-  try {
-    localStorage.setItem(KEY, value);
-  } catch {
-    // Kept for this session only.
-  }
+  write(SETTINGS.server, value);
 }
 
 /** "192.168.1.20" -> "http://192.168.1.20:8096"; trailing slashes removed. */

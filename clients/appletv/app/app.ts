@@ -19,6 +19,7 @@ import {
 } from "@solidtv/nativescript";
 import { setDefaultPlatform } from "@solidtv/renderer/platform";
 import { installNativeVideo } from "./video";
+import { SETTINGS, write, type Setting } from "../../tv/src/platform/settings";
 import { installDiscovery } from "./discovery";
 import { installWebPDecoding } from "./webp";
 import { installNativeTextInput } from "./textInput";
@@ -103,14 +104,14 @@ const launchEnv = (name: string): string | undefined => {
  */
 function seedForDevelopment(): void {
   if (!__DEV__) return;
-  const seeds: [string, string][] = [
-    ["PANDA_SERVER", "panda.server"],
-    ["PANDA_DEVICE_SECRET", "panda.device_secret"],
-    ["PANDA_TOKEN", "panda.device_token"],
+  const seeds: [string, Setting<string>][] = [
+    ["PANDA_SERVER", SETTINGS.server],
+    ["PANDA_DEVICE_SECRET", SETTINGS.deviceSecret],
+    ["PANDA_TOKEN", SETTINGS.deviceToken],
   ];
-  for (const [name, key] of seeds) {
+  for (const [name, setting] of seeds) {
     const value = launchEnv(name);
-    if (value) localStorage.setItem(key, value);
+    if (value) write(setting, value);
   }
 }
 

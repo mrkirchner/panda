@@ -1,3 +1,5 @@
+import { SETTINGS, read, write } from "../src/platform/settings";
+
 /**
  * Output resolution. The UI is always laid out on a 1920x1080 grid (`src/theme.ts`); the
  * renderer scales that grid to the chosen resolution via `deviceLogicalPixelRatio`, so there
@@ -21,25 +23,14 @@ function parse(value: string | null | undefined): Resolution | null {
   return n === 720 || n === 1080 ? n : null;
 }
 
-const STORAGE_KEY = "panda.res";
-
 /** The stored override (Debug page), if any. */
 export function storedResolution(): Resolution | null {
-  try {
-    return parse(localStorage.getItem(STORAGE_KEY));
-  } catch {
-    return null;
-  }
+  return parse(read(SETTINGS.resolution));
 }
 
 /** Save an override (`null`: automatic); it applies on the next start. */
 export function saveResolution(res: Resolution | null): void {
-  try {
-    if (res === null) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, String(res));
-  } catch {
-    // No storage: nothing to keep.
-  }
+  write(SETTINGS.resolution, res === null ? null : res === 720 ? "720" : "1080");
 }
 
 /** What the screen itself would get. */

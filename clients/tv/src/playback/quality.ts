@@ -1,4 +1,5 @@
 import { measureBandwidthKbps } from "../api/client";
+import { SETTINGS, read, write } from "../platform/settings";
 import type { ClientProfile, StreamSummary } from "../api/types";
 
 export type QualityId = "auto" | "original" | "1080" | "720" | "480";
@@ -23,23 +24,13 @@ export const QUALITIES: Quality[] = [
 const AUTO_HEADROOM = 0.7;
 /** Above this, there's no point capping (4K remux peaks are ~100 Mbps). */
 const AUTO_UNLIMITED_KBPS = 150_000;
-const STORAGE_KEY = "panda.quality";
-
 export function savedQuality(): QualityId {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY) as QualityId | null;
-    return QUALITIES.some(q => q.id === v) ? v! : "auto";
-  } catch {
-    return "auto";
-  }
+  const v = read(SETTINGS.quality) as QualityId | null;
+  return QUALITIES.some(q => q.id === v) ? v! : "auto";
 }
 
 export function saveQuality(id: QualityId) {
-  try {
-    localStorage.setItem(STORAGE_KEY, id);
-  } catch {
-    // Not remembered when storage is unavailable.
-  }
+  write(SETTINGS.quality, id);
 }
 
 /** Apply a quality choice to the device's capability profile. */

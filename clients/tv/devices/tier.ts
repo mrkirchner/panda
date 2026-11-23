@@ -1,3 +1,5 @@
+import { SETTINGS, read, write } from "../src/platform/settings";
+
 /**
  * Performance tiers. Old or small TVs (2020-and-earlier LG/Samsung, entry Fire TV sticks,
  * anything with ~2 GB of RAM) run the same app with lighter settings: 720p rendering, a smaller
@@ -77,8 +79,6 @@ export function tierFor(ua: string, deviceMemory?: number, cores?: number): Tier
   return "high";
 }
 
-const STORAGE_KEY = "panda.tier";
-
 function parseChoice(value: unknown): TierChoice | null {
   return value === "low" || value === "high" || value === "auto" ? value : null;
 }
@@ -87,7 +87,7 @@ function parseChoice(value: unknown): TierChoice | null {
 export function tierChoice(): TierChoice {
   try {
     const fromUrl = typeof location !== "undefined" ? new URLSearchParams(location.search).get("tier") : null;
-    const stored = typeof localStorage !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const stored = read(SETTINGS.tier);
     return parseChoice(fromUrl) ?? parseChoice(stored) ?? "auto";
   } catch {
     return "auto";
@@ -96,12 +96,7 @@ export function tierChoice(): TierChoice {
 
 /** Save the setting; it applies on the next start. */
 export function saveTierChoice(choice: TierChoice): void {
-  try {
-    if (choice === "auto") localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, choice);
-  } catch {
-    // No storage: the choice lasts until restart only.
-  }
+  write(SETTINGS.tier, choice === "auto" ? null : choice);
 }
 
 /** The tier this device would get on its own. */

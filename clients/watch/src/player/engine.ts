@@ -14,6 +14,7 @@ import { profileFor, savedQuality, type QualityId } from "@tv/playback/quality";
 import { planSeek } from "@tv/playback/seek";
 import { DEFAULT_STALLS, StallMonitor, stepDownBudget } from "@tv/playback/stalls";
 import type { PlayTarget } from "./launch";
+import { audioChoice, read, write } from "@tv/platform/settings";
 
 /** The server keeps HLS segments 120 s behind the viewer; seeking further back restarts. */
 const KEEP_BEHIND_SECS = 90;
@@ -343,25 +344,16 @@ export class Engine {
 
   /** Your audio track for this title, remembered in this browser (the TV's key). */
   private audioKey() {
-    return `panda.audio.${this.target.kind}.${this.target.id}`;
+    return audioChoice(this.target.kind, this.target.id);
   }
 
   private savedAudio(): number | undefined {
-    try {
-      const v = localStorage.getItem(this.audioKey());
-      return v === null ? undefined : Number(v);
-    } catch {
-      return undefined;
-    }
+    return read(this.audioKey()) ?? undefined;
   }
 
   chooseAudio(index: number) {
     this.audioIndex = index;
-    try {
-      localStorage.setItem(this.audioKey(), String(index));
-    } catch {
-      // Not remembered without storage.
-    }
+    write(this.audioKey(), index);
     void this.restart(this.position());
   }
 

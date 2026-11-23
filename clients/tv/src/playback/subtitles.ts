@@ -1,11 +1,11 @@
 import type { SubtitleTrack } from "../api/types";
 import { languageName } from "../format";
 import { t } from "../i18n";
+import { SETTINGS, read as readSetting, write } from "../platform/settings";
 
 /** One Left/Right press in the timing panel; Up/Down move a whole second. */
 export const TIMING_STEP = 0.1;
 export const TIMING_MAX = 30;
-const STORAGE_KEY = "panda.subtitleTiming";
 /** Timings remembered (newest kept): plenty for a library, small enough for any TV. */
 const REMEMBERED = 300;
 
@@ -57,12 +57,7 @@ export function shortTiming(secs: number): string {
 type Store = Record<string, number>;
 
 function read(): Store {
-  try {
-    const v: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
-    return v && typeof v === "object" ? (v as Store) : {};
-  } catch {
-    return {};
-  }
+  return readSetting(SETTINGS.subtitleTiming) ?? {};
 }
 
 const keyOf = (itemId: number, track: SubtitleTrack) => `${itemId}:${track.key}`;
@@ -81,9 +76,5 @@ export function saveTiming(itemId: number, track: SubtitleTrack, secs: number) {
   // Objects keep insertion order: the oldest entries come first.
   const keys = Object.keys(store);
   for (const k of keys.slice(0, Math.max(0, keys.length - REMEMBERED))) delete store[k];
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  } catch {
-    // Not remembered when storage is unavailable.
-  }
+  write(SETTINGS.subtitleTiming, store);
 }
