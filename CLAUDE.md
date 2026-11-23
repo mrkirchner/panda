@@ -369,7 +369,8 @@
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
   (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
   open, only the sheet's while a sheet is); Recently Added rows expand in place (`ExpandRow`: a tap
-  or the row settling after a scroll opens a card, brought fully into view). Tapping a poster
+  opens a card at once, animated, the row scrolling only if it's cut off; scrolling never
+  reshapes the row: tried, it snapped and lagged). Tapping a poster
   opens its page (no preview sheet: the user wants straight to the info). `openSheet` is for
   pickers (seasons).
   Logos go through `Logo` (iOS centers a picture in its box: the box takes the logo's shape).

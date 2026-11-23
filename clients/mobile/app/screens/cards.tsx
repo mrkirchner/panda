@@ -5,7 +5,7 @@ import type { Spot } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { genreTint } from "@tv/theme";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
-import { For, Show, createSignal, onCleanup } from "solid-js";
+import { For, Show, createSignal, flush, onCleanup } from "solid-js";
 import type { ContentView, ScrollView } from "@nativescript/core";
 import { playClip, type ClipSource } from "../clip";
 
@@ -206,15 +206,13 @@ const EXPANDED_W = 300;
 const POSTER_W = 112;
 const CARD_GAP = 10;
 const ROW_PAD = 16;
-/** The row counts as settled this long after the last scroll event. */
-const SCROLL_SETTLE_MS = 180;
 /** Rest on an opened card this long before its clip starts. */
 const EXPAND_CLIP_MS = 1_000;
 
 /**
  * A row whose open card is wide, as a focused card expands on the TV ("Recently added"): its
  * backdrop with the name and facts, and its preview clip after a moment. The first card starts
- * open; tapping another opens it; tapping the open one opens its page (OK on the TV).
+ * open; tapping another opens it at once; tapping the open one opens its page (OK on the TV).
  */
 export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   const [open, setOpen] = createSignal(0);
@@ -222,70 +220,50 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   let scroller: ScrollView | undefined;
   let clip: { stop: () => void } | null = null;
   let clipTimer: ReturnType<typeof setTimeout> | undefined;
-  let settleTimer: ReturnType<typeof setTimeout> | undefined;
-  /** Our own scrolling (bringing a card in): its scroll events aren't the person's. */
-  let movingUntil = 0;
 
   /** Where card `i` starts in the row, with card `opened` wide. */
   const leftOf = (i: number, opened: number) =>
     ROW_PAD + i * (POSTER_W + CARD_GAP) + (i > opened ? EXPANDED_W - POSTER_W : 0);
-  /** Line card `i` up at the row's left edge (as far as the row scrolls), once laid out again. */
-  const bringIn = (i: number) =>
-    setTimeout(() => {
-      const sv = scroller;
-      if (!sv) return;
-      const max = Math.max(0, sv.scrollableWidth);
-      movingUntil = Date.now() + 450;
-      sv.scrollToHorizontalOffset(Math.min(max, Math.max(0, leftOf(i, i) - ROW_PAD)), true);
-    }, 60);
-  /** Open card `i`: wide, in view, and its clip after a moment. */
-  const openCard = (i: number) => {
-    if (i < 0 || i >= props.items.length) return;
-    if (open() !== i) {
-      setOpen(i);
-      clip?.stop();
-      clip = null;
-      clearTimeout(clipTimer);
-      clipTimer = setTimeout(() => {
-        const host = hosts[i];
-        const item = props.items[i];
-        if (host && item && open() === i) clip = playClip(host, item.clip);
-      }, EXPAND_CLIP_MS);
-    }
-    bringIn(i);
+  /** Card `i` (now wide) cut off at either side: scroll just enough to show it, nothing more. */
+  const reveal = (i: number) => {
+    const sv = scroller;
+    if (!sv) return;
+    const left = leftOf(i, i) - ROW_PAD;
+    const right = leftOf(i, i) + EXPANDED_W + ROW_PAD;
+    const x = sv.horizontalOffset;
+    const view = sv.getActualSize().width;
+    if (left < x) sv.scrollToHorizontalOffset(Math.max(0, left), true);
+    else if (right > x + view) sv.scrollToHorizontalOffset(Math.min(sv.scrollableWidth, right - view), true);
   };
-  /** A tap: open that card; the open one goes to its page (OK on the TV). */
-  const tap = (i: number) => (open() === i ? props.items[i]?.open() : openCard(i));
-  /** The person scrolled the row: once it settles, the card at the left edge opens (as focus
-   * moving along a TV row does). */
-  const scrolled = (x: number) => {
-    if (Date.now() < movingUntil) return;
-    clearTimeout(settleTimer);
-    settleTimer = setTimeout(() => {
-      const current = open();
-      let nearest = 0;
-      for (let i = 0; i < props.items.length; i++) {
-        if (Math.abs(leftOf(i, current) - ROW_PAD - x) < Math.abs(leftOf(nearest, current) - ROW_PAD - x)) nearest = i;
-      }
-      openCard(nearest);
-    }, SCROLL_SETTLE_MS);
+  /** A tap: open that card at once (its neighbours slide over), or the open one's page (OK on
+   * the TV). Scrolling doesn't open cards: a row changing shape under your finger feels wrong. */
+  const tap = (i: number) => {
+    if (open() === i) return props.items[i]?.open();
+    const row = scroller?.ios as UIScrollView | undefined;
+    UIView.animateWithDurationAnimations(0.25, () => {
+      setOpen(i);
+      flush();
+      row?.layoutIfNeeded();
+    });
+    reveal(i);
+    clip?.stop();
+    clip = null;
+    clearTimeout(clipTimer);
+    clipTimer = setTimeout(() => {
+      const host = hosts[i];
+      const item = props.items[i];
+      if (host && item && open() === i) clip = playClip(host, item.clip);
+    }, EXPAND_CLIP_MS);
   };
   devExpand ??= tap;
   devScrollRow ??= (x: number) => scroller?.scrollToHorizontalOffset(x, true);
   onCleanup(() => {
     clearTimeout(clipTimer);
-    clearTimeout(settleTimer);
     clip?.stop();
     if (devExpand === tap) devExpand = null;
   });
   return (
-    <Row
-      title={props.title}
-      scrollRef={el => {
-        scroller = el;
-        el.on("scroll", (e: unknown) => scrolled((e as { scrollX: number }).scrollX));
-      }}
-    >
+    <Row title={props.title} scrollRef={el => (scroller = el)}>
       <For each={props.items}>
         {(item, i) => (
           <Show
