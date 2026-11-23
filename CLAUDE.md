@@ -185,7 +185,7 @@
   fewest re-encodes to 1080p that kept up) can be applied: `max_hardware_encodes`, applied at once
   (`Sessions::set_hardware_limit`) and at start, over panda.toml's `[transcoding] max_hardware`.
 - Development: `scripts/dev.sh` starts the server and the live-reloading admin UI (the TV app
-  separately: `pnpm start` in clients/tv).
+  separately: `pnpm start` in clients/tv; the web app: `pnpm dev` in clients/watch).
 
 ## Admin web UI (clients/web)
 - Bundled into the server binary: `crates/panda-server/build.rs` copies `clients/web/dist` (minus
@@ -353,6 +353,27 @@
   Home is left unhandled (`exitOnRootBack`) so tvOS exits the app; the host sets
   `Config.preventDefaultOnHandledKeys`.
 - Dev server base path is `/common/` (set per device by `devices/deviceConfigPlugin.ts`).
+
+## Web app for watching (clients/watch)
+- The TV app's pages and player for phones, tablets and computers in a browser, served by Panda at
+  `/watch/` (`build.rs` -> `$OUT_DIR/watch`, `routes/web.rs` `serve_watch`, its own CSP with blob:
+  media for shaka-player). `pnpm build:standalone` for hosting elsewhere (Connect + password
+  sign-in, bearer tokens over CORS). Linked from the admin sidebar ("Watch", `rel="external"`).
+- Solid 2 DOM (the admin UI's stack); shares the TV's non-UI code as source (`@tv` -> `../tv/src`,
+  `solid-js` deduped to Solid 2, TV-only imports answered in `src/shims`). Built after the TV app
+  (`scripts/build-release.sh`, release.yml).
+- Signs in like the TV app in a browser: a device credential plus a profile session in
+  localStorage, from the browser's Panda cookie (`from-browser`) or username and password;
+  Who's watching, PINs, Edit profile as on the TV. Sign-in and Who's watching return to `?next=`.
+- Pages are real URLs under the base: links carry it (`href(path)`), and `go(path)` adds it
+  (the router's navigate doesn't); the router's `location.pathname` includes it (`appPath`).
+- Breakpoints 600/900/1280/1800 as CSS variables (`styles.css`); below 900 bottom tabs, above it
+  the TV's top bar (Home, a tab per library, My List). Mouse-only effects under `(hover: hover)`.
+- Player (`src/player`): `<video>` + shaka for HLS (native HLS without Media Source), the TV's
+  `planSeek`, `StallMonitor`, recovery and progress rules (the phone's player logic); a tap shows the
+  controls and the click that follows is swallowed (`revealedAt`). Full screen is the whole page
+  (menus are drawn outside the player).
+- Every new word: `t()` with a Spanish entry in `../tv/src/i18n.ts` ("Web app" section).
 
 ## Phone app (clients/mobile)
 - NativeScript 9 + SolidJS 2 via `@nativescript-community/solid-js` (native iOS views; Android
