@@ -47,6 +47,8 @@ const CONTROLS_HIDE_MS = 4000;
 const KEEP_BEHIND_SECS = 90;
 const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
+/** The longest playback waits for its picture surface before starting anyway (sound at least). */
+const SURFACE_WAIT_MS = 3000;
 
 
 let current: AndroidPlayer | null = null;
@@ -150,13 +152,30 @@ class AndroidPlayer {
     }
   }
 
+  /**
+   * Run `fn` once the picture's surface exists (the page is on screen). Started earlier, the
+   * decoder draws into a stand-in surface and is then switched to the real one, which some
+   * decoders don't follow (the emulator's: sound, a black picture) and others show as a flash.
+   */
+  private whenSurface(fn: () => void) {
+    const since = Date.now();
+    const check = () => {
+      if (this.closed) return;
+      if (this.texture.isAvailable() || Date.now() - since > SURFACE_WAIT_MS) fn();
+      else setTimeout(check, 30);
+    };
+    check();
+  }
+
   private load(pb: Playback, at: number) {
     this.pb = pb;
     this.offset = pb.method === "hls" ? pb.start_secs : 0;
     this.stalls.reset(Date.now());
     this.exo.setMediaItem(mediaItem(absolute(pb.url), pb.method === "hls"), pb.method === "direct_play" ? at * 1000 : 0);
-    this.exo.prepare();
-    this.exo.play();
+    this.whenSurface(() => {
+      this.exo.prepare();
+      this.exo.play();
+    });
     const quality = QUALITIES.find((q) => q.id === this.quality)?.label ?? this.quality;
     this.s.stream[1](`${t(quality)}  ·  ${describeStream(pb.stream)}`);
   }
