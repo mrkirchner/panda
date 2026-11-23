@@ -147,4 +147,13 @@ imagestack("App Icon - App Store", [{ scale: 3.2, as: "1x" }]);
 topShelf("Top Shelf Image", 1920);
 topShelf("Top Shelf Image Wide", 2320);
 
+// --- iPhone and iPad app (clients/mobile): one 1024 px icon (iOS makes the other sizes and rounds
+// the corners), square and opaque, in its own asset catalog.
+const PHONE = path.join(CLIENTS, "mobile/App_Resources/iOS/Assets.xcassets");
+if (!fs.existsSync(path.join(PHONE, "Contents.json"))) json(PHONE, {});
+const phoneIcon = path.join(PHONE, "AppIcon.appiconset");
+fs.rmSync(phoneIcon, { recursive: true, force: true });
+png(squareIcon(1024, { fill: 0.72 }), path.join(phoneIcon, "icon-1024.png"), 1024);
+json(phoneIcon, { images: [{ filename: "icon-1024.png", idiom: "universal", platform: "ios", size: "1024x1024" }] });
+
 console.log(written.map(f => `  ${f}`).join("\n"));

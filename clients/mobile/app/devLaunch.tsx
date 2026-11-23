@@ -2,7 +2,7 @@
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
-//              person:<tmdb id> | preview:movie|series:<tmdb id>
+//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
@@ -11,6 +11,7 @@ import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";
 import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
+import { editProfileScreen } from "./screens/EditProfile";
 import { devSeek, play } from "./player";
 import { selectTab } from "./tabs";
 import { setStartQuery } from "./screens/Search";
@@ -62,6 +63,7 @@ export function devLaunch() {
       openPreview(kind === "series" ? "series" : "movie", Number(id));
     }
     else if (what === "profiles") goProfiles();
+    else if (what === "edit-profile") open(() => editProfileScreen(), { title: "Edit profile" });
     else if (what === "signin") goSignIn();
     else if (what === "connect") open(() => <Connect />, { clear: true });
     else if (what === "play-title") play({ kind: "title", id: arg }).catch(e => console.log(`play failed: ${String(e)}`));

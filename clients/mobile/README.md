@@ -44,7 +44,12 @@ remembered per file and track) is in the Subtitles menu; its menu reopens after 
 Avatars: the TV's SVG pictures become PNGs at build time (`scripts/rasterize-avatars.cjs`, iOS
 draws no SVG); `art:<key>` avatars are library posters (`app/avatar.tsx`).
 
-Not yet: editing profiles (name, picture, PIN), adding profiles, Android.
+Profiles as on the TV: Who's watching adds profiles and has Edit profiles (signing in as the
+profile first, PIN included); Edit profile changes the picture (initial or a library poster),
+name, language, PIN, its own sign-in (emailed link), and deletes it. The icon comes from
+clients/brand (`pnpm icons`).
+
+Not yet: Android.
 
 ## Running
 

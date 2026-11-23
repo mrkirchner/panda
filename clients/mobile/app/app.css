@@ -167,3 +167,12 @@ ActionBar {
 .photo { width: 120; height: 120; border-radius: 60; background-color: #242427; horizontal-align: left; margin-bottom: 12; border-width: 3; border-color: #0d0d0f; }
 .avatar-frame { horizontal-align: center; }
 .avatar-initial { color: #ffffff; font-weight: bold; text-align: center; vertical-align: middle; }
+
+/* Who's watching and Edit profile */
+.add-tile { width: 96; height: 96; border-radius: 48; background-color: #242427; horizontal-align: center; }
+.add-icon { width: 34; height: 34; }
+.profile-head { margin: 12 0 18 0; }
+.setting-label { vertical-align: middle; }
+.danger { color: #ff6b5b; }
+.pick-cell { width: 96; height: 96; margin: 6; }
+.pick-art { width: 88; height: 88; border-radius: 44; background-color: #242427; }
