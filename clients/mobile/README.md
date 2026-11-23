@@ -23,14 +23,17 @@ Request (seasons for shows) and Cancel; Search adds those titles and People; you
 My List with their progress. Each tab has its
 own Frame (`app/nav.ts`), so it keeps its own history, with iOS's navigation bar and swipe back.
 
-Playback (`app/player.ts`): the server plans the stream for this device (`app/profile.ts`:
-MP4/MOV with H.264/HEVC direct, the rest remuxed to HLS) and AVPlayerViewController plays it with
-iOS's controls, AirPlay and Picture in Picture. Progress is saved every 10 s and on close, so
-resume and Continue Watching follow you between the phone and the TVs.
+Playback (`app/player.ts`): our own controls, as on the TV (iOS's player reads a stream the
+server is still converting as live: "LIVE", no running time, no seeking ahead). The timeline is
+the whole file (its length from `/api/items/{id}`); a seek outside what the stream has starts a
+new one there (`planSeek`, the TV's). Close, title, AirPlay (`AVRoutePickerView`), Picture in
+Picture on top; back/forward 10 s and play/pause in the middle; the scrubber with the server's
+preview frames while dragging, the times, Subtitles, Audio and Quality (the TV's options, Auto
+measures the connection) at the bottom. Landscape on phones. The server plans the stream for
+this device (`app/profile.ts`). Progress is saved every 10 s and on close; the player closes at
+the end.
 
-Subtitles and audio (`app/subtitles.ts`): iOS's player has no place for our own menus, so a tap
-also shows an "Audio and subtitles" button (under iOS's mute button) that opens native menus.
-Subtitles are drawn over the picture (`contentOverlayView`), loaded as the TV loads them: built-in
+Subtitles and audio (`app/subtitles.ts`): native menus from the control bar. Subtitles, loaded as the TV loads them: built-in
 text tracks in 10-minute windows (`?from=`), subtitle files whole, image (PGS) tracks from the
 manifest the server fills in as it extracts them, placed where they were authored. Parsing and
 labels are the TV's (`@tv/playback/*`). The subtitle language is remembered across titles (else a
@@ -55,6 +58,7 @@ pnpm typecheck
 
 `-pandaOpen` (debug builds only, `app/devLaunch.tsx`): `title:<id>`, `series:<name>`,
 `genre:<name>`, `all:movies|shows`, `tab:<0-3>`, `profiles`, `signin`, `connect`,
-`play-title:<id>`, `play-item:<id>[@<secs>]`; `-pandaScroll <points>` scrolls the page down. On your own iPhone: open
+`play-title:<id>`, `play-item:<id>[@<secs>]`, `person:<id>`, `preview:<kind>:<tmdb id>`;
+`-pandaSearch <q>`, `-pandaSeek <secs>`; `-pandaScroll <points>` scrolls the page down. On your own iPhone: open
 `platforms/ios/Panda.xcworkspace` in Xcode, pick your team and the phone, Run (free Apple
 accounts' builds last 7 days; TestFlight and the App Store need the paid program).

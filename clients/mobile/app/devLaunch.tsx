@@ -5,12 +5,13 @@
 //              person:<tmdb id> | preview:movie|series:<tmdb id>
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
+//   -pandaSeek <secs>       8 s after launch, seek the open player there
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";
 import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
-import { play } from "./player";
+import { devSeek, play } from "./player";
 import { selectTab } from "./tabs";
 import { setStartQuery } from "./screens/Search";
 
@@ -43,6 +44,8 @@ export function devLaunch() {
   if (scroll) {
     setTimeout(() => firstScroll(currentFrame()?.currentPage)?.scrollToVerticalOffset(Number(scroll), false), 4000);
   }
+  const seek = argAfter("-pandaSeek");
+  if (seek) setTimeout(() => devSeek(Number(seek)), 8000);
   const target = argAfter("-pandaOpen");
   if (!target) return;
   const [what, ...rest] = target.split(":");
