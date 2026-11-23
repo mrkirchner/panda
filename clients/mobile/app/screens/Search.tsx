@@ -25,6 +25,8 @@ const TYPING_MS = 300;
 /** Debug builds: a query to start with (devLaunch.tsx `search:<q>`). */
 let startQuery = "";
 export const setStartQuery = (q: string) => (startQuery = q);
+/** Debug builds (`-pandaType <word>`): type into the bar a letter at a time, as a keyboard. */
+export let devType: ((word: string) => void) | null = null;
 
 export function Search() {
   const picks = load(() => api.find({ picks: true, more: false }));
@@ -39,21 +41,30 @@ export function Search() {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let asked = 0;
 
+  /** A key: nothing on screen changes until the typing pauses and the results are back (so the
+   * keyboard never waits on the screen rebuilding). */
   const search = (q: string) => {
-    setQuery(q);
     clearTimeout(timer);
     if (!q.trim()) {
+      asked++;
+      setQuery("");
       setResults(null);
       setMore([]);
       setPeople([]);
+      setBusy(false);
       return;
     }
     timer = setTimeout(async () => {
       const n = ++asked;
-      setBusy(true);
+      // Ghosts only for the first search (later ones keep showing the previous results).
+      if (!results()) setBusy(true);
       try {
         const r = await api.find({ q: q.trim(), more: false });
-        if (n === asked) setResults(r);
+        if (n !== asked) return;
+        setMore([]);
+        setPeople([]);
+        setQuery(q);
+        setResults(r);
         api.findMore(q.trim()).then(
           m => n === asked && setMore(m.more),
           () => {},
@@ -70,6 +81,22 @@ export function Search() {
     }, TYPING_MS);
   };
 
+  let bar: SearchBar | undefined;
+  devType = word => {
+    // Through iOS's text input, as the keyboard types (focus first).
+    const field = (bar?.ios as UISearchBar | undefined)?.searchTextField;
+    if (!field) return;
+    field.becomeFirstResponder();
+    let i = 0;
+    const next = () => {
+      if (i >= word.length) return;
+      const started = Date.now();
+      field.insertText(word[i++]);
+      console.log(`TYPE now "${field.text}" (bar ${bar?.text}) focused=${field.isFirstResponder} in ${Date.now() - started} ms`);
+      setTimeout(next, 400);
+    };
+    setTimeout(next, 500);
+  };
   // After the screen is built (Solid 2 allows no writes while it is).
   if (startQuery) setTimeout(() => search(startQuery), 0);
 
@@ -88,6 +115,7 @@ export function Search() {
         class="search"
         text={startQuery}
         hint={t("Movies and shows")}
+        ref={(el: SearchBar) => (bar = el)}
         on:textChange={(e: { object: SearchBar }) => search(e.object.text ?? "")}
         on:submit={(e: { object: SearchBar }) => e.object.dismissSoftInput()}
       />

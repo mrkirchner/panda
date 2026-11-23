@@ -32,13 +32,13 @@ export function personScreen(id: number, known?: { name: string; image: string |
         {/* The header at once from what the row knew (name, photo); the rest as ghosts until
             TMDB answers. */}
         <gridlayout class={p() ? "person-hero" : "person-hero ghost"} rows="*, auto">
-          <image rowSpan={2} class="hero" src={imageUrl(p()?.backdrop)} stretch="aspectFill" />
+          <image loadMode="async" rowSpan={2} class="hero" src={imageUrl(p()?.backdrop)} stretch="aspectFill" />
           <stacklayout rowSpan={2} class="hero-scrim" />
         </gridlayout>
         <stacklayout class="form person-head">
           <gridlayout class="photo">
             <label class="headshot-initial" text={(p()?.name ?? known?.name ?? "").slice(0, 1)} />
-            <image class="photo" src={imageUrl(p()?.image ?? known?.image)} stretch="aspectFill" />
+            <image loadMode="async" class="photo" src={imageUrl(p()?.image ?? known?.image)} stretch="aspectFill" />
           </gridlayout>
           <label class="h1" textWrap={true} text={p()?.name ?? known?.name ?? ""} />
           <Show when={!p() && !data.error()}>

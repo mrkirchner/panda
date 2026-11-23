@@ -58,7 +58,7 @@ export function MyList() {
           <For each={shown()}>
             {r => (
               <gridlayout class="episode" columns="auto, *, auto" on:tap={() => openRequest(r)}>
-                <image col={0} class="request-poster" src={imageUrl(r.poster)} stretch="aspectFill" />
+                <image loadMode="async" col={0} class="request-poster" src={imageUrl(r.poster)} stretch="aspectFill" />
                 <stacklayout col={1} class="episode-text">
                   <label class="body" textWrap={true} text={r.year ? `${r.title} (${r.year})` : r.title} />
                   <label class={r.status === "failed" ? "error" : "status-line"} textWrap={true} text={statusOf(r)} />

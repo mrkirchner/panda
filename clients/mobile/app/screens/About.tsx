@@ -22,7 +22,7 @@ export function aboutScreen() {
           {c => (
             <stacklayout class="credit">
               <Show when={c.id === "tmdb"} fallback={<label class="h2" text={c.name} />}>
-                <image
+                <image loadMode="async"
                   src="~/images/tmdb.png"
                   width={logoW}
                   height={Math.round((logoW * 35.52) / 273.42)}

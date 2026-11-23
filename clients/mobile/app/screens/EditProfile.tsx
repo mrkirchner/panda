@@ -237,7 +237,7 @@ function pictureScreen() {
           <For each={art()}>
             {key => (
               <stacklayout class="pick-cell" on:tap={() => void pick(`art:${key}`)}>
-                <image class="pick-art" src={imageUrl(key)} stretch="aspectFill" />
+                <image loadMode="async" class="pick-art" src={imageUrl(key)} stretch="aspectFill" />
               </stacklayout>
             )}
           </For>

@@ -113,7 +113,7 @@ export function allScreen(kind: "movies" | "shows", genre?: string, library?: nu
             <Show when={!e.poster}>
               <label rowSpan={2} class="small center poster-name" textWrap={true} text={e.title} />
             </Show>
-            <image rowSpan={2} class="grid-poster" src={imageUrl(e.poster)} stretch="aspectFill" />
+            <image loadMode="async" rowSpan={2} class="grid-poster" src={imageUrl(e.poster)} stretch="aspectFill" />
             <Show when={e.watched}>
               <label rowSpan={2} class="watched-mark" text="✓" />
             </Show>

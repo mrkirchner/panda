@@ -91,7 +91,7 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
             <GhostRow />
           </Show>
           <Show when={p()}>
-            <image class="hero" src={imageUrl(p()!.backdrop)} stretch="aspectFill" />
+            <image loadMode="async" class="hero" src={imageUrl(p()!.backdrop)} stretch="aspectFill" />
             <stacklayout class="form">
               <Show when={p()!.details.logo} fallback={<label class="h1" textWrap={true} text={p()!.title} />}>
                 <Logo image={p()!.details.logo} height={70} maxWidth={Screen.mainScreen.widthDIPs * 0.7} />

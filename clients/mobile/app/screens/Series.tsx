@@ -225,7 +225,7 @@ export function seriesScreen(name: string) {
           {e => (
             <gridlayout class="episode" columns="auto, *" on:tap={() => playEpisode(e)}>
               <stacklayout col={0}>
-                <image class="still" src={imageUrl(e.episode_still ?? e.backdrop)} stretch="aspectFill" />
+                <image loadMode="async" class="still" src={imageUrl(e.episode_still ?? e.backdrop)} stretch="aspectFill" />
                 <Show when={e.progress && !e.progress.finished && e.progress.fraction > 0}>
                   <Progress fraction={e.progress!.fraction} width={140} />
                 </Show>

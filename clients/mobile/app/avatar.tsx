@@ -35,7 +35,7 @@ export function Avatar(props: { name: string; picture: string | null; size: numb
         text={props.name.slice(0, 1).toUpperCase() || "?"}
       />
       <Show when={src()}>
-        <image
+        <image loadMode="async"
           width={props.size}
           height={props.size}
           borderRadius={props.size / 2}

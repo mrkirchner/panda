@@ -18,7 +18,7 @@ import { editProfileScreen } from "./screens/EditProfile";
 import { devSeek, play } from "./player";
 import { selectTab } from "./tabs";
 import { devDrag, devExpand, devScrollRow } from "./screens/cards";
-import { setStartQuery } from "./screens/Search";
+import { devType, setStartQuery } from "./screens/Search";
 
 const argAfter = (flag: string): string | null => {
   const args = NSProcessInfo.processInfo.arguments;
@@ -58,6 +58,8 @@ export function devLaunch() {
       else target?.scrollToVerticalOffset(Number(scroll), false);
     }, 4000);
   }
+  const typeWord = argAfter("-pandaType");
+  if (typeWord) setTimeout(() => devType?.(typeWord), 5000);
   const expand = argAfter("-pandaExpand");
   if (expand) setTimeout(() => devExpand?.(Number(expand)), 4500);
   const dragBy = argAfter("-pandaDrag");

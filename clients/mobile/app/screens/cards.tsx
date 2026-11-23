@@ -50,7 +50,7 @@ export function Poster(props: {
         <Show when={!props.image}>
           <label class="small center poster-name" textWrap={true} text={props.title} />
         </Show>
-        <image class="poster" src={imageUrl(props.image)} stretch="aspectFill" />
+        <image loadMode="async" class="poster" src={imageUrl(props.image)} stretch="aspectFill" />
         <Show when={props.rank}>
           <label class="rank" text={String(props.rank)} />
         </Show>
@@ -90,7 +90,7 @@ export function WideCard(props: {
 }) {
   return (
     <stacklayout class="wide-cell" on:tap={props.onTap}>
-      <image class="wide" src={imageUrl(props.image)} stretch="aspectFill" />
+      <image loadMode="async" class="wide" src={imageUrl(props.image)} stretch="aspectFill" />
       <Show when={(props.fraction ?? 0) > 0}>
         <Progress fraction={props.fraction!} width={240} />
       </Show>
@@ -106,7 +106,7 @@ export function WideCard(props: {
 export function SpotCard(props: { spot: Spot; onTap: () => void }) {
   return (
     <stacklayout class="spot-cell" on:tap={props.onTap}>
-      <image class="spot" src={imageUrl(props.spot.backdrop)} stretch="aspectFill" />
+      <image loadMode="async" class="spot" src={imageUrl(props.spot.backdrop)} stretch="aspectFill" />
       <label class="small accent mt8" text={reason(props.spot)} />
       <label class="h2" textWrap={true} text={props.spot.title} />
     </stacklayout>
@@ -124,7 +124,7 @@ export const tintCss = (genre: string, alpha: number) =>
 export function GenreTile(props: { name: string; image: string | null; onTap: () => void }) {
   return (
     <gridlayout class="genre-tile" on:tap={props.onTap}>
-      <image class="genre-tile" src={imageUrl(props.image)} stretch="aspectFill" />
+      <image loadMode="async" class="genre-tile" src={imageUrl(props.image)} stretch="aspectFill" />
       <stacklayout class="genre-scrim" />
       <stacklayout class="genre-wash" backgroundColor={tintCss(props.name, 0x66)} />
       <label class="genre-name" text={t(props.name)} />
@@ -136,7 +136,7 @@ export function GenreTile(props: { name: string; image: string | null; onTap: ()
 export function Banner(props: { spot: Spot; onTap: () => void }) {
   return (
     <stacklayout class="banner" on:tap={props.onTap}>
-      <image class="banner-image" src={imageUrl(props.spot.backdrop)} stretch="aspectFill" />
+      <image loadMode="async" class="banner-image" src={imageUrl(props.spot.backdrop)} stretch="aspectFill" />
       <label class="small accent mt8" text={reason(props.spot)} />
       <label class="h2" textWrap={true} text={props.spot.title} />
     </stacklayout>
@@ -156,7 +156,7 @@ export function ClipArt(props: { image: string | null | undefined; clip: ClipSou
   });
   return (
     <gridlayout class="hero">
-      <image class="hero" src={imageUrl(props.image)} stretch="aspectFill" />
+      <image loadMode="async" class="hero" src={imageUrl(props.image)} stretch="aspectFill" />
       <contentview class="clip-host" ref={(el: ContentView) => (host = el)} />
     </gridlayout>
   );
@@ -171,7 +171,7 @@ const CLIP_DELAY_MS = 1_500;
  */
 export function Logo(props: { image: string | null | undefined; height: number; maxWidth: number; class?: string }) {
   return (
-    <image
+    <image loadMode="async"
       class={props.class ?? "logo"}
       src={imageUrl(props.image)}
       height={props.height}
@@ -414,7 +414,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
               on:tap={() => tap(i())}
             >
               <gridlayout opacity={i() === 0 ? 1 : 0} ref={(el: View) => (wides[i()] = el)}>
-                <image class="expanded-art" src={imageUrl(item.backdrop ?? item.poster)} stretch="aspectFill" />
+                <image loadMode="async" class="expanded-art" src={imageUrl(item.backdrop ?? item.poster)} stretch="aspectFill" />
                 <contentview class="clip-host expanded-art" ref={(el: ContentView) => (hosts[i()] = el)} />
                 <stacklayout class="expanded-scrim" />
                 <stacklayout class="expanded-text" verticalAlignment="bottom">
@@ -423,7 +423,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
                 </stacklayout>
               </gridlayout>
               <gridlayout opacity={i() === 0 ? 0 : 1} ref={(el: View) => (posters[i()] = el)} rows="*, auto">
-                <image rowSpan={2} class="poster" src={imageUrl(item.poster)} stretch="aspectFill" />
+                <image loadMode="async" rowSpan={2} class="poster" src={imageUrl(item.poster)} stretch="aspectFill" />
                 <Show when={(item.fraction ?? 0) > 0}>
                   <Progress row={1} fraction={item.fraction!} width={POSTER_W} />
                 </Show>

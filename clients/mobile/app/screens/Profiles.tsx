@@ -108,7 +108,7 @@ export function Profiles() {
           <Show when={!editing() && (data.value()?.profiles.length ?? MAX_PROFILES) < MAX_PROFILES}>
             <stacklayout class="profile-cell" on:tap={() => void add()}>
               <gridlayout class="add-tile">
-                <image class="add-icon" src="sys://plus" tintColor="#f4f1ea" />
+                <image loadMode="async" class="add-icon" src="sys://plus" tintColor="#f4f1ea" />
               </gridlayout>
               <label class="body center mt8" text={t("Add profile")} />
             </stacklayout>

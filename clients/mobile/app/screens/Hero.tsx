@@ -100,7 +100,7 @@ export function Hero(props: { slides: HeroSlide[] }) {
           <For each={props.slides}>
             {(s, i) => (
               <gridlayout width={width} height={height}>
-                <image width={width} height={height} src={imageUrl(s.backdrop)} stretch="aspectFill" />
+                <image loadMode="async" width={width} height={height} src={imageUrl(s.backdrop)} stretch="aspectFill" />
                 <contentview ref={(el: ContentView) => (hosts[i()] = el)} class="clip-host" />
                 <stacklayout class="hero-scrim" />
                 <stacklayout class="hero-content" verticalAlignment="bottom">

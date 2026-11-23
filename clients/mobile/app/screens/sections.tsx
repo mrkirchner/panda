@@ -32,7 +32,7 @@ export function Ratings(props: { ratings: TitleRating[] }) {
             <stacklayout orientation="horizontal" class="rating">
               <Show
                 when={r.source !== "tmdb"}
-                fallback={<image src="~/images/tmdb.png" width={TMDB_W} height={TMDB_H} verticalAlignment="middle" />}
+                fallback={<image loadMode="async" src="~/images/tmdb.png" width={TMDB_W} height={TMDB_H} verticalAlignment="middle" />}
               >
                 <label
                   class="rating-badge"
@@ -55,7 +55,7 @@ export function Action(props: { icon: string; label: string; onTap: () => void; 
   return (
     <stacklayout class="action" on:tap={props.onTap}>
       <gridlayout class={props.on ? "action-circle on" : "action-circle"}>
-        <image class="action-icon" src={`sys://${props.icon}`} tintColor={props.on ? "#141210" : "#f4f1ea"} />
+        <image loadMode="async" class="action-icon" src={`sys://${props.icon}`} tintColor={props.on ? "#141210" : "#f4f1ea"} />
       </gridlayout>
       <label class="action-label" text={props.label} textWrap={true} />
     </stacklayout>
@@ -119,7 +119,7 @@ export function PeopleRow(props: { people: Person[]; title?: string }) {
             <stacklayout class="person-cell" on:tap={() => p.id && openPerson(p.id, { name: p.name, image: p.image })}>
               <gridlayout class="headshot">
                 <label class="headshot-initial" text={p.name.slice(0, 1)} />
-                <image class="headshot" src={imageUrl(p.image)} stretch="aspectFill" />
+                <image loadMode="async" class="headshot" src={imageUrl(p.image)} stretch="aspectFill" />
               </gridlayout>
               <label class="person-name" text={p.name} textWrap={true} maxLines={2} />
               <label class="small person-role" text={p.role ?? ""} textWrap={true} maxLines={2} />
