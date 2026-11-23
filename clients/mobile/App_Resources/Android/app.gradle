@@ -1,0 +1,29 @@
+// Media3 (ExoPlayer) for the player and preview clips (player.android.tsx, clip.android.ts): direct
+// files and the server's HLS (fMP4) streams.
+dependencies {
+  def media3 = "1.5.1"
+  implementation "androidx.media3:media3-exoplayer:$media3"
+  implementation "androidx.media3:media3-exoplayer-hls:$media3"
+  implementation "androidx.media3:media3-ui:$media3"
+}
+
+android {
+  compileSdkVersion 35
+  buildToolsVersion "35.0.0"
+  // ndkVersion ""
+
+  defaultConfig {
+    minSdkVersion 24
+    targetSdkVersion 35
+
+    // Version Information
+    versionCode 1
+    versionName "1.0.0"
+    
+    generatedDensities = []
+  }
+
+  aaptOptions {
+    additionalParameters "--no-version-vectors"
+  }
+}

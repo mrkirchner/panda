@@ -1,8 +1,8 @@
-// Panda on iPhone. Shims first (the TV client's shared code reads browser globals at import),
+// Panda on iPhone and Android phones. Shims first (the TV client's shared code reads browser globals at import),
 // then the app: one Frame whose pages are the screens (nav.ts).
 import "./shims/globals";
 import { Application, Frame } from "@nativescript/core";
-import { installDiscovery } from "@appletv/discovery";
+import { installDiscovery } from "./discovery";
 import { AuthError, ensureSession } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, getToken } from "@tv/api/session";
@@ -11,24 +11,28 @@ import { Connect } from "./screens/Connect";
 import { goHome, goProfiles, goSignIn } from "./session";
 import { devLaunch, devPrepare } from "./devLaunch";
 
-// Bonjour: the Panda servers on this network (the Apple TV host's, same iOS APIs).
+// The Panda servers on this network: Bonjour on iPhone, NSD on Android (discovery.*.ts).
 installDiscovery();
 
-// Preview clips mix with whatever else is playing (music, a podcast) instead of stopping it;
-// the player takes the sound over while it's open (player.ts).
-AVAudioSession.sharedInstance().setCategoryModeOptionsError(
-  AVAudioSessionCategoryAmbient,
-  AVAudioSessionModeDefault,
-  0 as AVAudioSessionCategoryOptions,
-);
+if (__IOS__) {
+  // Preview clips mix with whatever else is playing (music, a podcast) instead of stopping it;
+  // the player takes the sound over while it's open (player.ios.ts). Android: clips don't ask
+  // for audio focus at all (clip.android.ts).
+  AVAudioSession.sharedInstance().setCategoryModeOptionsError(
+    AVAudioSessionCategoryAmbient,
+    AVAudioSessionModeDefault,
+    0 as AVAudioSessionCategoryOptions,
+  );
 
-// Artwork is immutable on the server (cached for weeks): keep plenty of it (iOS's default cache,
-// ~10 MB, would download and decode posters again on every scroll and visit).
-NSURLCache.sharedURLCache = NSURLCache.alloc().initWithMemoryCapacityDiskCapacityDiskPath(
-  50 * 1024 * 1024,
-  300 * 1024 * 1024,
-  "panda-images",
-);
+  // Artwork is immutable on the server (cached for weeks): keep plenty of it (iOS's default
+  // cache, ~10 MB, would download and decode posters again on every scroll and visit). Android's
+  // image loader keeps its own memory and disk cache.
+  NSURLCache.sharedURLCache = NSURLCache.alloc().initWithMemoryCapacityDiskCapacityDiskPath(
+    50 * 1024 * 1024,
+    300 * 1024 * 1024,
+    "panda-images",
+  );
+}
 
 /** Launch: the server, then sign-in, then a profile; each step only when it's missing. */
 function start() {

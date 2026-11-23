@@ -30,6 +30,9 @@ importers:
       '@babel/preset-typescript':
         specifier: ^7.27.1
         version: 7.29.7(@babel/core@7.29.13)
+      '@nativescript/android':
+        specifier: ~9.1.1
+        version: 9.1.1
       '@nativescript/ios':
         specifier: 9.1.1
         version: 9.1.1
@@ -411,6 +414,9 @@ packages:
       '@solidjs/universal': ^2.0.0
       dominative: ^0.1.2
       solid-js: ^2.0.0
+
+  '@nativescript/android@9.1.1':
+    resolution: {integrity: sha512-oDWfVnQtgQ0ctbfFWSugqGEZnYVjls82FqlO5UbA9HNwTNqdP4gqWwqHR80WKQngrbxlRHYDIuYv5S9kQfKhcw==}
 
   '@nativescript/core@9.1.4':
     resolution: {integrity: sha512-S8HQDKi7Md9SIr7rzBHvobS3X3HC9RG5qMCLqnXsOzW1u8Kp8W4TuCVIdjoyRoj5/V8xLMv+ZpMYsJ7K5iE9Ug==}
@@ -3667,6 +3673,8 @@ snapshots:
     transitivePeerDependencies:
       - '@babel/core'
       - supports-color
+
+  '@nativescript/android@9.1.1': {}
 
   '@nativescript/core@9.1.4':
     dependencies:

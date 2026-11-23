@@ -9,6 +9,7 @@
 //   -pandaExpand <n>        open card n of Home's first expanding row (as a tap)
 //   -pandaRowScroll <n>     swipe that row n cards along
 //   -pandaDrag <points>     6 s after launch, drag that row like a finger (negative: leftward)
+import { Application } from "@nativescript/core";
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ListView, ScrollView, type View } from "@nativescript/core";
@@ -20,10 +21,17 @@ import { selectTab } from "./tabs";
 import { devDrag, devExpand, devScrollRow } from "./screens/cards";
 import { devType, setStartQuery } from "./screens/Search";
 
+/** A launch option: `-pandaOpen title:m1` on iOS (simctl launch arguments), the intent extra
+ * `pandaOpen` on Android (`adb shell am start -n app.panda.mobile/com.tns.NativeScriptActivity
+ * --es pandaOpen title:m1`). */
 const argAfter = (flag: string): string | null => {
-  const args = NSProcessInfo.processInfo.arguments;
-  const i = args.indexOfObject(flag);
-  return i === NSNotFound || i + 1 >= args.count ? null : (args.objectAtIndex(i + 1) as string);
+  if (__IOS__) {
+    const args = NSProcessInfo.processInfo.arguments;
+    const i = args.indexOfObject(flag);
+    return i === NSNotFound || i + 1 >= args.count ? null : (args.objectAtIndex(i + 1) as string);
+  }
+  const intent = Application.android?.startActivity?.getIntent();
+  return intent?.getStringExtra(flag.replace(/^-/, "")) ?? null;
 };
 
 /** The first ScrollView in `view`'s tree (vertical ones only), or a virtual list. */

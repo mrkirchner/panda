@@ -8,6 +8,7 @@ import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Screen, type ContentView, type ScrollView, type View } from "@nativescript/core";
 import { playClip, type ClipSource } from "../clip";
+import { attachSideways } from "../sideways";
 
 export function Row(props: {
   title: string;
@@ -213,31 +214,6 @@ const STEP = POSTER_W + CARD_GAP;
 const EXPAND_CLIP_MS = 1_000;
 const MOVE_MS = 320;
 
-type PanState = { translationX: number; velocityX: number; state: number };
-
-/** Lets the page scroll vertically: the row's pan only starts on a mostly sideways swipe. */
-const Sideways = (NSObject as unknown as {
-  extend(methods: object, info: object): { new (): NSObject };
-}).extend(
-  {
-    gestureRecognizerShouldBegin(g: UIPanGestureRecognizer) {
-      const v = g.velocityInView(g.view);
-      return Math.abs(v.x) > Math.abs(v.y);
-    },
-  },
-  { protocols: [UIGestureRecognizerDelegate] },
-);
-const PanTarget = (NSObject as unknown as {
-  extend(methods: object, info: object): { new (): NSObject & { fn?: (g: UIPanGestureRecognizer) => void } };
-}).extend(
-  {
-    pan(this: { fn?: (g: UIPanGestureRecognizer) => void }, g: UIPanGestureRecognizer) {
-      this.fn?.(g);
-    },
-  },
-  { exposedMethods: { pan: { returns: interop.types.void, params: [UIPanGestureRecognizer] } } },
-);
-
 /**
  * A row with a fixed focus spot at its left, as a TV row's focus (the TV's "Recently added"):
  * the card in the spot is open (its backdrop, name and facts, and its preview clip after a
@@ -342,32 +318,17 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   };
   /** Let go after `tx` at `vx` points/s: settle a card per poster-width swiped (a flick more). */
   const release = (tx: number, vx: number) => goTo(focus - Math.round((tx + vx * 0.2) / STEP));
-  const onPan = (g: UIPanGestureRecognizer) => {
-    const tx = g.translationInView(g.view).x;
-    if (g.state === UIGestureRecognizerState.Began) clearInterval(settling);
-    else if (g.state === UIGestureRecognizerState.Changed) drag(tx);
-    else if (g.state === UIGestureRecognizerState.Ended || g.state === UIGestureRecognizerState.Cancelled) {
-      release(tx, g.velocityInView(g.view).x);
-    }
-  };
-  let pan: UIPanGestureRecognizer | null = null;
-  /** Once: the row loads again on every tab switch and Back (more recognizers would each move it). */
+  /** The sideways swipe (sideways.*.ts: a pan recognizer on iOS, a touch listener on Android),
+   * attached once: the row loads again on every tab switch and Back. */
+  let detachSwipe: (() => void) | null = null;
   const attachPan = (row: View) => {
-    const native = row.ios as UIView | undefined;
-    if (!native || pan) return;
-    // Cards leave at the page margin, not under the screen's edge.
-    native.clipsToBounds = true;
-    const target = new PanTarget();
-    target.fn = onPan;
-    pan = UIPanGestureRecognizer.alloc().initWithTargetAction(target, "pan");
-    const delegate = new Sideways();
-    pan.delegate = delegate as unknown as UIGestureRecognizerDelegate;
-    native.addGestureRecognizer(pan);
-    keep.push(target, delegate);
-    rowView = native;
+    if (detachSwipe) return;
+    detachSwipe = attachSideways(row, {
+      began: () => clearInterval(settling),
+      moved: drag,
+      released: release,
+    });
   };
-  const keep: NSObject[] = [];
-  let rowView: UIView | null = null;
   /** Backdrops only near the spot (each is a 1280 px picture): the open card and its neighbours. */
   const [near, setNear] = createSignal(0);
 
@@ -394,8 +355,8 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
     clearTimeout(clipTimer);
     clearInterval(settling);
     clip?.stop();
-    if (pan) rowView?.removeGestureRecognizer(pan);
-    keep.length = 0;
+    detachSwipe?.();
+    detachSwipe = null;
     if (devExpand === tap) devExpand = null;
   });
 

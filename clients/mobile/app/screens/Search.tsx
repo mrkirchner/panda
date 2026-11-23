@@ -18,6 +18,7 @@ const fold = (x: string) =>
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { load } from "../data";
 import { GhostRow, Poster, Row } from "./cards";
+import { symbol } from "../symbols";
 import { openSeries, openTitle } from "./links";
 import { MoreRow, PeopleRow } from "./sections";
 
@@ -135,7 +136,8 @@ export function Search() {
     clearTimeout(heldTimer);
   });
   devType = word => {
-    // Through iOS's text input, as the keyboard types (focus first).
+    // Through iOS's text input, as the keyboard types (focus first). iOS only.
+    if (!__IOS__) return;
     const field = (bar?.ios as UISearchBar | undefined)?.searchTextField;
     if (!field) return;
     field.becomeFirstResponder();
@@ -176,7 +178,7 @@ export function Search() {
       />
         {/* Voice search, as the TV's Voice key: the words fill the bar as you speak. */}
         <gridlayout col={1} class={listening() ? "mic on" : "mic"} on:tap={() => void voice()}>
-          <image class="mic-icon" src="sys://mic.fill" tintColor={listening() ? "#141210" : "#f4f1ea"} />
+          <image class="mic-icon" src={symbol("mic.fill")} tintColor={listening() ? "#141210" : "#f4f1ea"} />
         </gridlayout>
       </gridlayout>
       <scrollview>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <!-- Panda's palette (clients/tv/src/theme.ts): near-black, warm whites, the gold accent. -->
+    <color name="ns_primary">#0D0D0F</color>
+    <color name="ns_primaryDark">#0D0D0F</color>
+    <color name="ns_accent">#D4AE6A</color>
+    <color name="panda_background">#0B0B0D</color>
+</resources>

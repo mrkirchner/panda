@@ -3,9 +3,10 @@
 // `open()` pushes onto the frame in use: the selected tab's, else the root's. Pages are native,
 // so iOS gives each its navigation bar and the swipe back. A page's Solid tree lives as long as
 // the page: it's disposed once the page is gone (popped by Back, or dropped by a cleared history).
-import { ActionItem, Frame, type GridLayout, type NavigatedData, Page } from "@nativescript/core";
+import { ActionItem, Frame, type GridLayout, type NavigatedData, Page, NavigationButton } from "@nativescript/core";
 import { render } from "@nativescript-community/solid-js";
 import { setSheetOpen } from "./clip";
+import { symbol } from "./symbols";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 
 let root: Frame | null = null;
@@ -34,22 +35,26 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
   for (const a of opts.actions ?? []) {
     const item = new ActionItem();
     item.text = a.text;
-    if (a.icon) item.icon = `sys://${a.icon}`;
+    if (a.icon) item.icon = symbol(a.icon);
     if (a.view) {
       // A view of its own (the profile's avatar): taps go to it, not to the item.
       const host = document.createElement("gridlayout") as unknown as GridLayout;
       render(a.view, host as unknown as Element);
       host.on("tap", a.tap);
+      // Its own size (Android would stretch it across the bar, over the title).
+      host.width = 44;
+      host.height = 44;
       item.actionView = host;
     }
-    item.ios.position = "right";
+    if (__IOS__) item.ios.position = "right";
+    else item.android.position = "actionBar";
     item.on("tap", a.tap);
     page.actionBar.actionItems.addItem(item);
   }
   const dispose = render(screen, page as unknown as Element);
   // A button with a view of its own (the avatar) is drawn without iOS 26's glass circle behind
   // it, so the picture is the whole button.
-  if (opts.actions?.some(a => a.view)) {
+  if (__IOS__ && opts.actions?.some(a => a.view)) {
     page.on("navigatedTo", () => {
       const items = (page.ios as UIViewController | undefined)?.navigationItem.rightBarButtonItems;
       for (let i = 0; i < (items?.count ?? 0); i++) {
@@ -92,6 +97,13 @@ export function open(screen: () => JSX.Element, opts: ScreenOptions = {}): void 
     beforeRootReset = null;
   }
   const page = makePage(screen, opts, () => frame);
+  // Android: a back arrow in the header of a page pushed onto another (iPhone's bar has its own).
+  if (__ANDROID__ && !opts.clear && !page.actionBarHidden) {
+    const back = new NavigationButton();
+    back.android.systemIcon = "ic_menu_back";
+    back.on("tap", () => frame.goBack());
+    page.actionBar.navigationButton = back;
+  }
   frame.navigate({ create: () => page, clearHistory: opts.clear ?? false, animated: !opts.clear });
 }
 
@@ -117,6 +129,8 @@ export function openSheet(screen: () => JSX.Element, onClosed?: () => void): voi
   host.className = "sheet";
   const dispose = render(screen, host as unknown as Element);
   host.on("shownModally", () => {
+    // iPhone: a half-height sheet with a grabber (Android shows its own dialog).
+    if (!__IOS__) return;
     const vc = (host as unknown as { viewController?: UIViewController }).viewController;
     const sheet = vc?.sheetPresentationController;
     if (sheet) {
@@ -139,7 +153,7 @@ export function openSheet(screen: () => JSX.Element, onClosed?: () => void): voi
       onClosed?.();
       dispose();
     },
-    ios: { presentationStyle: UIModalPresentationStyle.PageSheet },
+    ...(__IOS__ ? { ios: { presentationStyle: UIModalPresentationStyle.PageSheet } } : {}),
   });
 }
 

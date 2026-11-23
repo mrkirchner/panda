@@ -3,6 +3,7 @@
 import { Frame, Page, TabView, TabViewItem, type SelectedIndexChangedEventData } from "@nativescript/core";
 import type { JSX } from "@nativescript-community/solid-js/jsx-runtime";
 import { t } from "@tv/i18n";
+import { symbol } from "./symbols";
 import { makePage, releaseFrame, setBeforeRootReset, setCurrentFrame, showRoot, type ScreenOptions } from "./nav";
 
 interface Tab {
@@ -22,6 +23,8 @@ export const selectTab = (i: number) => selectIndex(i);
 export function showTabs(tabs: Tab[]): void {
   const view = new TabView();
   view.className = "tabs";
+  // Android puts tabs at the top by default; Panda's are at the bottom on both.
+  if (__ANDROID__) view.androidTabsPosition = "bottom";
   const frames: Frame[] = [];
   /** A tab is built the first time it's chosen (not all five at launch, each with its requests). */
   const built = new Set<number>();
@@ -36,7 +39,8 @@ export function showTabs(tabs: Tab[]): void {
     frames.push(frame);
     const item = new TabViewItem();
     item.title = t(tab.title);
-    item.iconSource = `sys://${tab.icon}`;
+    item.textTransform = "none";
+    item.iconSource = symbol(tab.icon);
     item.view = frame;
     return item;
   });

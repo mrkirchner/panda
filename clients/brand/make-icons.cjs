@@ -87,6 +87,21 @@ png(squareIcon(96), path.join(CLIENTS, "android-tv/app/src/main/res/mipmap-xhdpi
 // Android TV home-screen banner (320x180 xhdpi): mark and name.
 png(banner(320, 180), path.join(CLIENTS, "android-tv/app/src/main/res/drawable/banner.png"), 320);
 
+// --- Android phones and tablets (clients/mobile): an adaptive icon (background and foreground
+// layers, 108 dp with the mark inside the 66 dp safe zone, which launchers shape as they like), a
+// plain icon for launchers before Android 8, and the launch screen's mark.
+const ANDROID_RES = path.join(CLIENTS, "mobile/App_Resources/Android/src/main/res");
+const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+for (const [name, d] of Object.entries(DENSITIES)) {
+  const dir = path.join(ANDROID_RES, `mipmap-${name}`);
+  const layer = 108 * d, m = 58 * d, o = (layer - m) / 2;
+  png(svgDoc(layer, layer, background(layer, layer)), path.join(dir, "ic_launcher_background.png"), layer);
+  png(svgDoc(layer, layer, glow(o, o, m) + mark(o, o, m)), path.join(dir, "ic_launcher_foreground.png"), layer);
+  png(squareIcon(48 * d, { radius: 10 * d }), path.join(dir, "ic_launcher.png"), 48 * d);
+  const logo = 120 * d;
+  png(svgDoc(logo, logo, glow(0, 0, logo) + mark(0, 0, logo)), path.join(ANDROID_RES, `drawable-${name}`, "logo.png"), logo);
+}
+
 // --- Apple TV: layered app icon (focus parallax) and Top Shelf images, as an asset catalog.
 const XCASSETS = path.join(CLIENTS, "appletv/App_Resources/tvOS/Assets.xcassets");
 const BRAND = path.join(XCASSETS, "App Icon & Top Shelf Image.brandassets");

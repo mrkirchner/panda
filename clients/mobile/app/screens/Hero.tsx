@@ -10,6 +10,7 @@ import { For, Show, createSignal, onCleanup } from "solid-js";
 import { playClip, type ClipSource } from "../clip";
 import { Ratings } from "./sections";
 import { Logo } from "./cards";
+import { pageSnap } from "../paging";
 
 /** The TV's slide time. */
 const SLIDE_MS = 9_000;
@@ -91,7 +92,9 @@ export function Hero(props: { slides: HeroSlide[] }) {
         ref={(el: ScrollView) => (scroller = el)}
         on:unloaded={pause}
         on:loaded={(e: { object: ScrollView }) => {
-          (e.object.ios as UIScrollView).pagingEnabled = true;
+          // Slides snap a page at a time (Android: snapped when the finger lifts, paging.ts).
+          if (__IOS__) (e.object.ios as UIScrollView).pagingEnabled = true;
+          else pageSnap(e.object, width);
           arrive(index());
         }}
         on:scroll={(e: { scrollX: number }) => {
