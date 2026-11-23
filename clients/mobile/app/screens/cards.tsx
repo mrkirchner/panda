@@ -211,7 +211,7 @@ const ROW_PAD = 16;
 const STEP = POSTER_W + CARD_GAP;
 /** Rest on an opened card this long before its clip starts. */
 const EXPAND_CLIP_MS = 1_000;
-const MOVE_MS = 260;
+const MOVE_MS = 320;
 
 type PanState = { translationX: number; velocityX: number; state: number };
 
@@ -254,32 +254,70 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   let clip: { stop: () => void } | null = null;
   let clipTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Where card `j` sits with card `f` in the spot. */
-  const xOf = (j: number, f: number) =>
-    // Cards past the spot wait fully off the left edge (no sliver showing).
-    j < f ? -ROW_PAD - (f - j) * STEP : j === f ? ROW_PAD : ROW_PAD + EXPANDED_W + CARD_GAP + (j - f - 1) * STEP;
-  /** Lay every card out for focus `f` (animated, or at once while dragging). */
-  const place = (f: number, drag = 0, animate = true) => {
+  /** How open card `j` is (0 poster, 1 open) with the spot at `at` (fractional while dragging). */
+  const openness = (j: number, at: number) => Math.max(0, 1 - Math.abs(j - at));
+  const widthOf = (j: number, at: number) => POSTER_W + (EXPANDED_W - POSTER_W) * openness(j, at);
+  /**
+   * Every card's place and size with the spot at `at`: whole numbers at rest, fractions while a
+   * finger drags, so the open card closes and the next opens as you swipe. The row is cut off at
+   * the page margin (`.focus-row`), so cards leave there.
+   */
+  const layout = (at: number) => {
+    const base = Math.max(0, Math.min(cards.length - 1, Math.floor(at)));
+    // Distance from card 0's start to the spot: whole cards before `base`, then part of `base`.
+    let offset = 0;
+    for (let i = 0; i < base; i++) offset += widthOf(i, at) + CARD_GAP;
+    offset += (at - base) * (widthOf(base, at) + CARD_GAP);
+    const out: { x: number; w: number; open: number }[] = [];
+    let x = -offset;
+    for (let j = 0; j < cards.length; j++) {
+      const w = widthOf(j, at);
+      // Poster or backdrop, switched quickly around the halfway point: both at once (a zoomed
+      // poster over the backdrop and its caption) read as a jumble.
+      out.push({ x, w, open: Math.min(1, Math.max(0, (openness(j, at) - 0.35) / 0.3)) });
+      x += w + CARD_GAP;
+    }
+    return out;
+  };
+  /** Where the spot is now (fractional mid-drag or mid-settle). */
+  let current = 0;
+  let settling: ReturnType<typeof setInterval> | undefined;
+  /** Lay the cards out with the spot at `at`. */
+  const show = (at: number) => {
+    current = at;
+    const spots = layout(at);
     for (let j = 0; j < cards.length; j++) {
       const card = cards[j];
       if (!card) continue;
-      const x = xOf(j, f) + drag;
-      const open = j === f;
-      if (!animate) {
-        card.translateX = x;
-        continue;
-      }
-      void card.animate({ translate: { x, y: 0 }, width: open ? EXPANDED_W : POSTER_W, duration: MOVE_MS, curve: "easeOut" });
-      void posters[j]?.animate({ opacity: open ? 0 : 1, duration: MOVE_MS });
-      void wides[j]?.animate({ opacity: open ? 1 : 0, duration: MOVE_MS });
+      const { x, w, open } = spots[j];
+      card.translateX = x;
+      card.width = w;
+      if (posters[j]) posters[j].opacity = 1 - open;
+      if (wides[j]) wides[j].opacity = open;
     }
+  };
+  /**
+   * Settle to `at` frame by frame with the same layout the drag uses (ease-out, no overshoot).
+   * NativeScript's own width animation grew cards about their centre and fought the position
+   * animation, so the open card wobbled.
+   */
+  const place = (at: number, animate = true) => {
+    clearInterval(settling);
+    if (!animate) return show(at);
+    const from = current;
+    const started = Date.now();
+    settling = setInterval(() => {
+      const t = Math.min(1, (Date.now() - started) / MOVE_MS);
+      show(from + (at - from) * (1 - (1 - t) ** 3));
+      if (t >= 1) clearInterval(settling);
+    }, 1000 / 60);
   };
   /** Bring card `n` to the spot (and its clip after a moment). */
   const goTo = (n: number) => {
     const next = Math.max(0, Math.min(props.items.length - 1, n));
     const changed = next !== focus;
     focus = next;
-    place(next);
+    place(next, true);
     if (!changed) return;
     clip?.stop();
     clip = null;
@@ -292,21 +330,30 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
   };
   const tap = (i: number) => (i === focus ? props.items[i]?.open() : goTo(i));
 
-  /** The finger: the row follows it, then settles a card per poster-width swiped (a flick more). */
+  /** The finger moved `tx` from where it started: the spot follows a card per poster-width,
+   * resisting past either end. */
+  const drag = (tx: number) => {
+    let at = focus - tx / STEP;
+    const last = props.items.length - 1;
+    if (at < 0) at = at / 3;
+    else if (at > last) at = last + (at - last) / 3;
+    place(at, false);
+  };
+  /** Let go after `tx` at `vx` points/s: settle a card per poster-width swiped (a flick more). */
+  const release = (tx: number, vx: number) => goTo(focus - Math.round((tx + vx * 0.2) / STEP));
   const onPan = (g: UIPanGestureRecognizer) => {
     const tx = g.translationInView(g.view).x;
-    if (g.state === UIGestureRecognizerState.Changed) {
-      // Resisting past either end.
-      const atEnd = (focus === 0 && tx > 0) || (focus === props.items.length - 1 && tx < 0);
-      place(focus, atEnd ? tx / 3 : tx, false);
-    } else if (g.state === UIGestureRecognizerState.Ended || g.state === UIGestureRecognizerState.Cancelled) {
-      const projected = tx + g.velocityInView(g.view).x * 0.2;
-      goTo(focus - Math.round(projected / STEP));
+    if (g.state === UIGestureRecognizerState.Began) clearInterval(settling);
+    else if (g.state === UIGestureRecognizerState.Changed) drag(tx);
+    else if (g.state === UIGestureRecognizerState.Ended || g.state === UIGestureRecognizerState.Cancelled) {
+      release(tx, g.velocityInView(g.view).x);
     }
   };
   const attachPan = (row: View) => {
     const native = row.ios as UIView | undefined;
     if (!native) return;
+    // Cards leave at the page margin, not under the screen's edge.
+    native.clipsToBounds = true;
     const target = new PanTarget();
     target.fn = onPan;
     const pan = UIPanGestureRecognizer.alloc().initWithTargetAction(target, "pan");
@@ -319,8 +366,26 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
 
   devExpand ??= tap;
   devScrollRow ??= (steps: number) => goTo(focus + steps);
+  // A finger, for checking the feel: drags `distance` points over `ms`, 60 updates a second, then
+  // lets go at the speed it was moving.
+  devDrag ??= (distance: number, ms: number) => {
+    const frames = Math.max(1, Math.round((ms / 1000) * 60));
+    let n = 0;
+    const timer = setInterval(() => {
+      n++;
+      const t = n / frames;
+      // Ease in-out, like a thumb.
+      const tx = distance * (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2);
+      drag(tx);
+      if (n >= frames) {
+        clearInterval(timer);
+        release(tx, (distance / ms) * 1000 * 0.6);
+      }
+    }, 1000 / 60);
+  };
   onCleanup(() => {
     clearTimeout(clipTimer);
+    clearInterval(settling);
     clip?.stop();
     keep.length = 0;
     if (devExpand === tap) devExpand = null;
@@ -331,10 +396,11 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
       <label class="section-title" text={props.title} />
       <absolutelayout
         class="focus-row"
+        clipToBounds={true}
         height={CARD_H}
         on:loaded={(e: { object: View }) => {
           attachPan(e.object);
-          place(focus, 0, false);
+          place(focus, false);
         }}
       >
         <For each={props.items}>
@@ -343,7 +409,7 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
               class="focus-card"
               width={i() === 0 ? EXPANDED_W : POSTER_W}
               height={CARD_H}
-              translateX={xOf(i(), 0)}
+              translateX={i() === 0 ? 0 : EXPANDED_W + CARD_GAP + (i() - 1) * STEP}
               ref={(el: View) => (cards[i()] = el)}
               on:tap={() => tap(i())}
             >
@@ -374,3 +440,5 @@ export function ExpandRow(props: { title: string; items: ExpandItem[] }) {
 export let devExpand: ((i: number) => void) | null = null;
 /** Debug builds (`-pandaRowScroll <n>`): swipe the first expanding row n cards along. */
 export let devScrollRow: ((steps: number) => void) | null = null;
+/** Debug builds (`-pandaDrag <points>`): drag the first expanding row like a finger. */
+export let devDrag: ((distance: number, ms: number) => void) | null = null;

@@ -369,8 +369,10 @@
 - TV parity pieces: hero carousel (`screens/Hero.tsx`) on Home/Movies/Shows; preview clips
   (`app/clip.ts`, `playClip` returns a handle: stop only your own clip; none while the player is
   open, only the sheet's while a sheet is); Recently Added rows have a fixed focus spot at the left (`ExpandRow`:
-  cards absolutely placed and animated (translate + width), a sideways-only UIPanGestureRecognizer
-  moves titles through the spot; not a ScrollView: reshaping a scrolling row snapped and lagged). Tapping a poster
+  one layout function of a fractional spot position drives drag and settle alike (sizes follow the
+  finger; the settle is our own 60 fps ease-out: NativeScript's width animation grows views about
+  their centre and wobbled); a sideways-only UIPanGestureRecognizer; not a ScrollView. Check motion
+  with `-pandaDrag <points>` + `simctl io recordVideo` and look at the frames. Tapping a poster
   opens its page (no preview sheet: the user wants straight to the info). `openSheet` is for
   pickers (seasons).
   Logos go through `Logo` (iOS centers a picture in its box: the box takes the logo's shape).

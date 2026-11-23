@@ -7,7 +7,8 @@
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
 //   -pandaExpand <n>        open card n of Home's first expanding row (as a tap)
-//   -pandaRowScroll <n>     swipe that row n cards along (as a finger)
+//   -pandaRowScroll <n>     swipe that row n cards along
+//   -pandaDrag <points>     6 s after launch, drag that row like a finger (negative: leftward)
 import { goProfiles, goSignIn } from "./session";
 import { currentFrame, open } from "./nav";
 import { ScrollView, type View } from "@nativescript/core";
@@ -16,7 +17,7 @@ import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
 import { devSeek, play } from "./player";
 import { selectTab } from "./tabs";
-import { devExpand, devScrollRow } from "./screens/cards";
+import { devDrag, devExpand, devScrollRow } from "./screens/cards";
 import { setStartQuery } from "./screens/Search";
 
 const argAfter = (flag: string): string | null => {
@@ -50,6 +51,8 @@ export function devLaunch() {
   }
   const expand = argAfter("-pandaExpand");
   if (expand) setTimeout(() => devExpand?.(Number(expand)), 4500);
+  const dragBy = argAfter("-pandaDrag");
+  if (dragBy) setTimeout(() => devDrag?.(Number(dragBy), 450), 6000);
   const rowScroll = argAfter("-pandaRowScroll");
   if (rowScroll) setTimeout(() => devScrollRow?.(Number(rowScroll)), 4500);
   const seek = argAfter("-pandaSeek");

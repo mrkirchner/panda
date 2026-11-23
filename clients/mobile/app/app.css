@@ -226,5 +226,5 @@ ActionBar {
 .upcoming { opacity: 0.55; }
 .credit { margin-top: 24; }
 .link-code { font-size: 44; font-weight: bold; color: #d4ae6a; letter-spacing: 0.2; margin-top: 24; }
-.focus-row { clip-to-bounds: false; }
+.focus-row { margin: 0 0 0 16; }
 .focus-card { border-radius: 8; background-color: #1a1a1d; }
