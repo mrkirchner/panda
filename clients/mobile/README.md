@@ -74,9 +74,12 @@ scripts/run-sim.sh "" ./sim-out 8 -pandaOpen title:m11423   # debug builds: open
 pnpm typecheck
 ```
 
-On your iPhone: `. scripts/env.sh && npx ns build ios` (or `npx ns prepare ios`), then open
-`platforms/ios/Panda.xcodeproj` in Xcode (there's no .xcworkspace: no CocoaPods), pick your team
-and your phone, and Run.
+On your iPhone: connect it (and trust this Mac), then `scripts/run-device.sh`: a Release build
+(minified, Solid's production build; the Debug build Xcode's Run makes is several times slower:
+5.6 MB of unminified JS with Solid's development checks, against 1.7 MB), signed with the team in
+team.local (or ../appletv/team.local), installed and launched. `CONFIG=Debug scripts/run-device.sh`
+for logs and the `-panda*` launch options. Or open `platforms/ios/Panda.xcodeproj` in Xcode
+(no .xcworkspace: no CocoaPods) and Run, after `npx ns prepare ios --release` for a fast build.
 
 `-pandaOpen` (debug builds only, `app/devLaunch.tsx`): `title:<id>`, `series:<name>`,
 `genre:<name>`, `all:movies|shows`, `tab:<0-3>`, `profiles`, `signin`, `connect`,
