@@ -38,6 +38,7 @@ export function Hero(props: { slides: HeroSlide[] }) {
   let clip: { stop: () => void } | null = null;
   /** On screen and the page visible: only then do slides move and clips play. */
   let visible = true;
+  let gone = false;
 
   const stop = () => {
     clearTimeout(settle);
@@ -65,6 +66,7 @@ export function Hero(props: { slides: HeroSlide[] }) {
         host,
         slide.clip,
         () => {
+          if (gone) return;
           clearTimeout(advance);
           advance = setTimeout(() => go(i + 1), 1500);
         },
@@ -96,7 +98,10 @@ export function Hero(props: { slides: HeroSlide[] }) {
       document.removeEventListener("visibilitychange", onVis);
     };
   });
-  onCleanup(stop);
+  onCleanup(() => {
+    gone = true;
+    stop();
+  });
 
   // Swipe between slides (touch).
   let startX = 0;

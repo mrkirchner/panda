@@ -64,9 +64,11 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
     const prog = bestProgress(r);
     return !prog || prog.state === "searching" ? r : undefined;
   };
+  const [cancelling, setCancelling] = createSignal(false);
   const cancel = async () => {
     const r = cancellable();
-    if (!r) return;
+    if (!r || cancelling()) return;
+    setCancelling(true);
     try {
       await api.cancelRequest(r.id);
       await refreshRequests();
@@ -74,6 +76,8 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
       refreshAll();
     } catch (e) {
       setError(message(e));
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -146,8 +150,8 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
                       </button>
                     </Show>
                     <Show when={cancellable()}>
-                      <button class="btn glass" onClick={() => void cancel()}>
-                        {t("Cancel request")}
+                      <button class="btn glass" disabled={cancelling()} onClick={() => void cancel()}>
+                        {cancelling() ? t("Cancelling...") : t("Cancel request")}
                       </button>
                     </Show>
                   </div>
@@ -181,9 +185,14 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
             />
             <PeopleRow people={[...pp().details.directors, ...pp().details.cast]} />
             <div class="section facts-grid">
+              <Facts title={t("About")} facts={[{ label: pp().title, value: pp().overview }]} />
               <Facts
                 title={t("Information")}
                 facts={[
+                  {
+                    label: t("Runtime"),
+                    value: pp().runtime_mins ? runtime(pp().runtime_mins! * 60) : null,
+                  },
                   {
                     label: pp().kind === "series" ? t("Network") : t("Studio"),
                     value: pp().details.studios.join(", "),

@@ -29,6 +29,10 @@ export interface EngineEvents {
   onFatal: (text: string) => void;
   /** It played to the end. */
   onEnded: () => void;
+  /** The item's details arrived (title, artwork). */
+  onInfo?: () => void;
+  /** A new stream started (a restart): its subtitle addresses are new. */
+  onStream?: () => void;
 }
 
 /** This browser plays HLS itself (Safari): no need for shaka-player there. */
@@ -43,6 +47,8 @@ export class Engine {
   private offset = 0;
   /** A restart in progress: the position it will start at. */
   private pending: number | null = null;
+  /** A seek asked for during a restart: done once it's finished. */
+  private queued: number | null = null;
   quality: QualityId = savedQuality();
   audioIndex: number | undefined;
   private stallCap: number | null = null;
@@ -67,7 +73,11 @@ export class Engine {
       this.watchStalls(false);
       this.events.onState();
     });
-    v.addEventListener("pause", () => this.events.onState());
+    v.addEventListener("pause", () => {
+      this.events.onState();
+      // Saved on pause too (the TV does): closing the tab next keeps the place.
+      if (!this.closed && this.pending === null) void this.save();
+    });
     v.addEventListener("play", () => this.events.onState());
     v.addEventListener("error", () => {
       if (!this.closed && this.pending === null && v.getAttribute("src")) this.recover();
@@ -151,13 +161,22 @@ export class Engine {
   async open(at: number) {
     this.pending = at;
     try {
-      await this.load(await this.request(at), at);
+      const pb = await this.request(at);
+      // Left while the server was starting the stream: it stops at once.
+      if (this.closed) {
+        if (pb.method === "hls") void api.stopSession(pb.session_id);
+        return;
+      }
+      await this.load(pb, at);
     } finally {
       this.pending = null;
     }
+    if (this.closed) return;
     api.item(this.pb!.item_id).then(
       (i) => {
+        if (this.closed) return;
         this.info = i;
+        this.events.onInfo?.();
         this.events.onState();
       },
       () => {},
@@ -169,11 +188,18 @@ export class Engine {
 
   /** Start again at `at` (a seek outside this stream, another audio track or quality). */
   async restart(at: number) {
-    if (this.pending !== null || this.closed) return;
+    if (this.closed) return;
+    // Already restarting: the newest place wins once this one is done.
+    if (this.pending !== null) {
+      this.queued = at;
+      this.pending = at;
+      return;
+    }
     const was = this.pb;
     this.pending = at;
     this.video.pause();
     this.events.onState();
+    let started = false;
     try {
       const pb = await this.request(at);
       if (this.closed) {
@@ -181,13 +207,21 @@ export class Engine {
         return;
       }
       await this.load(pb, at);
+      started = true;
+      this.events.onStream?.();
     } catch (e) {
       this.events.onToast(e instanceof Error ? e.message : String(e));
+      // The stream on screen goes on: play it again where it was.
+      void this.video.play().catch(() => {});
     } finally {
       this.pending = null;
       this.events.onState();
     }
-    if (was?.method === "hls") void api.stopSession(was.session_id);
+    // The old session stops only once the new one plays (a failed restart keeps it).
+    if (started && was?.method === "hls") void api.stopSession(was.session_id);
+    const next = this.queued;
+    this.queued = null;
+    if (next !== null && !this.closed && Math.abs(next - at) > 1) void this.restart(next);
   }
 
   // ---- Where it is ----
@@ -232,6 +266,8 @@ export class Engine {
 
   seekTo(target: number) {
     if (!this.pb) return;
+    // Mid-restart: go there once the new stream is up.
+    if (this.pending !== null) return void this.restart(Math.max(0, target));
     const dur = this.duration();
     const to = Math.max(0, dur > 0 ? Math.min(target, dur - 1) : target);
     const action = planSeek(to, {
@@ -244,6 +280,14 @@ export class Engine {
     this.stalls.reset(Date.now());
     if (action.kind === "jump") this.video.currentTime = action.mediaTime;
     else void this.restart(action.at);
+  }
+
+  play() {
+    void this.video.play().catch(() => {});
+  }
+
+  pause() {
+    this.video.pause();
   }
 
   togglePlay() {

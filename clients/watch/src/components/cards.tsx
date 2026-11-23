@@ -293,7 +293,8 @@ export function ExpandRow(props: {
   link?: { label: string; href: string };
 }) {
   const [open, setOpen] = createSignal(0);
-  const hosts: HTMLElement[] = [];
+  /** Each card's clip spot, by its title (cards are matched by key across reloads). */
+  const hosts = new Map<string, HTMLElement>();
   let clip: { stop: () => void } | null = null;
   let clipTimer: ReturnType<typeof setTimeout> | undefined;
   let hoverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -306,8 +307,8 @@ export function ExpandRow(props: {
     clip = null;
     clearTimeout(clipTimer);
     clipTimer = setTimeout(() => {
-      const host = hosts[i];
       const item = props.items[i];
+      const host = item && hosts.get(item.key);
       if (host && item) clip = playClip(host, item.clip);
     }, EXPAND_CLIP_MS);
   };
@@ -348,7 +349,7 @@ export function ExpandRow(props: {
               <Show when={Math.abs(i() - open()) <= 1}>
                 <Art image={item().backdrop ?? item().poster} alt="" />
               </Show>
-              <div class="clip-host layer" ref={(el) => (hosts[i()] = el)} />
+              <div class="clip-host layer" ref={(el) => hosts.set(item().key, el)} />
               <div class="card-caption">
                 <b>{item().title}</b>
                 <span>{item().meta}</span>

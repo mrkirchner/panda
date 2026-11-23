@@ -50,7 +50,8 @@ export default function EditProfile() {
     const n = name().trim().slice(0, 32);
     if (n && n !== me()?.name) void save({ display_name: n });
   };
-  const LANGS = [
+  /** Read where they're shown, so "Same as this browser" follows a language change. */
+  const langs = () => [
     { label: t("Same as this browser"), value: null as string | null },
     { label: "English", value: "en" },
     { label: "Español", value: "es" },
@@ -58,10 +59,10 @@ export default function EditProfile() {
   const language = async (e: MouseEvent) => {
     const i = await pick(
       t("Language"),
-      LANGS.map((l) => ({ label: l.label, selected: (me()?.language ?? null) === l.value })),
+      langs().map((l) => ({ label: l.label, selected: (me()?.language ?? null) === l.value })),
       e.currentTarget as Element,
     );
-    if (i >= 0) void save({ language: LANGS[i].value });
+    if (i >= 0) void save({ language: langs()[i].value });
   };
   const loadArt = () => {
     setShowArt(true);
@@ -237,7 +238,7 @@ export default function EditProfile() {
                 <b>{t("Language")}</b>
               </div>
               <button class="chip" onClick={(e) => void language(e)}>
-                {LANGS.find((l) => l.value === (m().language ?? null))?.label}
+                {langs().find((l) => l.value === (m().language ?? null))?.label}
               </button>
             </div>
             <div class="form-section setting-row">

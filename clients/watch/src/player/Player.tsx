@@ -232,9 +232,16 @@ export default function Player() {
 
   // ---- Window, full screen, Picture in Picture ----
 
+  /** iPhone has no page full screen, only the video's own (with its own controls). */
+  const iosVideo = () =>
+    video as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void; webkitSupportsFullscreen?: boolean })
+      | undefined;
+  const canFullscreen = () => document.fullscreenEnabled || !!iosVideo()?.webkitSupportsFullscreen;
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void document.documentElement.requestFullscreen?.().catch(() => {});
+    else if (document.fullscreenEnabled) void document.documentElement.requestFullscreen().catch(() => {});
+    else iosVideo()?.webkitEnterFullscreen?.();
   };
   const pipSupported = () => typeof document !== "undefined" && !!document.pictureInPictureEnabled;
   const togglePip = () => {
@@ -297,16 +304,30 @@ export default function Player() {
         setFatal(text);
       },
       onEnded: leave,
+      onInfo: mediaSession,
+      // A new stream (a restart): the same subtitle track again, with its new address.
+      onStream: () => {
+        const key = subs()?.track.key;
+        if (!key || !engine?.pb) return;
+        const again = engine.pb.subtitles.find((s) => s.key === key) ?? null;
+        subs()?.close();
+        setSubs(
+          again
+            ? new SubtitleSource(again, bump, () => toast(t("These subtitles couldn't be loaded")))
+            : null,
+        );
+      },
     });
     const start = Number(search.start ?? 0) || 0;
     engine.open(start).then(
       () => {
+        if (closing || !engine?.pb) return;
         setLoading(false);
-        chooseSubs(initialTrack(engine!.pb!.subtitles, audioLanguage()), false);
+        chooseSubs(initialTrack(engine.pb.subtitles, audioLanguage()), false);
         showControls();
-        mediaSession();
       },
       (e) => {
+        if (closing) return;
         setLoading(false);
         setFatal(t("Playback failed: {error}", { error: message(e) }));
       },
@@ -361,8 +382,13 @@ export default function Player() {
     v.addEventListener("loadedmetadata", measurePicture);
     const ro = new ResizeObserver(measurePicture);
     ro.observe(v);
+    // Phones rarely fire pagehide when a tab is left: save when the page is hidden too.
     const onHide = () => void engine?.save();
+    const onVisibility = () => {
+      if (document.hidden) onHide();
+    };
     window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       clearInterval(clock);
       clearTimeout(hideTimer);
@@ -370,6 +396,7 @@ export default function Player() {
       clearTimeout(previewTimer);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("fullscreenchange", onFs);
       ro.disconnect();
       // Left by the browser's Back: close properly.
@@ -380,7 +407,17 @@ export default function Player() {
         setPlayerOpen(false);
         refreshAll();
       }
-      if ("mediaSession" in navigator) navigator.mediaSession.metadata = null;
+      if ("mediaSession" in navigator) {
+        const ms = navigator.mediaSession;
+        ms.metadata = null;
+        for (const a of ["play", "pause", "seekbackward", "seekforward", "seekto"] as const) {
+          try {
+            ms.setActionHandler(a, null);
+          } catch {
+            // Not every browser knows every action.
+          }
+        }
+      }
     };
   });
 
@@ -395,8 +432,8 @@ export default function Player() {
       artist: i?.kind === "episode" ? `${i.series ?? ""} S${i.season ?? 0}:E${i.episode ?? 0}` : "",
       artwork: imageUrl(art) ? [{ src: imageUrl(art)! }] : [],
     });
-    ms.setActionHandler("play", () => engine?.togglePlay());
-    ms.setActionHandler("pause", () => engine?.togglePlay());
+    ms.setActionHandler("play", () => engine?.play());
+    ms.setActionHandler("pause", () => engine?.pause());
     ms.setActionHandler("seekbackward", () => engine?.seekTo(engine.position() - SKIP_SECS));
     ms.setActionHandler("seekforward", () => engine?.seekTo(engine.position() + SKIP_SECS));
     try {
@@ -404,10 +441,6 @@ export default function Player() {
     } catch {
       // Not every browser knows seekto.
     }
-    // The title arrives a moment after playback starts.
-    setTimeout(() => {
-      if (engine?.info && !closing) mediaSession();
-    }, 2000);
   };
 
   const fraction = (secs: number) => (duration() > 0 ? Math.min(1, Math.max(0, secs / duration())) : 0);
@@ -481,6 +514,10 @@ export default function Player() {
       <Show when={(loading() || waiting()) && !fatal()}>
         <div class="player-status">
           <div class="spinner" />
+          {/* Auto quality measures the connection first (the TV says so too). */}
+          <Show when={loading() && (engine as Engine | null)?.quality === "auto"}>
+            <p class="muted">{t("Checking your connection...")}</p>
+          </Show>
         </div>
       </Show>
       <Show when={fatal()}>
@@ -616,7 +653,7 @@ export default function Player() {
           </div>
           <div class="player-row">
             <button
-              class="icon-btn"
+              class="icon-btn row-play"
               aria-label={playing() ? t("Pause") : t("Play")}
               onClick={() => engine?.togglePlay()}
             >
@@ -649,7 +686,10 @@ export default function Player() {
               {formatTime(shownAt())} / {formatTime(duration())}
             </span>
             <Show when={pb()}>
-              <span class="stream-info">{describeStream(pb()!.stream)}</span>
+              <span class="stream-info">
+                {t(QUALITIES.find((q) => q.id === engine?.quality)?.label ?? "Auto")} ·{" "}
+                {describeStream(pb()!.stream)}
+              </span>
             </Show>
             <span class="spacer" />
             <Show when={tracks().length > 0 || canFind()}>
@@ -674,7 +714,7 @@ export default function Player() {
                 <Icon name="pip" />
               </button>
             </Show>
-            <Show when={document.fullscreenEnabled}>
+            <Show when={(tick(), canFullscreen())}>
               <button
                 class="icon-btn"
                 aria-label={fullscreen() ? t("Exit full screen") : t("Full screen")}

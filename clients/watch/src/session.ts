@@ -12,7 +12,8 @@ import {
   setToken,
   setUnauthorizedHandler,
 } from "@tv/api/session";
-import { go } from "./nav";
+import { refreshAll } from "./data";
+import { appPath, go } from "./nav";
 
 /** Built to be served by Panda at /watch/ (vite.config.ts). */
 export const SERVED_BY_PANDA = !!import.meta.env.VITE_SERVED_BY_PANDA;
@@ -50,7 +51,14 @@ export function browserName(): string {
 export function signedIn(res: { token: string; device_token: string | null }) {
   setToken(res.token);
   if (res.device_token) setDeviceSecret(res.device_token);
+  profileChanged();
+}
+
+/** Another profile (or account) is signed in: the session, and every store (My List, requests),
+ * are asked again rather than showing the last profile's. */
+export function profileChanged() {
   resetSession();
+  refreshAll();
 }
 
 /**
@@ -59,8 +67,11 @@ export function signedIn(res: { token: string; device_token: string | null }) {
  */
 export async function boot(path: string): Promise<string | null> {
   setUnauthorizedHandler(() => {
-    // A revoked profile session goes to Who's watching; a revoked browser signs in again.
-    go(getDeviceSecret() ? "/profiles" : "/sign-in", { replace: true });
+    // A revoked profile session goes to Who's watching; a revoked browser signs in again. Either
+    // way, back to this page afterwards.
+    const here = appPath(location.pathname) + location.search;
+    const next = OPEN_PATHS.some((p) => here.startsWith(p)) ? "" : `?next=${encodeURIComponent(here)}`;
+    go(`${getDeviceSecret() ? "/profiles" : "/sign-in"}${next}`, { replace: true });
   });
   if (!getServer()) return path === "/connect" ? null : "/connect";
   if (!getToken()) {

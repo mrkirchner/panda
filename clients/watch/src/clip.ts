@@ -9,6 +9,8 @@ export type ClipSource = { kind: "title"; id: string } | { kind: "series"; name:
 
 interface Job {
   stop: () => void;
+  /** Another clip took over: its owner hears it ended (the hero moves on again). */
+  replaced?: () => void;
 }
 let current: Job | null = null;
 /** No clips while the player is open. */
@@ -45,7 +47,9 @@ export function playClip(
     onEnded?.();
     return { stop: () => {} };
   }
+  const before = current;
   stopClip();
+  before?.replaced?.();
   let cancelled = false;
   let video: HTMLVideoElement | null = null;
   const job: Job = {
@@ -61,6 +65,7 @@ export function playClip(
       if (current === job) current = null;
     },
   };
+  job.replaced = () => onEnded?.();
   current = job;
   api.clip(source).then(
     ({ url }) => {

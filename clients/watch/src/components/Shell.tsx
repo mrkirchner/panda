@@ -32,11 +32,20 @@ export function Shell(props: { children?: JSX.Element }) {
     return () => window.removeEventListener("scroll", onScroll);
   });
 
-  const topTabs = createMemo<Tab[]>(() => [
-    { label: t("Home"), path: "/" },
-    ...(libs.value() ?? []).map((l) => ({ label: l.name, path: paths.library(l.id) })),
-    { label: t("My List"), path: paths.myList },
-  ]);
+  /** The TV's tabs: Home, a tab per library by its name, My List. A kind with several libraries
+   * gets one tab (Movies/Shows), whose page lists them, so the top bar stays short. */
+  const topTabs = createMemo<Tab[]>(() => {
+    const all = libs.value() ?? [];
+    const tabs: Tab[] = [{ label: t("Home"), path: "/" }];
+    for (const kind of ["movies", "shows"] as const) {
+      const of = all.filter((l) => l.kind === kind);
+      if (of.length === 1) tabs.push({ label: of[0].name, path: paths.library(of[0].id) });
+      else if (of.length > 1)
+        tabs.push({ label: kind === "movies" ? t("Movies") : t("Shows"), path: paths[kind] });
+    }
+    tabs.push({ label: t("My List"), path: paths.myList });
+    return tabs;
+  });
   const active = (path: string) => {
     const p = appPath(location.pathname);
     return path === "/" ? p === "/" : p === path || p.startsWith(`${path}/`);

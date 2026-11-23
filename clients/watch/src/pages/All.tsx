@@ -15,7 +15,7 @@ import {
   type BrowseEntry,
   type SortBy,
 } from "@tv/library/browse";
-import { For, Show, createMemo, createSignal, onSettled } from "solid-js";
+import { For, Show, createMemo, createSignal, onSettled, untrack } from "solid-js";
 import { Poster } from "../components/cards";
 import { Icon } from "../components/icons";
 import { pick } from "../components/ui";
@@ -203,6 +203,14 @@ function AllGrid(props: { kind: "movies" | "shows" }) {
             {t("Unwatched")}
           </button>
         </Show>
+        <input
+          class="input grid-filter"
+          type="search"
+          placeholder={t("Filter")}
+          aria-label={t("Filter")}
+          value={untrack(() => params.q) ?? ""}
+          onInput={(e) => set({ q: e.currentTarget.value.trim() ? e.currentTarget.value : undefined })}
+        />
         <span class="grid-count">
           <Show when={list.value()}>{tn(entries().length, "{n} title", "{n} titles")}</Show>
         </span>

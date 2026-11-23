@@ -34,6 +34,7 @@ const store = createRoot(() => {
 
 /** Choose one of `options`: its index, or -1 when dismissed. `anchor`: the control it drops from. */
 export function pick(title: string | undefined, options: Choice[], anchor?: Element | null): Promise<number> {
+  closeOverlay();
   return new Promise((resolve) =>
     store.setOverlay({
       kind: "pick",
@@ -50,6 +51,7 @@ export function pick(title: string | undefined, options: Choice[], anchor?: Elem
 
 /** Choose any of `options` (all to start with): the indices chosen, or null when cancelled. */
 export function pickMany(title: string, options: string[], ok: string): Promise<number[] | null> {
+  closeOverlay();
   return new Promise((resolve) =>
     store.setOverlay({
       kind: "many",
@@ -74,6 +76,7 @@ export function ask(
     danger?: boolean;
   } = {},
 ): Promise<string | null> {
+  closeOverlay();
   return new Promise((resolve) =>
     store.setOverlay({
       kind: "ask",

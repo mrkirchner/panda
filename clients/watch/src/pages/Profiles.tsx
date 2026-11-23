@@ -2,7 +2,7 @@
 // on the TV: pick one to watch (its PIN first, if it has one), add one (up to the account's
 // limit), or edit one (signs in as it first). Sign out of this browser at the bottom.
 import { useSearchParams } from "@solidjs/router";
-import { api, ensureSession, HttpError, resetSession } from "@tv/api/client";
+import { api, ensureSession, HttpError } from "@tv/api/client";
 import { setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
@@ -12,7 +12,7 @@ import { Icon } from "../components/icons";
 import { ask } from "../components/ui";
 import { load, message } from "../data";
 import { go, nextPath, paths } from "../nav";
-import { signOutBrowser } from "../session";
+import { profileChanged, signOutBrowser } from "../session";
 
 /** The server's per-account limit (MAX_PROFILES). */
 const MAX_PROFILES = 8;
@@ -36,7 +36,7 @@ export default function Profiles() {
     try {
       const res = await api.switchProfile(p.user_id, pin);
       setToken(res.token);
-      resetSession();
+      profileChanged();
       await ensureSession();
       go(editing() ? paths.editProfile : nextPath(search.next), { replace: !editing() });
     } catch (e) {
@@ -62,7 +62,7 @@ export default function Profiles() {
       const user = await api.createDeviceProfile(name);
       const res = await api.switchProfile(user.id);
       setToken(res.token);
-      resetSession();
+      profileChanged();
       await ensureSession();
       go(paths.editProfile);
     } catch (e) {

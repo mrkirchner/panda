@@ -37,7 +37,7 @@
     --section-gap: 28px;
     --row-title: 18px;
     --h1: 28px;
-    --topbar-h: 56px;
+    --topbar-h: calc(56px + env(safe-area-inset-top));
     --tabbar-h: 64px;
 
     font-family:
@@ -80,7 +80,7 @@
         --section-gap: 36px;
         --row-title: 20px;
         --h1: 40px;
-        --topbar-h: 68px;
+        --topbar-h: calc(68px + env(safe-area-inset-top));
         --tabbar-h: 0px;
     }
 }
@@ -1511,6 +1511,13 @@ h3 {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
+.grid-filter {
+    width: min(240px, 100%);
+    min-height: 38px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 14px;
+}
 .grid-count {
     margin-left: auto;
     color: var(--muted);
@@ -1988,6 +1995,21 @@ h3 {
 .player-row .spacer {
     flex: 1;
 }
+/* Phones: the row keeps its buttons; the centre has play, the stream details can go. */
+@media (max-width: 599px) {
+    .player-row .stream-info,
+    .player-row .row-play {
+        display: none;
+    }
+    .player-row {
+        gap: 0;
+    }
+    .player-time {
+        min-width: 0;
+        margin: 0 4px;
+        font-size: 13px;
+    }
+}
 .volume {
     width: 90px;
     accent-color: var(--accent);
@@ -2020,10 +2042,6 @@ h3 {
     to {
         transform: rotate(360deg);
     }
-}
-.player .menu {
-    bottom: 76px;
-    right: clamp(12px, 3vw, 32px);
 }
 .player-toast {
     position: absolute;

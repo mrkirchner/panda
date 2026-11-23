@@ -10,7 +10,7 @@ import { t, tServer } from "@tv/i18n";
 import { suggest } from "@tv/search/suggest";
 import { fold } from "@tv/text";
 import { startVoiceSearch, stopVoiceSearch, voiceHeard, voiceState, voiceSupported } from "@tv/voice";
-import { For, Show, createSignal, onCleanup, onSettled } from "solid-js";
+import { For, Show, createSignal, onCleanup, onSettled, untrack } from "solid-js";
 import { GhostRow } from "../components/cards";
 import { Icon } from "../components/icons";
 import { MoreRow, PeopleRow } from "../components/sections";
@@ -28,7 +28,8 @@ export default function Search() {
   /** Every title name in the library, for predictions (asked once, on the first letter). */
   const [names, setNames] = createSignal<string[]>([]);
   let namesAsked = false;
-  const [text, setText] = createSignal(() => params.q ?? "");
+  // Seeded once from the address: what you type is never rewritten (the address holds it trimmed).
+  const [text, setText] = createSignal(untrack(() => params.q) ?? "");
   const [query, setQuery] = createSignal("");
   const [results, setResults] = createSignal<FindResults | null>(null);
   const [busy, setBusy] = createSignal(false);
