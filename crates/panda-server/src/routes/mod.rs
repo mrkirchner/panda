@@ -17,6 +17,7 @@ mod images;
 mod library;
 mod matches;
 mod network;
+mod notifications;
 mod playback;
 mod requests;
 mod search;
@@ -53,6 +54,7 @@ pub fn router(state: AppState) -> Router {
         .merge(library::routes())
         .merge(playback::user_routes())
         .merge(requests::routes())
+        .merge(notifications::routes())
         .merge(network::routes())
         .merge(titles::routes())
         .merge(watch::routes())

@@ -57,6 +57,7 @@ pub(crate) fn spawn_scan_for_path(state: AppState, path: String) {
         scan_folders(&state, &[path]).await;
         metadata::enrich(&state).await;
         mark_scanned(&state);
+        crate::services::request_ready::after_scan(&state).await;
         run_queued(&state).await;
     });
 }
@@ -158,6 +159,7 @@ async fn scan_all_locked(state: &AppState) -> anyhow::Result<()> {
     scan_libraries(state).await?;
     metadata::enrich(state).await;
     mark_scanned(state);
+    crate::services::request_ready::after_scan(state).await;
     run_queued(state).await;
     Ok(())
 }

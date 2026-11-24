@@ -91,6 +91,12 @@
   file, found in Bazarr by file name (it mounts the share elsewhere: `panda_arr::bazarr::tail`),
   for a movie also through another version Bazarr knows (one Radarr per Bazarr). Tests run a fake
   Bazarr (`common::fake_bazarr`).
+- Requests arriving (`services/request_ready.rs`): after every scan (and a minute after any
+  library change) waiting requests are checked against what the requester's profile can see;
+  arrivals get `ready_at` (migration 0027), are emailed once (to them, else their account's owner;
+  only with mail set up), and show in Home's "Ready to watch" row (`/api/home` `ready`, every app)
+  for 7 days or until their page is opened (title/series details mark them seen).
+  `GET /api/notifications` + `POST /api/notifications/seen` (own requests only) are for alerts.
 - Radarr/Sonarr cleanup (`services/arr_cleanup.rs`, off by default, switches per kind, weekly
   plus "Run now"): only titles Panda requested and has in its library, a week after download,
   quality cutoff met; shows also ended with every monitored episode on disk. Removes the entry

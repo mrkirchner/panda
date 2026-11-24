@@ -658,6 +658,8 @@ async fn requests_go_to_hd_and_4k_and_report_progress_to_their_owner() {
         .await
         .unwrap();
     db.set_item_metadata(&[file], Some(meta)).await.unwrap();
+
+    arrival_is_told(&mut admin, &mut sam).await;
     let mine = admin.get("/api/requests/mine").await.json();
     assert_eq!(mine[0]["title_id"], "m603", "{mine}");
     let listed = |v: &serde_json::Value| v.as_array().unwrap().iter().any(|e| e["id"] == "m603");
@@ -667,6 +669,36 @@ async fn requests_go_to_hd_and_4k_and_report_progress_to_their_owner() {
     assert_eq!(gone.status, StatusCode::NO_CONTENT, "{}", gone.text());
     assert_eq!(admin.get("/api/requests/mine").await.json()[0]["listed"], true);
     assert!(!listed(&admin.get("/api/favorites").await.json()));
+}
+
+/// A scan finds the requested title: the requester is told once (their apps list it until shown),
+/// nobody else.
+async fn arrival_is_told(admin: &mut Client, sam: &mut Client) {
+    assert!(admin.get("/api/notifications").await.json().as_array().unwrap().is_empty());
+    let scan = admin.post("/api/admin/libraries/scan", json!({})).await;
+    assert!(scan.status.is_success(), "{}", scan.text());
+    let mut news = serde_json::Value::Null;
+    for _ in 0..50 {
+        news = admin.get("/api/notifications").await.json();
+        if !news.as_array().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    assert_eq!(news[0]["title"], "The Matrix", "{news}");
+    assert_eq!(news[0]["title_id"], "m603", "{news}");
+    assert!(sam.get("/api/notifications").await.json().as_array().unwrap().is_empty());
+    // Someone else's id does nothing.
+    let id = news[0]["id"].as_i64().unwrap();
+    assert_eq!(sam.post("/api/notifications/seen", json!({ "ids": [id] })).await.status, StatusCode::NO_CONTENT);
+    assert_eq!(admin.get("/api/notifications").await.json().as_array().unwrap().len(), 1);
+    // Home shows it in "Ready to watch" (theirs only) until its page is opened.
+    let ready = |v: serde_json::Value| v["ready"].as_array().unwrap().iter().any(|e| e["id"] == "m603");
+    assert!(ready(admin.get("/api/home").await.json()), "Home's Ready to watch");
+    assert!(!ready(sam.get("/api/home").await.json()));
+    let _ = admin.get("/api/titles/m603/details").await;
+    assert!(!ready(admin.get("/api/home").await.json()), "opening its page is seeing it");
+    assert!(admin.get("/api/notifications").await.json().as_array().unwrap().is_empty());
 }
 
 #[tokio::test]

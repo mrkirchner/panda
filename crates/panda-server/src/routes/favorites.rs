@@ -52,6 +52,40 @@ pub(crate) async fn my_list(state: &AppState, user_id: i64) -> ApiResult<Vec<MyL
     if favs.is_empty() {
         return Ok(Vec::new());
     }
+    entries(state, user_id, favs).await
+}
+
+/// How long an arrival stays in Home's "Ready to watch" row unless its page is opened first.
+const READY_DAYS: i64 = 7;
+
+/// Home's "Ready to watch": requests of this profile that arrived lately and whose page it hasn't
+/// opened since (`services/request_ready.rs`), as My List shows titles.
+pub(crate) async fn ready_list(state: &AppState, user_id: i64) -> ApiResult<Vec<MyListEntry>> {
+    let since = crate::services::settings::now() - READY_DAYS * 24 * 3600;
+    let ready = state.db.unseen_ready(user_id, since).await?;
+    if ready.is_empty() {
+        return Ok(Vec::new());
+    }
+    let allowed = allowed_libraries(state, user_id).await?;
+    let series = crate::catalog::series(state, allowed.as_deref()).await?;
+    let refs = ready
+        .into_iter()
+        .filter_map(|r| match (r.kind, r.tmdb_id) {
+            (panda_db::RequestKind::Movie, Some(id)) => Some(("title".to_string(), format!("m{id}"))),
+            (panda_db::RequestKind::Series, Some(id)) => series
+                .iter()
+                .find(|s| s.tmdb_id == Some(id))
+                .map(|s| ("series".to_string(), s.series.clone())),
+            _ => None,
+        })
+        .collect();
+    entries(state, user_id, refs).await
+}
+
+/// Titles and shows (`("title", id)` / `("series", name)`) as cards, keeping only what this
+/// profile may see now.
+async fn entries(state: &AppState, user_id: i64, refs: Vec<(String, String)>) -> ApiResult<Vec<MyListEntry>> {
+    let favs = refs;
     let titles = movie_titles(state, user_id, None).await?;
     let allowed = allowed_libraries(state, user_id).await?;
     let series: Vec<_> = crate::catalog::series(state, allowed.as_deref()).await?;

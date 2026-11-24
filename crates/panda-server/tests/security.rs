@@ -19,6 +19,8 @@ async fn everything_requires_auth_and_setup_requires_the_log_token() {
         "/api/series",
         "/api/libraries",
         "/api/auth/me",
+        // Request arrivals are the profile's own (services/request_ready.rs).
+        "/api/notifications",
         "/api/admin/users",
         "/api/admin/settings",
         "/api/admin/matches",

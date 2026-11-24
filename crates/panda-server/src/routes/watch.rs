@@ -140,6 +140,8 @@ struct Home {
     featured: Vec<Featured>,
     continue_watching: Vec<ContinueEntry>,
     my_list: Vec<super::favorites::MyListEntry>,
+    /// Requests of this profile that arrived lately ("Ready to watch"), until their page is opened.
+    ready: Vec<super::favorites::MyListEntry>,
     recently_added_movies: Vec<Title>,
     recently_added_shows: Vec<SeriesSummary>,
 }
@@ -290,6 +292,7 @@ async fn home(State(state): State<AppState>, Extension(me): Extension<CurrentUse
         featured: hero,
         continue_watching: continue_watching(&state, me.user.id).await?,
         my_list: super::favorites::my_list(&state, me.user.id).await?,
+        ready: super::favorites::ready_list(&state, me.user.id).await?,
         recently_added_movies: movies,
         recently_added_shows: shows,
     }))

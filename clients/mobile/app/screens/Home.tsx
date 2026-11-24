@@ -105,6 +105,21 @@ export function Home() {
         <Show when={home()?.featured.length || home()?.recently_added_movies.length}>
           <Hero slides={heroSlides()} />
         </Show>
+        {/* What you asked for that just arrived: first, until its page is opened (server side). */}
+        <Show when={home()?.ready?.length}>
+          <Row title={t("Ready to watch")}>
+            <For each={home()!.ready!}>
+              {m => (
+                <Poster
+                  image={m.poster}
+                  title={m.title}
+                  badge={t("New")}
+                  onTap={() => (m.kind === "title" ? openTitle(m.id) : openSeries(m.id))}
+                />
+              )}
+            </For>
+          </Row>
+        </Show>
         <Show when={home()?.continue_watching.length}>
           <Row title={t("Continue Watching")}>
             <For each={home()!.continue_watching}>

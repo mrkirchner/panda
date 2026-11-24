@@ -53,6 +53,8 @@ const ES: Record<string, string> = {
   // Home
   "Continue Watching": "Seguir viendo",
   "My List": "Mi lista",
+  "Ready to watch": "Listo para ver",
+  New: "Nuevo",
   "Recently Added Movies": "Películas añadidas recientemente",
   "Recently Added Shows": "Series añadidas recientemente",
   "Recently added": "Añadido recientemente",

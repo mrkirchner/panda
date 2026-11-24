@@ -540,6 +540,8 @@ async fn title_details(
     let Some(tmdb_id) = id.strip_prefix('m').and_then(|n| n.parse::<i64>().ok()) else {
         return Ok(Json(TitleDetails::default()));
     };
+    // Opened: a request for it that arrived is no longer news (Home's "Ready to watch").
+    state.db.mark_ready_seen_title(me.user.id, panda_db::RequestKind::Movie, tmdb_id).await?;
     // The logo is looked up while TMDB answers (a first view waits on both).
     let ids = [tmdb_id];
     let (details, logos) = tokio::join!(
@@ -612,6 +614,9 @@ pub(crate) async fn series_details(
     Query(q): Query<SeasonQuery>,
 ) -> ApiResult<Json<TitleDetails>> {
     let show = visible_series(&state, me.user.id, &name).await?;
+    if let Some(id) = show.tmdb_id {
+        state.db.mark_ready_seen_title(me.user.id, panda_db::RequestKind::Series, id).await?;
+    }
     let mut matches = state.db.season_matches(&panda_metadata::matching::normalize(&show.series)).await?;
     fill_season_stories(&state, &mut matches).await;
     // `?season=N` of a season taken from another show (an anthology's story): that show's cast,

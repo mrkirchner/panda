@@ -232,6 +232,27 @@ export default function Home() {
           </View>
           <TopBar visible={onHero()} onDown={() => (hero?.setFocus(), true)} />
         </HeaderArea>
+        {/* What you asked for that just arrived: first, until its page is opened (server side). */}
+        <Show when={(home()?.ready?.length ?? 0) > 0}>
+          <CardRow<MyListEntry>
+            title={t("Ready to watch")}
+            items={home()?.ready ?? []}
+            card={e => ({
+              width: 0,
+              height: 0,
+              image: imageUrl(e.poster),
+              title: e.title,
+              badge: t("New"),
+              badgeTone: "done",
+              onSelect: () =>
+                navigate(
+                  e.kind === "title"
+                    ? `/title/${encodeURIComponent(e.id)}`
+                    : `/series/${encodeURIComponent(e.id)}`,
+                ),
+            })}
+          />
+        </Show>
         <Show when={(home()?.continue_watching.length ?? 0) > 0}>
           <CardRow<ContinueEntry>
             title={t("Continue Watching")}

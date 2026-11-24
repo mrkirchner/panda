@@ -231,6 +231,9 @@ export interface Home {
   featured: (Featured | Title)[];
   continue_watching: ContinueEntry[];
   my_list: MyListEntry[];
+  /** Requests of this profile that arrived lately ("Ready to watch"), until their page is opened
+   * (servers before it: missing). */
+  ready?: MyListEntry[];
   recently_added_movies: Title[];
   recently_added_shows: SeriesSummary[];
 }
