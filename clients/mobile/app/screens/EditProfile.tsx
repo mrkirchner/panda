@@ -12,6 +12,7 @@ import { For, Show, createSignal } from "solid-js";
 import { Avatar } from "../avatar";
 import { back, open } from "../nav";
 import { goProfiles, relabel } from "../session";
+import { openParentalControls } from "./Parental";
 
 /** Posters offered as pictures: the best rated (the TV's count). */
 const LIBRARY_ART_MAX = 60;
@@ -167,6 +168,14 @@ export function editProfileScreen(done: () => void = goProfiles) {
             onTap={() => void save({ preview_sound: me()!.previewSound === false })}
           />
           <Row label={t("PIN")} value={hasPin() ? t("On") : t("Off")} onTap={() => void pin()} />
+          {/* The account's owner: each profile's age limit, behind the parental PIN. */}
+          <Show when={me()!.primary}>
+            <Row
+              label={t("Parental controls")}
+              value=""
+              onTap={() => void openParentalControls()}
+            />
+          </Show>
           {/* The owner always signs in with their own account (the TV hides this for them too). */}
           <Show when={!me()!.primary}>
             <Row

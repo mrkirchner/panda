@@ -24,6 +24,10 @@ export function prompt(o: PromptOptions): Promise<string | null> {
       if (o.kind === "pin") {
         field.secureTextEntry = true;
         field.keyboardType = UIKeyboardType.NumberPad;
+      } else if (o.kind === "password") {
+        field.secureTextEntry = true;
+        field.autocapitalizationType = UITextAutocapitalizationType.None;
+        field.autocorrectionType = UITextAutocorrectionType.No;
       } else if (o.kind === "email") {
         field.keyboardType = UIKeyboardType.EmailAddress;
         field.autocapitalizationType = UITextAutocapitalizationType.None;

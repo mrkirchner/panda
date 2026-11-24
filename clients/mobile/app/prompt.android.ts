@@ -17,11 +17,13 @@ export function prompt(o: PromptOptions): Promise<string | null> {
         ? T.TYPE_CLASS_NUMBER | T.TYPE_NUMBER_VARIATION_PASSWORD
         : o.kind === "email"
           ? T.TYPE_CLASS_TEXT | T.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-          : T.TYPE_CLASS_TEXT | T.TYPE_TEXT_FLAG_CAP_WORDS,
+          : o.kind === "password"
+            ? T.TYPE_CLASS_TEXT | T.TYPE_TEXT_VARIATION_PASSWORD
+            : T.TYPE_CLASS_TEXT | T.TYPE_TEXT_FLAG_CAP_WORDS,
     );
     if (o.kind === "pin") {
       const filters = Array.create(android.text.InputFilter, 1);
-      filters[0] = new android.text.InputFilter.LengthFilter(4);
+      filters[0] = new android.text.InputFilter.LengthFilter(8);
       input.setFilters(filters);
     }
     if (o.text) {

@@ -2,7 +2,7 @@
 // the TV: pick one to watch, add one (up to the account's limit), or edit one. Editing signs in
 // as that profile first (its PIN, if it has one), so a profile is only changed as itself.
 import { Dialogs } from "@nativescript/core";
-import { api, ensureSession, pinMessage, resetSession } from "@tv/api/client";
+import { api, ensureSession, needsParentalPin, pinMessage, resetSession } from "@tv/api/client";
 import { currentUser, getToken, setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
@@ -49,18 +49,32 @@ export function Profiles() {
       if (entered === null) return;
       pin = entered;
     }
-    try {
-      const res = await api.switchProfile(p.user_id, pin);
-      setToken(res.token);
-      resetSession();
-      if (editing()) {
-        await ensureSession();
-        openEdit();
-      } else {
-        goHome();
+    let parental: string | undefined;
+    for (;;) {
+      try {
+        const res = await api.switchProfile(p.user_id, pin, parental);
+        setToken(res.token);
+        resetSession();
+        if (editing()) {
+          await ensureSession();
+          openEdit();
+        } else {
+          goHome();
+        }
+        return;
+      } catch (e) {
+        // Leaving a profile with an age limit: the parental PIN, then the switch again.
+        if (!needsParentalPin(e) || parental !== undefined) return void setError(pinMessage(e));
+        const entered = await platform.prompt({
+          title: t("Parental PIN"),
+          message: t("Enter PIN"),
+          ok: t("OK"),
+          cancel: t("Cancel"),
+          kind: "pin",
+        });
+        if (entered === null) return;
+        parental = entered;
       }
-    } catch (e) {
-      setError(pinMessage(e));
     }
   };
 

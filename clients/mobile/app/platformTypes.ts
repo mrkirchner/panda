@@ -37,8 +37,8 @@ export interface PromptOptions {
   text?: string;
   ok: string;
   cancel: string;
-  /** `pin`: four digits on the number pad, hidden. */
-  kind?: "text" | "email" | "pin";
+  /** `pin`: digits on the number pad, hidden (4-8); `password`: hidden text. */
+  kind?: "text" | "email" | "pin" | "password";
 }
 
 export interface PhonePlatform {
