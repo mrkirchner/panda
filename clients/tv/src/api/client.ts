@@ -1,7 +1,7 @@
 import { trace } from "#devices/debug";
 import type { BitmapManifest } from "../playback/bitmapSubs";
 import { getServer } from "./server";
-import { deviceLang, setLang } from "../i18n";
+import { deviceLang, setLang, t } from "../i18n";
 import {
   getDeviceSecret,
   getToken,
@@ -58,6 +58,16 @@ export class HttpError extends Error {
   ) {
     super(message);
   }
+}
+
+/** What to say when a PIN was refused (the server answers "wrong PIN", or too many tries). */
+export function pinMessage(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  return /too many/i.test(m)
+    ? t("Too many tries. Wait a few minutes.")
+    : /wrong/i.test(m)
+      ? t("Wrong PIN")
+      : m;
 }
 
 /** How long one attempt may take before it's abandoned (writes may do slow work server-side). */
@@ -326,9 +336,7 @@ export const api = {
       mail: boolean;
       /** Bazarr is set up: subtitles can be searched for on request. */
       subtitle_search?: boolean;
-    }>(
-      "/api/features",
-    ),
+    }>("/api/features"),
   /** The credits of the metadata providers in use (About). Public: works before a profile is picked. */
   credits: () => request<Credit[]>("/api/credits"),
   /** Get more seasons of a show you have (Sonarr monitors and searches them). */

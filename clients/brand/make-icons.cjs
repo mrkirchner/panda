@@ -87,6 +87,28 @@ png(squareIcon(96), path.join(CLIENTS, "android-tv/app/src/main/res/mipmap-xhdpi
 // Android TV home-screen banner (320x180 xhdpi): mark and name.
 png(banner(320, 180), path.join(CLIENTS, "android-tv/app/src/main/res/drawable/banner.png"), 320);
 
+/**
+ * The mark as one colour (Android's notification icons are a white shape on clear): the play
+ * triangle and the panda in front of it, a gap between them, the eyes and nose cut out.
+ */
+function silhouette(size) {
+  const panda = group("panda");
+  const ears = panda.match(/<circle[^>]*\/>/g);
+  const face = panda.match(/<ellipse(?![^>]*transform)[^>]*\/>/g);
+  const features = [...panda.match(/<ellipse[^>]*transform[^>]*\/>/g), ...panda.match(/<path[^>]*\/>/g)];
+  const paint = (els, fill, stroke = "none", width = 0) =>
+    els
+      .map(e => e.replace(/\s(fill|stroke|stroke-width)="[^"]*"/g, "").replace(/\/>$/, ` fill="${fill}" stroke="${stroke}" stroke-width="${width}"/>`))
+      .join("");
+  return `<svg width="${size}" height="${size}" viewBox="${MX} ${MY} ${MW} ${MH}">
+    <mask id="shape" maskUnits="userSpaceOnUse" x="${MX}" y="${MY}" width="${MW}" height="${MH}">
+      <path d="${PLAY_PATH}" fill="none" stroke="white" stroke-width="34" stroke-linejoin="round"/>
+      ${paint([...ears, ...face], "black", "black", 30)}${paint([...ears, ...face], "white")}${paint(features, "black")}
+    </mask>
+    <rect x="${MX}" y="${MY}" width="${MW}" height="${MH}" fill="white" mask="url(#shape)"/>
+  </svg>`;
+}
+
 // --- Android phones and tablets (clients/mobile): an adaptive icon (background and foreground
 // layers, 108 dp with the mark inside the 66 dp safe zone, which launchers shape as they like), a
 // plain icon for launchers before Android 8, and the launch screen's mark.
@@ -100,6 +122,9 @@ for (const [name, d] of Object.entries(DENSITIES)) {
   png(squareIcon(48 * d, { radius: 10 * d }), path.join(dir, "ic_launcher.png"), 48 * d);
   const logo = 120 * d;
   png(svgDoc(logo, logo, glow(0, 0, logo) + mark(0, 0, logo)), path.join(ANDROID_RES, `drawable-${name}`, "logo.png"), logo);
+  // The media notification's small icon (24 dp; Media3 looks it up by this name), white on clear.
+  const small = 24 * d;
+  png(svgDoc(small, small, silhouette(small)), path.join(ANDROID_RES, `drawable-${name}`, "media3_notification_small_icon.png"), small);
 }
 
 // --- Apple TV: layered app icon (focus parallax) and Top Shelf images, as an asset catalog.

@@ -29,6 +29,18 @@ export interface SwipeHandlers {
   released: (tx: number, vx: number) => void;
 }
 
+/** A one-line question (a name, an email, a PIN). */
+export interface PromptOptions {
+  title: string;
+  message?: string;
+  /** What's in the field to start with. */
+  text?: string;
+  ok: string;
+  cancel: string;
+  /** `pin`: four digits on the number pad, hidden. */
+  kind?: "text" | "email" | "pin";
+}
+
 export interface PhonePlatform {
   os: "ios" | "android";
   /** The full-screen player: our own controls, subtitles, audio and quality menus. */
@@ -63,6 +75,10 @@ export interface PhonePlatform {
     /** Snap a horizontal scroller to whole pages. */
     pageSnap(scroller: ScrollView, pageWidth: number): void;
   };
+  /** What to call this phone in the account's devices ("Pixel 8"). */
+  deviceName(): string;
+  /** Ask for a line of text: the answer, or null if cancelled. */
+  prompt(o: PromptOptions): Promise<string | null>;
   /** An icon by its SF Symbol name ("house.fill") as an image source. */
   icon(name: string): string;
   nowPlaying?: NowPlaying;

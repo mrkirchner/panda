@@ -2,16 +2,16 @@
 // the TV: pick one to watch, add one (up to the account's limit), or edit one. Editing signs in
 // as that profile first (its PIN, if it has one), so a profile is only changed as itself.
 import { Dialogs } from "@nativescript/core";
-import { api, ensureSession, HttpError, resetSession } from "@tv/api/client";
-import { setDeviceSecret, setToken } from "@tv/api/session";
+import { api, ensureSession, pinMessage, resetSession } from "@tv/api/client";
+import { getToken, setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Avatar } from "../avatar";
 import { platform } from "../platform";
 import { load } from "../data";
 import { open } from "../nav";
-import { goHome, goSignIn } from "../session";
+import { goHome, goSignIn, setOnProfiles } from "../session";
 import { editProfileScreen } from "./EditProfile";
 
 /** The server's per-account limit (MAX_PROFILES). */
@@ -21,6 +21,14 @@ const openEdit = () => open(() => editProfileScreen(), { title: t("Edit profile"
 
 export function Profiles() {
   const data = load(() => api.deviceProfiles());
+  setOnProfiles(true);
+  onCleanup(() => setOnProfiles(false));
+  // The signed-in profile's session carries the artwork token that posters chosen as pictures
+  // need (the TV's Who's watching does the same); after the screen is built (Solid 2). Only with
+  // a session: without one, ensureSession signs out, which opens this screen again (a loop).
+  setTimeout(() => {
+    if (getToken()) void ensureSession().catch(() => {});
+  }, 0);
   const [editing, setEditing] = createSignal(false);
   const [error, setError] = createSignal("");
 
@@ -28,15 +36,15 @@ export function Profiles() {
   const pick = async (p: DeviceProfile) => {
     let pin: string | undefined;
     if (p.has_pin) {
-      const r = await Dialogs.prompt({
+      const entered = await platform.prompt({
         title: p.display_name || p.username,
         message: t("Enter PIN"),
-        okButtonText: t("OK"),
-        cancelButtonText: t("Cancel"),
-        inputType: "number",
+        ok: t("OK"),
+        cancel: t("Cancel"),
+        kind: "pin",
       });
-      if (!r.result) return;
-      pin = r.text;
+      if (entered === null) return;
+      pin = entered;
     }
     try {
       const res = await api.switchProfile(p.user_id, pin);
@@ -49,26 +57,16 @@ export function Profiles() {
         goHome();
       }
     } catch (e) {
-      setError(
-        e instanceof HttpError && e.status === 403
-          ? t("Wrong PIN")
-          : e instanceof Error && e.message.includes("Too many")
-            ? t("Too many tries. Wait a few minutes.")
-            : String(e instanceof Error ? e.message : e),
-      );
+      setError(pinMessage(e));
     }
   };
 
   /** A new profile (no password of its own), then straight to its Edit page for its picture. */
   const add = async () => {
-    const r = await Dialogs.prompt({
-      title: t("Add profile"),
-      message: t("Name"),
-      okButtonText: t("Add"),
-      cancelButtonText: t("Cancel"),
-    });
-    const name = r.text?.trim().slice(0, 32);
-    if (!r.result || !name) return;
+    const name = (await platform.prompt({ title: t("Add profile"), message: t("Name"), ok: t("Add"), cancel: t("Cancel") }))
+      ?.trim()
+      .slice(0, 32);
+    if (!name) return;
     try {
       const user = await api.createDeviceProfile(name);
       const res = await api.switchProfile(user.id);

@@ -2,7 +2,7 @@ import { createEffect, createResource, createSignal, For, Show } from "solid-js"
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { Text, View, type ElementNode } from "@solidtv/solid";
 import { Column, Row } from "@solidtv/solid/primitives";
-import { api, ensureSession, HttpError, resetSession } from "../api/client";
+import { api, ensureSession, HttpError, resetSession, pinMessage } from "../api/client";
 import type { DeviceProfile } from "../api/types";
 import { currentUser, setDeviceSecret, setToken } from "../api/session";
 import { Avatar } from "../components/Avatar";
@@ -197,9 +197,7 @@ export default function Profiles() {
       setPinFor(null);
       navigate(next, { replace: next === "/" });
     } catch (e) {
-      setError(
-        (e as Error).message.includes("Too many") ? t("Too many tries. Wait a few minutes.") : t("Wrong PIN"),
-      );
+      setError(pinMessage(e));
     }
   }
 

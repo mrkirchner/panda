@@ -38,7 +38,23 @@ async function profileMenu() {
 }
 
 /** Signed in: the tab bar, starting on Home. */
+/** What the app's root shows: the tabs (signed in) or Who's watching. */
+let rootShows: "tabs" | "profiles" | "other" = "other";
+
+/**
+ * The language changed: screens already built keep their words, so the root is built again in
+ * the new language (as a profile switch does) and `reopen` puts back the screen that was open.
+ */
+export function relabel(reopen: () => void) {
+  if (rootShows === "tabs") goHome();
+  else if (rootShows === "profiles") goProfiles();
+  else return;
+  // After the new root's frames exist.
+  setTimeout(reopen, 400);
+}
+
 export function goHome() {
+  rootShows = "tabs";
   // The profile's own picture (as the TV's top bar shows it), which opens the profile menu.
   const profiles = [
     {
@@ -66,11 +82,17 @@ export function goHome() {
   ]);
 }
 
+/** Who's watching is the screen shown (a sign-out there must not open it again). */
+let onProfiles = false;
+export const setOnProfiles = (on: boolean) => (onProfiles = on);
+
 export function goProfiles() {
+  rootShows = "profiles";
   open(() => <Profiles />, { title: t("Who's watching?"), clear: true });
 }
 
 export function goSignIn() {
+  rootShows = "other";
   open(() => <SignIn />, { clear: true });
 }
 
@@ -82,4 +104,7 @@ export async function afterSignIn() {
 }
 
 /** A revoked session goes to the profile picker; a revoked device to sign-in (as on the TV). */
-setUnauthorizedHandler(() => (getDeviceSecret() ? goProfiles() : goSignIn()));
+setUnauthorizedHandler(() => {
+  if (!getDeviceSecret()) goSignIn();
+  else if (!onProfiles) goProfiles();
+});

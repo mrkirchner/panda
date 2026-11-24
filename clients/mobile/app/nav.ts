@@ -47,7 +47,8 @@ export function makePage(screen: () => JSX.Element, opts: ScreenOptions, frame: 
     }
     if (__IOS__) item.ios.position = "right";
     else item.android.position = "actionBar";
-    item.on("tap", a.tap);
+    // A view of its own takes the taps (on Android the item would get them too: twice).
+    if (!a.view) item.on("tap", a.tap);
     page.actionBar.actionItems.addItem(item);
   }
   const dispose = render(screen, page as unknown as Element);
@@ -121,6 +122,22 @@ let closeSheet: (() => void) | null = null;
  * `screen` in a sheet over the current page (half the screen, pulled up for more): the phone's
  * expanded tile. `closeSheet()` dismisses it (before playing, or opening the full page).
  */
+/**
+ * Android: the sheet's dialog as a sheet from the bottom, as on iPhone (full width, rounded top
+ * corners, sliding up), not a box in the middle of the screen.
+ */
+function bottomSheet(host: import("@nativescript/core").View): void {
+  const dialog = (host as unknown as { _dialogFragment?: androidx.fragment.app.DialogFragment })._dialogFragment?.getDialog();
+  const w = dialog?.getWindow();
+  if (!w) return;
+  w.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+  w.setGravity(android.view.Gravity.BOTTOM);
+  w.setBackgroundDrawableResource(android.R.color.transparent);
+  w.setWindowAnimations(android.R.style.Animation_InputMethod);
+  host.borderTopLeftRadius = 20;
+  host.borderTopRightRadius = 20;
+}
+
 export function openSheet(screen: () => JSX.Element, onClosed?: () => void): void {
   const page = (current ?? root)?.currentPage;
   if (!page) return;
@@ -128,8 +145,8 @@ export function openSheet(screen: () => JSX.Element, onClosed?: () => void): voi
   host.className = "sheet";
   const dispose = render(screen, host as unknown as Element);
   host.on("shownModally", () => {
-    // iPhone: a half-height sheet with a grabber (Android shows its own dialog).
-    if (!__IOS__) return;
+    if (__ANDROID__) return void bottomSheet(host);
+    // iPhone: a half-height sheet with a grabber.
     const vc = (host as unknown as { viewController?: UIViewController }).viewController;
     const sheet = vc?.sheetPresentationController;
     if (sheet) {

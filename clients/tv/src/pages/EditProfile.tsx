@@ -2,7 +2,7 @@ import { createResource, createSignal, For, Show } from "solid-js";
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { Text, View, type ElementNode } from "@solidtv/solid";
 import { Column, Row } from "@solidtv/solid/primitives";
-import { api, ensureSession } from "../api/client";
+import { api, ensureSession, pinMessage } from "../api/client";
 import { currentUser } from "../api/session";
 import { getServer } from "../api/server";
 import { Avatar, AVATAR_ART } from "../components/Avatar";
@@ -114,14 +114,6 @@ export default function EditProfile() {
   const startPin = (step: PinStep) => {
     setPinError("");
     setPinStep(step);
-  };
-  const pinMessage = (e: unknown) => {
-    const m = (e as Error).message;
-    return m.includes("Too many")
-      ? t("Too many tries. Wait a few minutes.")
-      : m.includes("wrong")
-        ? t("Wrong PIN")
-        : m;
   };
   /** A PIN step finished: check/apply it on the server, then move on. */
   const submitPin = async (pin: string) => {

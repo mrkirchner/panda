@@ -2,7 +2,7 @@
 // on the TV: pick one to watch (its PIN first, if it has one), add one (up to the account's
 // limit), or edit one (signs in as it first). Sign out of this browser at the bottom.
 import { useSearchParams } from "@solidjs/router";
-import { api, ensureSession, HttpError } from "@tv/api/client";
+import { api, ensureSession, HttpError, pinMessage } from "@tv/api/client";
 import { setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
@@ -50,13 +50,7 @@ export default function Profiles() {
       await ensureSession();
       go(editing() ? paths.editProfile : nextPath(search.next), { replace: !editing() });
     } catch (e) {
-      setError(
-        e instanceof HttpError && e.status === 403
-          ? t("Wrong PIN")
-          : message(e).includes("Too many")
-            ? t("Too many tries. Wait a few minutes.")
-            : message(e),
-      );
+      setError(pinMessage(e));
     }
   };
 

@@ -1,13 +1,13 @@
 // Sign in with a code instead of a password, as on the TV (Link.tsx): the server hands out a
 // short code, you approve it at <server>/link from a browser already signed in to Panda, and this
 // phone is signed in (and paired) once you do. The code is renewed when it expires.
-import { Device } from "@nativescript/core";
 import { api, HttpError, resetSession } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, setDeviceSecret, setToken } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { Show, createSignal, onCleanup } from "solid-js";
 import { afterSignIn } from "../session";
+import { platform } from "../platform";
 
 export function linkCodeScreen() {
   const [code, setCode] = createSignal("");
@@ -21,7 +21,7 @@ export function linkCodeScreen() {
 
   async function start() {
     try {
-      const s = await api.startDeviceSignIn(Device.model || "iPhone", getDeviceSecret());
+      const s = await api.startDeviceSignIn(platform.deviceName(), getDeviceSecret());
       if (!alive) return;
       setCode(s.user_code);
       setStatus(t("On a computer or another phone signed in to Panda, open {url} and enter this code.", {

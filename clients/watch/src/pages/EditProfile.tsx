@@ -2,7 +2,7 @@
 // watching signs in as a profile before editing it, PIN first): its picture (a bundled one, a
 // poster from the library, or its initial), name, language, preview sound (clips quiet or
 // silent), PIN, its own sign-in (a link to choose a password), and Delete (not the owner's).
-import { api, ensureSession, imageUrl } from "@tv/api/client";
+import { api, ensureSession, imageUrl, pinMessage } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { currentUser } from "@tv/api/session";
 import { t } from "@tv/i18n";
@@ -14,15 +14,6 @@ import { go, paths } from "../nav";
 
 /** Posters offered as pictures: the best rated (the TV's count). */
 const LIBRARY_ART_MAX = 60;
-
-const pinMessage = (e: unknown) => {
-  const m = message(e);
-  return m.includes("Too many")
-    ? t("Too many tries. Wait a few minutes.")
-    : m.includes("wrong")
-      ? t("Wrong PIN")
-      : m;
-};
 
 export default function EditProfile() {
   const [error, setError] = createSignal("");

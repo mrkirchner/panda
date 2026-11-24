@@ -1,6 +1,6 @@
 // Username (or email) and password, as on the TV (`/api/auth/device/login`): this phone becomes
 // one of the account's devices, so it can switch between the account's profiles.
-import { Device, type TextField } from "@nativescript/core";
+import { type TextField } from "@nativescript/core";
 import { api, HttpError } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, setDeviceSecret, setToken } from "@tv/api/session";
@@ -10,6 +10,7 @@ import { open } from "../nav";
 import { afterSignIn } from "../session";
 import { Connect } from "./Connect";
 import { linkCodeScreen } from "./LinkCode";
+import { platform } from "../platform";
 
 export function SignIn() {
   const [error, setError] = createSignal<string | null>(null);
@@ -24,7 +25,7 @@ export function SignIn() {
     setError(null);
     setBusy(true);
     try {
-      const res = await api.deviceLogin(username, password, Device.model || "iPhone", getDeviceSecret());
+      const res = await api.deviceLogin(username, password, platform.deviceName(), getDeviceSecret());
       setToken(res.token);
       if (res.device_token) setDeviceSecret(res.device_token);
       await afterSignIn();

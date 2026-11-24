@@ -3,14 +3,15 @@
 // poster from the library), name, language, preview sound (clips quiet or silent), PIN, its own
 // sign-in, and Delete (not the owner's).
 import { Dialogs } from "@nativescript/core";
-import { api, ensureSession, imageUrl } from "@tv/api/client";
+import { platform } from "../platform";
+import { api, ensureSession, imageUrl, pinMessage } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { currentUser } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
 import { Avatar } from "../avatar";
 import { back, open } from "../nav";
-import { goProfiles } from "../session";
+import { goProfiles, relabel } from "../session";
 
 /** Posters offered as pictures: the best rated (the TV's count). */
 const LIBRARY_ART_MAX = 60;
@@ -23,11 +24,6 @@ function Row(props: { label: string; value: string; onTap: () => void; danger?: 
     </gridlayout>
   );
 }
-
-const pinMessage = (e: unknown) => {
-  const m = e instanceof Error ? e.message : String(e);
-  return m.includes("Too many") ? t("Too many tries. Wait a few minutes.") : m.includes("wrong") ? t("Wrong PIN") : m;
-};
 
 /** `done`: where Done goes (Who's watching, or back to where it was opened from Home). */
 export function editProfileScreen(done: () => void = goProfiles) {
@@ -48,14 +44,10 @@ export function editProfileScreen(done: () => void = goProfiles) {
     );
 
   const rename = async () => {
-    const r = await Dialogs.prompt({
-      title: t("Name"),
-      defaultText: me()?.name ?? "",
-      okButtonText: t("OK"),
-      cancelButtonText: t("Cancel"),
-    });
-    const name = r.text?.trim().slice(0, 32);
-    if (r.result && name && name !== me()?.name) void save({ display_name: name });
+    const name = (await platform.prompt({ title: t("Name"), text: me()?.name ?? "", ok: t("OK"), cancel: t("Cancel") }))
+      ?.trim()
+      .slice(0, 32);
+    if (name && name !== me()?.name) void save({ display_name: name });
   };
 
   const LANGS = [
@@ -70,18 +62,17 @@ export function editProfileScreen(done: () => void = goProfiles) {
       actions: LANGS.map(l => l.label),
     });
     const l = LANGS.find(x => x.label === pick);
-    if (l) void save({ language: l.value });
+    if (!l || l.value === (me()?.language ?? null)) return;
+    void save({ language: l.value }).then(() =>
+      // Everything already on screen is drawn again in the new language, this page on top.
+      relabel(() => open(() => editProfileScreen(done), { title: t("Edit profile") })),
+    );
   };
 
   /** Four digits, asked natively; null if cancelled. */
   const askPin = async (title: string) => {
-    const r = await Dialogs.prompt({
-      title,
-      okButtonText: t("OK"),
-      cancelButtonText: t("Cancel"),
-      inputType: "number",
-    });
-    return r.result && /^\d{4}$/.test(r.text ?? "") ? r.text! : r.result ? "" : null;
+    const r = await platform.prompt({ title, ok: t("OK"), cancel: t("Cancel"), kind: "pin" });
+    return r === null ? null : /^\d{4}$/.test(r) ? r : "";
   };
   const pin = async () => {
     try {
@@ -128,14 +119,8 @@ export function editProfileScreen(done: () => void = goProfiles) {
       if (off) await api.turnOffSignIn().catch((e: unknown) => setError(String(e)));
       return;
     }
-    const r = await Dialogs.prompt({
-      title: t("Their email"),
-      okButtonText: t("Send"),
-      cancelButtonText: t("Cancel"),
-      inputType: "email",
-    });
-    const to = r.text?.trim();
-    if (!r.result || !to) return;
+    const to = (await platform.prompt({ title: t("Their email"), ok: t("Send"), cancel: t("Cancel"), kind: "email" }))?.trim();
+    if (!to) return;
     try {
       const link = await api.signInLink(to);
       setNote(
