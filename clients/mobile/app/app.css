@@ -272,3 +272,13 @@ ActionBar {
 .player-toast { color: #f4f1ea; font-size: 14; padding: 10 16; margin-top: 64; border-radius: 10; background-color: rgba(26, 26, 29, 0.92); }
 /* Casting: what's on the TV, over the paused phone (player.android.tsx). */
 .player-casting { color: #f4f1ea; font-size: 18; padding: 12 20; border-radius: 10; background-color: rgba(26, 26, 29, 0.85); }
+/* Skip intro and Up next (player.android.tsx): bottom right, above the scrubber. */
+.player-skip { color: #141210; background-color: #f4f1ea; font-size: 15; font-weight: bold; padding: 10 18; border-radius: 10; margin: 0 16 96 0; }
+.up-next { width: 360; margin: 0 16 96 0; padding: 12; border-radius: 14; background-color: rgba(26, 26, 29, 0.94); }
+.up-next-img { width: 140; height: 79; border-radius: 8; background-color: #333336; }
+.up-next-text { margin-left: 12; }
+.up-next-heading { color: #a39e95; font-size: 13; }
+.up-next-name { color: #f4f1ea; font-size: 15; font-weight: bold; margin-top: 4; }
+.up-next-actions { margin-top: 12; }
+.up-next-btn { color: #f4f1ea; font-size: 14; font-weight: bold; text-align: center; padding: 9 6; margin: 0 4; border-radius: 10; background-color: rgba(255, 255, 255, 0.16); }
+.up-next-btn.primary { color: #141210; background-color: #d4ae6a; }

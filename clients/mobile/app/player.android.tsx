@@ -23,7 +23,17 @@ import {
   type View,
 } from "@nativescript/core";
 import { absolute, api, HttpError, imageUrl } from "@tv/api/client";
-import type { ClientProfile, Item, Playback, SubtitleTrack } from "@tv/api/types";
+import type { ClientProfile, Item, Markers, NextUp, Playback, SubtitleTrack } from "@tv/api/types";
+import {
+  beforeUpNext,
+  countdownAllowed,
+  inIntro,
+  MARKER_RETRY_SECS,
+  nextLabel,
+  noteAutoplay,
+  noteInteraction,
+  upNext,
+} from "@tv/playback/skips";
 import { formatTime, languageName } from "@tv/format";
 import { lang, t } from "@tv/i18n";
 import { audioLabels } from "@tv/playback/audio";
@@ -63,6 +73,8 @@ const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
 /** The longest playback waits for its picture surface before starting anyway (sound at least). */
 const SURFACE_WAIT_MS = 3000;
+/** The next episode's player opens this long after the last one closed (its page going back). */
+const NEXT_OPEN_MS = 400;
 /** What a Chromecast plays through Google's receiver: H.264 and AAC, up to 1080p (4K and HEVC
  * only some can, and nothing here says which). */
 const CAST_PROFILE: ClientProfile = {
@@ -119,6 +131,11 @@ class AndroidPlayer {
   private previewTimer: ReturnType<typeof setTimeout> | undefined;
   private canSearchSubs = false;
   private finding = false;
+  /** Skip intro and Up next (the TV's rules, @tv/playback/skips). */
+  private markers: Markers | undefined;
+  private upNextDismissed = false;
+  /** Set when the next episode takes this player's place (opened once this one has closed). */
+  private nextTarget: PlayTarget | null = null;
   private unlisten: (() => void) | null = null;
   private root: GridLayout | null = null;
   private frame: Frame | undefined;
@@ -144,6 +161,9 @@ class AndroidPlayer {
     timing: createSignal(0),
     /** In a picture-in-picture window: the picture only (no controls or text subtitles). */
     pip: createSignal(false),
+    /** Skip intro, and Up next's card (the next episode and its countdown) while it shows. */
+    skipIntro: createSignal(false),
+    upNext: createSignal<{ next: NextUp; left: number | null } | null>(null),
     /** Casting: the Chromecast's name ("Living Room TV"), or null. */
     casting: createSignal<string | null>(null),
   };
@@ -221,6 +241,7 @@ class AndroidPlayer {
 
   private load(pb: Playback, at: number) {
     this.pb = pb;
+    this.markers = pb.markers;
     this.offset = pb.method === "hls" ? pb.start_secs : 0;
     this.stalls.reset(Date.now());
     this.exo.setMediaItem(mediaItem(absolute(pb.url), pb.method === "hls"), pb.method === "direct_play" ? at * 1000 : 0);
@@ -442,6 +463,39 @@ class AndroidPlayer {
     this.s.playing[1](this.isPlaying());
   }
 
+  /** Skip intro over the intro; Up next at the credits, counting down to the next episode.
+   * Casting: Skip intro only (the next episode would end the cast). */
+  private showSkips() {
+    if (this.closed || !this.pb) return;
+    const pos = this.position();
+    const dur = this.duration();
+    const next = this.cast ? null : (this.pb.next ?? null);
+    if (this.upNextDismissed && beforeUpNext(this.markers, dur, next, pos)) this.upNextDismissed = false;
+    const state = upNext(this.markers, dur, next, pos, this.upNextDismissed);
+    this.s.skipIntro[1](!state.show && inIntro(this.markers, pos));
+    const card = state.show && next ? { next, left: state.secondsLeft } : null;
+    const was = this.s.upNext[0]();
+    if (card?.left !== was?.left || !card !== !was) this.s.upNext[1](card);
+    if (state.go && this.pending === null) this.playNext(true);
+  }
+
+  private skipTheIntro() {
+    noteInteraction();
+    const end = this.markers?.intro_end;
+    if (end != null) this.seekTo(end);
+    this.s.skipIntro[1](false);
+  }
+
+  /** The next episode in this player's place (`auto`: the countdown, not a tap). */
+  private playNext(auto: boolean) {
+    const next = this.pb?.next;
+    if (!next || this.closed) return;
+    if (auto) noteAutoplay();
+    else noteInteraction();
+    this.nextTarget = { kind: "item", id: next.item_id };
+    this.close();
+  }
+
   /** The Chromecast let go: the phone plays on from where it was. */
   private endCasting() {
     this.castGen++;
@@ -491,8 +545,12 @@ class AndroidPlayer {
         const waiting = st === STATE_BUFFERING && this.pending === null && this.exo.getPlayWhenReady();
         this.s.busy[1](st === STATE_BUFFERING || this.pending !== null);
         this.watchStalls(waiting);
-        // The end: saved (the server marks it finished), and the player closes.
-        if (st === STATE_ENDED && this.pending === null) this.close();
+        // The end: saved (the server marks it finished), then the next episode (unless nobody's
+        // been here for a while) or the player closes.
+        if (st === STATE_ENDED && this.pending === null) {
+          if (this.pb.next && countdownAllowed()) this.playNext(true);
+          else this.close();
+        }
       },
       error: () => {
         // Casting: the phone's player is stopped on purpose (its stream is gone).
@@ -518,9 +576,24 @@ class AndroidPlayer {
         this.followCast();
         if (this.s.controls[0]()) this.bump();
         this.showSubs();
+        this.showSkips();
       }, 250),
       setInterval(() => this.updateMedia(), 1000),
     );
+    if (this.pb.markers?.pending) {
+      const id = this.pb.item_id;
+      for (const secs of MARKER_RETRY_SECS) {
+        this.timers.push(
+          setTimeout(() => {
+            if (this.closed || !this.markers?.pending) return;
+            api.markers(id).then(
+              (m) => (this.markers = m),
+              () => {},
+            );
+          }, secs * 1000),
+        );
+      }
+    }
     this.stopFollowingCast = followCasting({
       started: (device) => void this.startCasting(device),
       ended: () => this.endCasting(),
@@ -668,7 +741,10 @@ class AndroidPlayer {
     this.dispose?.();
     current = null;
     setPlayerOpen(false);
-    this.onClose?.();
+    const next = this.nextTarget;
+    // On to the next episode once this page has gone back.
+    if (next) setTimeout(() => play(next, 0, this.onClose).catch(() => this.onClose?.()), NEXT_OPEN_MS);
+    else this.onClose?.();
   }
 
   // ---- When it struggles (the TV's rules) ----
@@ -959,6 +1035,7 @@ class AndroidPlayer {
             (el as unknown as { content: View }).content = holder;
           }}
           on:tap={() => {
+            noteInteraction();
             if (s.controls[0]()) {
               clearTimeout(this.hideTimer);
               s.controls[1](false);
@@ -1076,6 +1153,62 @@ class AndroidPlayer {
             horizontalAlignment="center"
             isUserInteractionEnabled={false}
           />
+        </Show>
+        {/* Skip intro and Up next: bottom right, just above the scrubber. */}
+        <Show when={s.skipIntro[0]()}>
+          <label
+            class="player-skip"
+            text={t("Skip intro")}
+            horizontalAlignment="right"
+            verticalAlignment="bottom"
+            on:tap={() => this.skipTheIntro()}
+          />
+        </Show>
+        <Show when={s.upNext[0]()}>
+          {(card) => (
+            <gridlayout
+              class="up-next"
+              rows="auto, auto"
+              columns="140, *"
+              horizontalAlignment="right"
+              verticalAlignment="bottom"
+            >
+              <image
+                class="up-next-img"
+                loadMode="async"
+                stretch="aspectFill"
+                src={imageUrl(card().next.still ?? card().next.backdrop ?? null)}
+              />
+              <stacklayout col={1} class="up-next-text">
+                <label
+                  class="up-next-heading"
+                  text={
+                    card().left === null
+                      ? t("Up next")
+                      : t("Next episode in {secs}", { secs: String(card().left) })
+                  }
+                />
+                <label
+                  class="up-next-name"
+                  textWrap={true}
+                  text={`${nextLabel(card().next).heading}  ${nextLabel(card().next).name}`.trim()}
+                />
+              </stacklayout>
+              <gridlayout row={1} colSpan={2} columns="*, *" class="up-next-actions">
+                <label
+                  col={0}
+                  class="up-next-btn"
+                  text={t("Watch credits")}
+                  on:tap={() => {
+                    noteInteraction();
+                    this.upNextDismissed = true;
+                    s.upNext[1](null);
+                  }}
+                />
+                <label col={1} class="up-next-btn primary" text={t("Play next episode")} on:tap={() => this.playNext(false)} />
+              </gridlayout>
+            </gridlayout>
+          )}
         </Show>
         <Show when={s.toast[0]()}>
           <label class="player-toast" text={s.toast[0]()} verticalAlignment="top" horizontalAlignment="center" isUserInteractionEnabled={false} />

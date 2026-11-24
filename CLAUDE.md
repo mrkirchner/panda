@@ -44,6 +44,17 @@
   seeked (`-ss` before `-i`) keyframe only, never a full-file pass (libraries live on network
   shares). Cached per item + 10 s step; HDR uses the transcodes' software tone-map filter; JPEG
   needs full-range YUV.
+- Skip intro / Up next (`panda_media::markers`, `services/markers.rs`, shared client rules in
+  `tv/src/playback/skips.ts`): markers come from chapters the file names ("Intro", "Credits"),
+  else from sound a season's episodes share (chromaprint fingerprints of each episode's first
+  quarter, at most 10 min, and last 5 min; neighbours compared; jellyfin-ffmpeg has the muxer, a
+  stock ffmpeg may not and then only chapters count). Only those parts are read, one file at a
+  time; fingerprints cached in `cache/fingerprints`, results in `audio_markers` (per file size).
+  A played season goes first (`want`); the idle crawl makes way between episodes when someone
+  streams or a season is wanted. Playback sends `markers` (`pending`: ask
+  `/api/items/{id}/markers` again) and `next` (the next episode the profile can see). Every player
+  follows `skips.ts`: Skip intro during the intro, Up next at the credits (else 20 s before the
+  end) counting down 10 s, three autoplays in a row then it waits; the end plays the next.
 - Libraries live on network shares that can drop: never prune unless every folder answered
   and had files (an empty mount folder counts as offline), never block on a filesystem call
   without a timeout, and fail playback fast with `ApiError::Offline` (503) when the file
