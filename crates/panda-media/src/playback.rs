@@ -276,6 +276,7 @@ mod tests {
                 default: true,
             }],
             subtitles: vec![],
+            chapters: Vec::new(),
         }
     }
 

@@ -26,6 +26,7 @@ import type {
   Home,
   HomeMore,
   Item,
+  Markers,
   Library,
   Me,
   MyListEntry,
@@ -394,6 +395,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ profile, start_secs: startSecs, audio_index: audioIndex }),
     }),
+  /** A file's intro and credits again, when playback said they were `pending`. */
+  markers: (itemId: number) => request<Markers>(`/api/items/${itemId}/markers`),
   /** Fire-and-forget; `keepalive` lets it complete even while the page is navigating away. */
   stopSession: (sessionId: string) =>
     fetch(absolute(`/api/hls/${sessionId}`), {

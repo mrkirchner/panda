@@ -93,6 +93,11 @@ fn display_list(paths: &[PathBuf]) -> String {
 
 /// Run a binary to completion and return stdout. Non-zero exit is an error.
 pub(crate) async fn run(bin: &Path, args: &[&str]) -> Result<String> {
+    Ok(String::from_utf8_lossy(&run_bytes(bin, args).await?).into_owned())
+}
+
+/// [`run`], stdout as bytes (binary output).
+pub(crate) async fn run_bytes(bin: &Path, args: &[&str]) -> Result<Vec<u8>> {
     let out = Command::new(bin)
         .args(args)
         .kill_on_drop(true)
@@ -106,7 +111,7 @@ pub(crate) async fn run(bin: &Path, args: &[&str]) -> Result<String> {
             stderr: String::from_utf8_lossy(&out.stderr).trim().to_string(),
         });
     }
-    Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    Ok(out.stdout)
 }
 
 #[cfg(test)]

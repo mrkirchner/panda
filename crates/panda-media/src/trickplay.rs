@@ -141,6 +141,7 @@ mod tests {
             }),
             audio: vec![],
             subtitles: vec![],
+            chapters: Vec::new(),
         }
     }
 

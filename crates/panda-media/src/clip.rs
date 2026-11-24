@@ -174,6 +174,7 @@ mod tests {
             }),
             audio: vec![audio(1, false), audio(2, true)],
             subtitles: vec![],
+            chapters: Vec::new(),
         }
     }
 

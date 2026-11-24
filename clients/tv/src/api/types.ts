@@ -336,7 +336,34 @@ export interface AudioTrack {
   title?: string;
 }
 
-export type Playback =
+/** Where an episode's intro and credits are (file time, seconds), for Skip intro and Up next.
+ * `pending`: the server is still listening for them; ask again later (`api.markers`). */
+export interface Markers {
+  intro_start?: number | null;
+  intro_end?: number | null;
+  credits_start?: number | null;
+  pending?: boolean;
+}
+
+/** The episode after the one playing. */
+export interface NextUp {
+  item_id: number;
+  series: string;
+  season: number;
+  episode: number;
+  title?: string | null;
+  /** The episode's still and the show's backdrop (image keys). */
+  still?: string | null;
+  backdrop?: string | null;
+}
+
+interface PlaybackSkips {
+  markers?: Markers;
+  next?: NextUp | null;
+}
+
+export type Playback = PlaybackSkips &
+  (
   | {
       method: "direct_play";
       item_id: number;
@@ -364,7 +391,8 @@ export type Playback =
       audio?: AudioTrack[];
       audio_index?: number | null;
       preview_url?: string | null;
-    };
+    }
+  );
 
 export interface User {
   id: number;

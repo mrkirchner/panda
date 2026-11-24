@@ -11,7 +11,17 @@ import {
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router";
 import { activeElement, Text, View, type ElementNode } from "@solidtv/solid";
 import { absolute, api, HttpError } from "../api/client";
-import type { AudioTrack, Item, Playback, SubtitleTrack } from "../api/types";
+import type { AudioTrack, Item, Markers, NextUp, Playback, SubtitleTrack } from "../api/types";
+import { SkipIntroButton, UpNextCard } from "../components/SkipOverlays";
+import {
+  beforeUpNext,
+  countdownAllowed,
+  inIntro,
+  MARKER_RETRY_SECS,
+  noteAutoplay,
+  noteInteraction,
+  upNext,
+} from "../playback/skips";
 import { Loader } from "../components/Loader";
 import { PlayerControls, type PreviewFrame } from "../components/PlayerControls";
 import { Dropdown } from "../components/Dropdown";
@@ -79,7 +89,17 @@ const BITMAP_POLL_MS = 10_000;
 /** How often to save watch progress while playing. */
 const PROGRESS_EVERY_MS = 10_000;
 
-export default function Player() {
+/** The player, made anew for each file: Up next replaces the address with the next episode's. */
+export default function PlayerPage() {
+  const params = useParams<{ kind: string; id: string }>();
+  return (
+    <Show when={`${params.kind}/${params.id}`} keyed>
+      {(_file: string) => <Player />}
+    </Show>
+  );
+}
+
+function Player() {
   // /play/item/:id (a file) or /play/title/:id (a movie; the server picks the best version).
   const params = useParams<{ kind: string; id: string }>();
   // `back`: where leaving goes (Continue Watching passes the title's page, so you land where
@@ -151,6 +171,15 @@ export default function Player() {
     const at = previewAt();
     return template && at !== null ? { src: previewUrl(template, at) } : null;
   });
+  /** Skip intro and Up next (playback/skips.ts): where they are, and what shows now. */
+  let markers: Markers | undefined;
+  const [nextUp, setNextUp] = createSignal<NextUp | null>(null);
+  const [skipIntro, setSkipIntro] = createSignal(false);
+  const [upNextShow, setUpNextShow] = createSignal(false);
+  const [upNextLeft, setUpNextLeft] = createSignal<number | null>(null);
+  /** Back put the card away: the credits play on (until a seek back before them). */
+  let upNextDismissed = false;
+  let markerTimers: ReturnType<typeof setTimeout>[] = [];
   let rootRef: ElementNode | undefined;
   let menuRef: ElementNode | undefined;
   let subMenuRef: ElementNode | undefined;
@@ -223,7 +252,60 @@ export default function Player() {
     const d = item()?.duration_secs ?? (player?.video.duration ?? 0) + offset();
     if (Number.isFinite(d) && d > 0) setDuration(d);
     if (player && !player.video.paused) reportProgress();
+    updateSkips(pos);
   };
+
+  /** Skip intro and Up next at `pos`; the countdown's end plays the next episode. */
+  function updateSkips(pos: number) {
+    const d = duration();
+    const next = nextUp();
+    if (beforeUpNext(markers, d, next, pos)) upNextDismissed = false;
+    setSkipIntro(inIntro(markers, pos));
+    const state = upNext(markers, d, next, pos, upNextDismissed);
+    setUpNextShow(state.show);
+    setUpNextLeft(state.secondsLeft);
+    if (state.go && !starting) playNext(true);
+  }
+
+  /** Over the intro: to its end. */
+  function skipTheIntro() {
+    const end = markers?.intro_end;
+    if (end == null) return;
+    setScrubTarget(end);
+    commitSeek();
+    setSkipIntro(false);
+  }
+
+  /** The next episode, in this player's place (`auto`: the countdown, not a press). */
+  function playNext(auto: boolean) {
+    const next = nextUp();
+    if (!next) return;
+    if (auto) noteAutoplay();
+    else noteInteraction();
+    const back = search.back ? `?back=${encodeURIComponent(search.back)}` : "";
+    navigate(`/play/item/${next.item_id}${back}`, { replace: true });
+  }
+
+  /** The end: the next episode (unless nobody's been here for a while), else back. */
+  const onEnded = () => {
+    reportProgress(true);
+    if (nextUp() && countdownAllowed()) return playNext(true);
+    if (search.back) navigate(search.back, { replace: true });
+    else navigate(-1);
+  };
+
+  /** Markers the server was still finding when playback started: asked again later. */
+  function followMarkers(itemId: number) {
+    markerTimers = MARKER_RETRY_SECS.map(secs =>
+      setTimeout(() => {
+        if (!markers?.pending) return;
+        void api
+          .markers(itemId)
+          .then(m => (markers = m))
+          .catch(() => {});
+      }, secs * 1000),
+    );
+  }
   const onPlay = () => {
     setPlaying(true);
     keepAwake(true);
@@ -533,6 +615,7 @@ export default function Player() {
     ["pause", onPause],
     ["waiting", () => setBuffering(true)],
     ["playing", onPlaying],
+    ["ended", onEnded],
   ];
 
   /** End the current stream: stop the player and free the server's transcode slot. */
@@ -562,6 +645,9 @@ export default function Player() {
         params.kind === "title"
           ? await api.playTitle(params.id, profile, position, version, audioIndex)
           : await api.startPlayback(Number(params.id), profile, position, audioIndex);
+      markers = playback.markers;
+      setNextUp(playback.next ?? null);
+      if (firstStart && markers?.pending) followMarkers(playback.item_id);
       setAudioTracks(playback.audio ?? []);
       setAudioSel(playback.audio_index ?? null);
       if (firstStart) {
@@ -626,6 +712,7 @@ export default function Player() {
 
   /** Any key while the controls are up keeps them up. */
   const onAnyKey = () => {
+    noteInteraction();
     if (controls()) poke();
   };
 
@@ -673,6 +760,7 @@ export default function Player() {
     clearTimeout(stallTimer);
     clearTimeout(previewTimer);
     clearTimeout(bitmapTimer);
+    markerTimers.forEach(clearTimeout);
     window.removeEventListener("keydown", onAnyKey, true);
     if (player) {
       player.onError = null;
@@ -704,6 +792,11 @@ export default function Player() {
         if (audioMenuOpen()) return (closeAudioMenu(), true);
         if (timingOpen()) return (closeTiming(), true);
         if (controls() && !player?.video.paused) return (hideControls(), true);
+        if (!controls() && upNextShow()) {
+          upNextDismissed = true;
+          setUpNextShow(false);
+          return true;
+        }
         if (search.back) navigate(search.back, { replace: true });
         else navigate(-1);
         return true;
@@ -711,7 +804,17 @@ export default function Player() {
       // With the controls hidden, focus is here: OK plays/pauses and brings them up, Left/Right
       // skip (and focus the seek bar), Up/Down just bring them up. With the controls showing,
       // these only arrive when a row runs out of buttons, so they're swallowed.
-      onEnter={() => (controls() ? null : (togglePlay(), showControls("play")), true)}
+      // Skip intro and Up next show only then, drawn focused: OK presses them.
+      onEnter={() => {
+        if (controls()) return true;
+        if (upNextShow()) playNext(false);
+        else if (skipIntro()) skipTheIntro();
+        else {
+          togglePlay();
+          showControls("play");
+        }
+        return true;
+      }}
       onLeft={() => (controls() ? null : (showControls("bar"), scrub(-1)), true)}
       onRight={() => (controls() ? null : (showControls("bar"), scrub(1)), true)}
       onUp={() => (controls() ? null : showControls("play"), true)}
@@ -757,6 +860,12 @@ export default function Player() {
         showSubtitles={showSubtitles()}
         showAudio={showAudio()}
         onQuality={openMenu}
+      />
+      <SkipIntroButton visible={skipIntro() && !upNextShow() && !controls() && !overlayOpen()} />
+      <UpNextCard
+        visible={upNextShow() && !controls() && !overlayOpen()}
+        next={nextUp()}
+        secondsLeft={upNextLeft()}
       />
       {/* The app's dropdown, opening above the Quality button, right edges lined up. */}
       <Dropdown

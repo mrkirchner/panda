@@ -11,6 +11,7 @@ pub(crate) mod images;
 pub(crate) mod library_health;
 pub(crate) mod library_watch;
 pub(crate) mod mail;
+pub(crate) mod markers;
 pub(crate) mod metadata;
 pub(crate) mod providers;
 pub(crate) mod request_ready;

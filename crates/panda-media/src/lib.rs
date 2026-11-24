@@ -13,6 +13,7 @@
 //! - [`subtitles`]: extract text subtitles as `WebVTT` for client-side overlay rendering.
 //! - [`sidecar`]: subtitle files next to a video (`Movie.en.srt`), converted the same way.
 //! - [`trickplay`]: scrub-preview thumbnail sheets.
+//! - [`markers`]: where intros and credits are (named chapters, sound episodes share).
 //!
 //! Subtitles are never burned into video. Transcodes always drop subtitle streams (`-sn`)
 //! and clients render subtitles as an overlay.
@@ -20,6 +21,7 @@
 pub mod caps;
 pub mod clip;
 pub mod ffmpeg;
+pub mod markers;
 pub mod pgs;
 pub mod playback;
 pub mod probe;

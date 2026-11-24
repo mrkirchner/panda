@@ -28,6 +28,7 @@ use crate::auth::middleware::MediaGrant;
 use crate::auth::{self, CurrentUser, ensure_item_access, with_token};
 use crate::error::{ApiError, ApiResult};
 use crate::services::bitmap_subs;
+use crate::services::markers::ItemMarkers;
 use crate::services::sessions::{Slot, StreamInfo, Ticket, now_unix};
 use crate::state::AppState;
 
@@ -40,6 +41,7 @@ pub(super) fn user_routes() -> Router<AppState> {
     Router::new()
         .route("/items/{id}/playback", post(start_playback))
         .route("/items/{id}/subtitles/find", post(find_subtitles))
+        .route("/items/{id}/markers", get(item_markers))
         .route("/hls/{session}", delete(stop_session))
 }
 
@@ -83,6 +85,10 @@ pub(super) enum PlaybackResponse {
         /// Scrub preview of any moment: replace `{secs}` with the time (see [`preview_frame`]).
         /// `None` without a video stream.
         preview_url: Option<String>,
+        /// Where the intro and credits are ("Skip intro", "Up next").
+        markers: ItemMarkers,
+        /// An episode's next one, to offer at its end.
+        next: Option<NextUp>,
     },
     Hls {
         item_id: i64,
@@ -97,6 +103,10 @@ pub(super) enum PlaybackResponse {
         audio: Vec<AudioTrack>,
         audio_index: Option<u32>,
         preview_url: Option<String>,
+        /// Where the intro and credits are ("Skip intro", "Up next").
+        markers: ItemMarkers,
+        /// An episode's next one, to offer at its end.
+        next: Option<NextUp>,
     },
 }
 
@@ -510,6 +520,7 @@ pub(super) async fn play(
 
     // Direct play can't honour a non-default audio track. Browsers pick the default.
     let (audio, audio_index) = (audio_tracks(&media), audio_track(&media, req.audio_index).ok());
+    let (markers, next) = skips(&state, me.user.id, &item, &media).await;
     let decision = playback::decide(&media, &profile, req.audio_index);
     let (plan, reasons) = match decision {
         Decision::DirectPlay if req.audio_index.is_none() => {
@@ -522,6 +533,8 @@ pub(super) async fn play(
                 audio,
                 audio_index,
                 preview_url,
+                markers,
+                next,
             });
         }
         Decision::DirectPlay => other_audio(&media, req.audio_index)?,
@@ -563,19 +576,7 @@ pub(super) async fn play(
         Err(e) => return Err(e.into()),
     };
 
-    let stream = match plan.video {
-        VideoPlan::Encode { target_height, codec, bitrate_kbps, .. } => StreamSummary {
-            mode: "transcode",
-            codec: match codec {
-                VideoCodec::H264 => "h264".into(),
-                VideoCodec::Hevc => "hevc".into(),
-            },
-            height: target_height,
-            bitrate_kbps: Some(bitrate_kbps),
-            pipeline: Some(used),
-        },
-        _ => StreamSummary::original("remux", &media),
-    };
+    let stream = stream_summary(&plan, used, &media);
     tracing::info!(
         item = id, session = %session_id, start_secs = opts.start_secs, pipeline = used,
         output = %stream.label(), ?reasons, "started stream"
@@ -602,7 +603,110 @@ pub(super) async fn play(
         audio,
         audio_index,
         preview_url,
+        markers,
+        next,
     })
+}
+
+/// What an HLS stream is: an encode's codec, size and bitrate, or the original copied.
+fn stream_summary(plan: &TranscodePlan, used: &'static str, media: &MediaInfo) -> StreamSummary {
+    match plan.video {
+        VideoPlan::Encode { target_height, codec, bitrate_kbps, .. } => StreamSummary {
+            mode: "transcode",
+            codec: match codec {
+                VideoCodec::H264 => "h264".into(),
+                VideoCodec::Hevc => "hevc".into(),
+            },
+            height: target_height,
+            bitrate_kbps: Some(bitrate_kbps),
+            pipeline: Some(used),
+        },
+        _ => StreamSummary::original("remux", media),
+    }
+}
+
+/// Where to skip (intro, credits) and what plays next. An episode's season (and the next one's)
+/// is checked for intros and credits soon, if it hasn't been.
+async fn skips(
+    state: &AppState,
+    user_id: i64,
+    item: &Item,
+    media: &MediaInfo,
+) -> (ItemMarkers, Option<NextUp>) {
+    let markers = crate::services::markers::for_item(state, item, media).await;
+    let next = next_episode(state, user_id, item).await.unwrap_or_default();
+    if item.kind == "episode" {
+        crate::services::markers::want(item);
+        if let Some(n) = &next
+            && n.season != item.season.unwrap_or(0)
+            && let Ok(Some(next_item)) = state.db.item(n.item_id).await
+        {
+            crate::services::markers::want(&next_item);
+        }
+    }
+    (markers, next)
+}
+
+/// The episode after `item` in its show (by season and number; specials only after specials),
+/// one the profile can see: the same library's copy when there are several.
+#[derive(Debug, Serialize)]
+pub(super) struct NextUp {
+    item_id: i64,
+    series: String,
+    season: i64,
+    episode: i64,
+    /// The episode's name and still (image key), when TMDB has them, and the show's backdrop.
+    title: Option<String>,
+    still: Option<String>,
+    backdrop: Option<String>,
+}
+
+async fn next_episode(state: &AppState, user_id: i64, item: &Item) -> ApiResult<Option<NextUp>> {
+    let Some(series) = item.series.clone().filter(|_| item.kind == "episode") else { return Ok(None) };
+    let filter = panda_db::ItemFilter {
+        series: Some(series.clone()),
+        kind: Some(panda_db::ItemKind::Episode),
+        allowed_libraries: auth::allowed_libraries(state, user_id).await?,
+        limit: Some(10_000),
+        ..Default::default()
+    };
+    let here = (item.season.unwrap_or(0), item.episode.unwrap_or(0));
+    let next = state
+        .db
+        .items(&filter)
+        .await?
+        .into_iter()
+        .filter(|e| {
+            let at = (e.season.unwrap_or(0), e.episode.unwrap_or(0));
+            at > here && (here.0 == 0 || at.0 != 0)
+        })
+        .min_by_key(|e| {
+            (e.season.unwrap_or(0), e.episode.unwrap_or(0), e.library_id != item.library_id, e.id)
+        });
+    Ok(next.map(|e| NextUp {
+        item_id: e.id,
+        series: e.meta_title.clone().unwrap_or(series),
+        season: e.season.unwrap_or(0),
+        episode: e.episode.unwrap_or(0),
+        title: e.episode_title.clone(),
+        // An image key (downloaded in the background if it isn't yet: shown at the episode's end).
+        still: e
+            .episode_still
+            .as_deref()
+            .and_then(|p| super::images::promise(state, panda_metadata::ImageSize::Still, p)),
+        backdrop: e.backdrop.clone(),
+    }))
+}
+
+/// A file's intro and credits again (`pending` at playback: its season was being checked).
+async fn item_markers(
+    State(state): State<AppState>,
+    Extension(me): Extension<CurrentUser>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<ItemMarkers>> {
+    let (item, media) = load(&state, id).await?;
+    ensure_item_access(&state, me.user.id, &item).await?;
+    Ok(Json(crate::services::markers::for_item(&state, &item, &media).await))
 }
 
 /// Where a remux (copied video) seeking to `at` really starts: the keyframe at or before it.

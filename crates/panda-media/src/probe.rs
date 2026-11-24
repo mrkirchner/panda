@@ -35,11 +35,22 @@ pub struct MediaInfo {
     pub video: Option<VideoStream>,
     pub audio: Vec<AudioStream>,
     pub subtitles: Vec<SubtitleStream>,
+    /// The file's chapters (Blu-ray "Chapter 01", or named "Intro", "Credits"). Older probes: none.
+    #[serde(default)]
+    pub chapters: Vec<Chapter>,
+}
+
+/// One chapter: where it starts and ends (seconds) and its title, if any.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Chapter {
+    pub start: f64,
+    pub end: f64,
+    pub title: Option<String>,
 }
 
 /// The analysis version [`probe`] makes. 1: tracks' titles ("Forced French subtitles",
-/// "Commentary"), and forced / SDH read from them when the flags aren't set.
-pub const PROBE_VERSION: u32 = 1;
+/// "Commentary"), and forced / SDH read from them when the flags aren't set. 2: chapters.
+pub const PROBE_VERSION: u32 = 2;
 
 /// Whether a track's title says it's forced ("Forced French subtitles", "Signs & Songs").
 fn title_says_forced(title: Option<&str>) -> bool {
@@ -136,7 +147,7 @@ pub async fn probe(paths: &FfmpegPaths, file: &Path) -> Result<MediaInfo> {
     let file = file.to_string_lossy();
     let json = ffmpeg::run(
         &paths.ffprobe,
-        &["-v", "error", "-print_format", "json", "-show_format", "-show_streams", &file],
+        &["-v", "error", "-print_format", "json", "-show_format", "-show_streams", "-show_chapters", &file],
     )
     .await?;
     parse(&json)
@@ -203,6 +214,17 @@ pub fn parse(json: &str) -> Result<MediaInfo> {
         video: None,
         audio: Vec::new(),
         subtitles: Vec::new(),
+        chapters: raw
+            .chapters
+            .iter()
+            .filter_map(|c| {
+                Some(Chapter {
+                    start: c.start_time.as_deref()?.parse().ok()?,
+                    end: c.end_time.as_deref()?.parse().ok()?,
+                    title: c.tags.get("title").map(|t| t.trim().to_string()).filter(|t| !t.is_empty()),
+                })
+            })
+            .collect(),
     };
 
     for s in raw.streams {
@@ -296,7 +318,17 @@ fn parse_ratio(r: &str) -> Option<f64> {
 struct RawProbe {
     #[serde(default)]
     streams: Vec<RawStream>,
+    #[serde(default)]
+    chapters: Vec<RawChapter>,
     format: RawFormat,
+}
+
+#[derive(Deserialize)]
+struct RawChapter {
+    start_time: Option<String>,
+    end_time: Option<String>,
+    #[serde(default)]
+    tags: std::collections::HashMap<String, String>,
 }
 
 #[derive(Deserialize)]

@@ -1612,3 +1612,55 @@ async fn push_subscriptions_are_browser_push_services_and_the_profiles_own() {
     sam.send("DELETE", "/api/push/subscription", Some(gone)).await;
     assert!(server.state.db.push_subscriptions(sam_id).await.unwrap().is_empty());
 }
+
+#[tokio::test]
+async fn up_next_and_skip_markers_follow_library_access() {
+    if !ffmpeg_available() {
+        return;
+    }
+    let server = server().await;
+    let mut admin = admin(&server).await;
+    // One show split over two libraries: episode 1 in one, episode 2 in another.
+    let shows = server.dir.path().join("shows/Test Show/Season 01");
+    let more = server.dir.path().join("shows2/Test Show/Season 01");
+    make_video(&shows.join("Test Show - S01E01.mp4"), None);
+    make_video(&more.join("Test Show - S01E02.mp4"), None);
+    let mut libs = Vec::new();
+    for (name, dir) in [("Shows", "shows"), ("More shows", "shows2")] {
+        let r = admin
+            .post(
+                "/api/admin/libraries",
+                json!({ "name": name, "kind": "shows", "path": server.dir.path().join(dir) }),
+            )
+            .await;
+        assert!(r.status.is_success(), "{}", r.text());
+        libs.push(r.json()["id"].as_i64().unwrap());
+    }
+    panda_server::scan_now(&server.state).await.unwrap();
+    let items = admin.get("/api/items?kind=episode").await.json();
+    let episode = |n: i64| {
+        items.as_array().unwrap().iter().find(|i| i["episode"] == n).unwrap()["id"].as_i64().unwrap()
+    };
+    let (one, two) = (episode(1), episode(2));
+
+    // The admin sees both: episode 2 is up next, and the markers come with playback.
+    let play = admin.post(&format!("/api/items/{one}/playback"), json!({})).await.json();
+    assert_eq!(play["next"]["item_id"], two, "{play}");
+    assert!(play["markers"].is_object(), "{play}");
+    assert_eq!(admin.get(&format!("/api/items/{two}/markers")).await.status, StatusCode::OK);
+
+    // A friend who can only open the first library: no next episode, and episode 2's markers
+    // aren't theirs to read.
+    let mut friend = invited_user(&server, &mut admin, "friend").await;
+    let friend_id = friend.get("/api/auth/me").await.json()["user"]["id"].as_i64().unwrap();
+    let r = admin
+        .send("PATCH", &format!("/api/admin/users/{friend_id}"), Some(json!({ "libraries": [libs[0]] })))
+        .await;
+    assert_eq!(r.status, StatusCode::NO_CONTENT);
+    let play = friend.post(&format!("/api/items/{one}/playback"), json!({})).await.json();
+    assert!(play["next"].is_null(), "{play}");
+    assert!(!friend.get(&format!("/api/items/{two}/markers")).await.status.is_success());
+    // And without signing in, nothing.
+    let mut stranger = Client::new(&server.app);
+    assert_eq!(stranger.get(&format!("/api/items/{one}/markers")).await.status, StatusCode::UNAUTHORIZED);
+}
