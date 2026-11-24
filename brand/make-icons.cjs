@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const { Resvg } = require("@resvg/resvg-js");
 
-const CLIENTS = path.resolve(__dirname, "..");
+const CLIENTS = path.resolve(__dirname, "../clients");
 const read = name => fs.readFileSync(path.join(__dirname, name), "utf8");
 const MARK = read("panda-mark.svg");
 const WORDMARK = read("panda-wordmark.svg");

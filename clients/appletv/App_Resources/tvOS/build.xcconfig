@@ -1,5 +1,5 @@
 TVOS_DEPLOYMENT_TARGET = 16.0;
-// The layered app icon and Top Shelf images (clients/brand/make-icons.cjs).
+// The layered app icon and Top Shelf images (brand/make-icons.cjs).
 ASSETCATALOG_COMPILER_APPICON_NAME = App Icon & Top Shelf Image
 // The Apple developer team that signs builds for a real Apple TV isn't kept here: it's yours,
 // in clients/appletv/team.local (git-ignored) or $PANDA_TEAM_ID; run-device.sh passes it on.

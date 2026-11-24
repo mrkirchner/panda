@@ -518,10 +518,10 @@
 - Checking screens: `scripts/run-sim.sh [udid] [out] [secs] -pandaOpen title:<id>` and
   `-pandaScroll <points>` (debug builds; `app/devLaunch.tsx`). `pnpm typecheck` (JSX types: `app/jsx.d.ts`).
 
-## Logo (clients/brand)
+## Logo (brand)
 - Sources: `panda-mark.svg` (panda in front of an orange play triangle; groups `#play` and
   `#panda`) and `panda-wordmark.svg` ("Panda" in Fredoka Bold as outlines, a play in the "a").
-- `pnpm icons` in clients/brand renders every app icon from them (committed outputs): Apple TV
+- `pnpm icons` in brand renders every app icon from them (committed outputs): Apple TV
   layered icon + Top Shelf (`appletv/App_Resources/tvOS/Assets.xcassets`; triangle and panda
   are separate parallax layers), LG, Tizen, Android TV launcher + banner, the admin UI's
   favicon, the iPhone app's icon (`clients/mobile/App_Resources/iOS/Assets.xcassets`). Never edit those PNGs by hand: change the SVGs or the script and rerun.
