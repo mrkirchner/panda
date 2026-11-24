@@ -23,7 +23,7 @@ import {
   type View,
 } from "@nativescript/core";
 import { absolute, api, HttpError, imageUrl } from "@tv/api/client";
-import type { Item, Playback, SubtitleTrack } from "@tv/api/types";
+import type { ClientProfile, Item, Playback, SubtitleTrack } from "@tv/api/types";
 import { formatTime, languageName } from "@tv/format";
 import { lang, t } from "@tv/i18n";
 import { audioLabels } from "@tv/playback/audio";
@@ -42,6 +42,7 @@ import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from ".
 import { audioChoice, read, write } from "@tv/platform/settings";
 import type { PlayTarget } from "./platformTypes";
 import { nowPlaying } from "./nowPlaying.android";
+import { castButton, castLoad, castSeek, castSubtitles, followCasting, remote, stopCasting } from "./cast.android";
 import { nowPlayingInfo, type NowPlayingSession } from "@tv/platform/types";
 
 const SAVE_EVERY_MS = 10_000;
@@ -52,6 +53,19 @@ const PREVIEW_SETTLE_MS = 150;
 const SKIP_SECS = 10;
 /** The longest playback waits for its picture surface before starting anyway (sound at least). */
 const SURFACE_WAIT_MS = 3000;
+/** What a Chromecast plays through Google's receiver: H.264 and AAC, up to 1080p (4K and HEVC
+ * only some can, and nothing here says which). */
+const CAST_PROFILE: ClientProfile = {
+  containers: ["mp4"],
+  video_codecs: ["h264"],
+  audio_codecs: ["aac", "mp3"],
+  max_height: 1080,
+  supports_hdr: false,
+  supports_dolby_vision: false,
+  max_audio_channels: 6,
+};
+/** A seek on the Chromecast further ahead than this gets it a new stream from there. */
+const CAST_SEEK_AHEAD = 120;
 /** A stop this soon after the picture-in-picture window went full size is that window closing. */
 const PIP_CLOSE_MS = 1500;
 
@@ -120,7 +134,13 @@ class AndroidPlayer {
     timing: createSignal(0),
     /** In a picture-in-picture window: the picture only (no controls or text subtitles). */
     pip: createSignal(false),
+    /** Casting: the Chromecast's name ("Living Room TV"), or null. */
+    casting: createSignal<string | null>(null),
   };
+  /** Casting: the Chromecast's stream, where it starts in the file, and the last position it
+   * reported (the phone's own player is paused meanwhile). */
+  private cast: { pb: Playback; offset: number; at: number; tracks: Map<string, number> } | null = null;
+  private stopFollowingCast: (() => void) | null = null;
   /** The lock screen and notification's controls (nowPlaying.android.ts). */
   private media: NowPlayingSession | null = null;
   private subs: SubtitleSource | null = null;
@@ -142,10 +162,11 @@ class AndroidPlayer {
 
   // ---- Streams ----
 
-  private async request(at: number): Promise<Playback> {
-    const chosen = await profileFor(phoneProfile(), this.quality);
+  /** A stream from `at`: for this phone, or for `forDevice` (a Chromecast). */
+  private async request(at: number, forDevice?: ClientProfile): Promise<Playback> {
+    const chosen = forDevice ?? (await profileFor(phoneProfile(), this.quality));
     const profile =
-      this.stallCap === null
+      this.stallCap === null || forDevice
         ? chosen
         : { ...chosen, max_bitrate_kbps: Math.min(chosen.max_bitrate_kbps ?? Infinity, this.stallCap) };
     const target = this.target;
@@ -217,6 +238,10 @@ class AndroidPlayer {
   }
 
   position(): number {
+    if (this.cast) {
+      const client = remote();
+      return client ? this.cast.offset + client.getApproximateStreamPosition() / 1000 : this.cast.at;
+    }
     if (this.pending !== null) return this.pending;
     return this.offset + this.exo.getCurrentPosition() / 1000;
   }
@@ -235,6 +260,7 @@ class AndroidPlayer {
   }
 
   seekTo(target: number) {
+    if (this.cast) return this.castSeekTo(target);
     if (!this.pb) return;
     const dur = this.duration();
     const to = Math.max(0, dur > 0 ? Math.min(target, dur - 1) : target);
@@ -249,6 +275,83 @@ class AndroidPlayer {
     if (action.kind === "jump") this.exo.seekTo(Math.round(action.mediaTime * 1000));
     else void this.restart(action.at);
     this.showSubs();
+  }
+
+  // ---- Playing here, or on a Chromecast ----
+
+  private isPlaying(): boolean {
+    return this.cast ? !!remote()?.isPlaying() : this.exo.isPlaying();
+  }
+
+  private play() {
+    if (this.cast) remote()?.play();
+    else this.exo.play();
+  }
+
+  private pause() {
+    if (this.cast) remote()?.pause();
+    else this.exo.pause();
+  }
+
+  /** Connected to a Chromecast: it plays from here (the phone pauses and lets its stream go). */
+  private async startCasting(device: string) {
+    if (this.cast || this.closed) return;
+    const at = this.position();
+    this.exo.pause();
+    this.s.casting[1](device);
+    await this.castFrom(at);
+    if (this.cast && this.pb?.method === "hls") void api.stopSession(this.pb.session_id);
+  }
+
+  /** Give the Chromecast a stream from `at` (file time), replacing the one it has. */
+  private async castFrom(at: number) {
+    const client = remote();
+    if (!client || this.closed) return;
+    this.s.busy[1](true);
+    try {
+      const pb = await this.request(at, CAST_PROFILE);
+      const was = this.cast?.pb;
+      const text = pb.subtitles.filter((s) => s.overlay === "text" && s.url);
+      const tracks = new Map(text.map((s, i) => [s.key, i + 1] as const));
+      const shown = this.subs ? (tracks.get(this.subs.track.key) ?? null) : null;
+      const art = this.info ? (this.info.backdrop ?? this.info.poster) : null;
+      const labels = trackLabels(text);
+      castLoad(client, {
+        url: absolute(pb.url),
+        hls: pb.method === "hls",
+        title: this.s.title[0]() || "Panda",
+        artwork: imageUrl(art) ?? null,
+        startSecs: pb.method === "hls" ? 0 : at,
+        subtitles: text.map((s, i) => ({ id: i + 1, url: absolute(s.url!), language: s.language, name: labels[i] })),
+        selected: shown,
+      });
+      this.cast = { pb, offset: pb.method === "hls" ? pb.start_secs : 0, at, tracks };
+      if (was?.method === "hls") void api.stopSession(was.session_id);
+    } catch (e) {
+      this.toast(e instanceof Error ? e.message : String(e));
+    } finally {
+      this.s.busy[1](false);
+    }
+  }
+
+  /** Seeking on the Chromecast: within its stream (behind, or a little ahead), else a new one. */
+  private castSeekTo(target: number) {
+    const client = remote();
+    if (!client || !this.cast) return;
+    const dur = this.duration();
+    const to = Math.max(0, dur > 0 ? Math.min(target, dur - 1) : target);
+    if (to >= this.cast.offset && to - this.position() < CAST_SEEK_AHEAD) castSeek(client, to - this.cast.offset);
+    else void this.castFrom(to);
+  }
+
+  /** The Chromecast let go: the phone plays on from where it was. */
+  private endCasting() {
+    if (!this.cast) return;
+    const { pb, at } = this.cast;
+    this.cast = null;
+    this.s.casting[1](null);
+    if (pb.method === "hls") void api.stopSession(pb.session_id);
+    if (!this.closed) void this.restart(at);
   }
 
   private save() {
@@ -307,19 +410,27 @@ class AndroidPlayer {
     this.present();
     this.timers.push(
       setInterval(() => {
-        if (this.exo.isPlaying()) void this.save();
+        if (this.isPlaying()) void this.save();
       }, SAVE_EVERY_MS),
       // Times, the timeline and subtitles follow playback; while the controls are hidden only the
       // subtitles do.
       setInterval(() => {
+        if (this.cast) {
+          this.cast.at = this.position();
+          this.s.playing[1](this.isPlaying());
+        }
         if (this.s.controls[0]()) this.bump();
         this.showSubs();
       }, 250),
       setInterval(() => this.updateMedia(), 1000),
     );
+    this.stopFollowingCast = followCasting({
+      started: (device) => void this.startCasting(device),
+      ended: () => this.endCasting(),
+    });
     this.media = nowPlaying.start(this.mediaInfo(), {
-      play: () => this.exo.play(),
-      pause: () => this.exo.pause(),
+      play: () => this.play(),
+      pause: () => this.pause(),
       seekTo: (secs) => this.seekTo(secs),
     });
     // Leaving the app: the sound goes on (the media service keeps it running, with its
@@ -349,7 +460,7 @@ class AndroidPlayer {
   private updateMedia(info = false) {
     if (!this.media || this.closed) return;
     if (info) this.media.setInfo(this.mediaInfo());
-    this.media.setPosition(this.position(), this.exo.isPlaying());
+    this.media.setPosition(this.position(), this.isPlaying());
   }
 
   private activity() {
@@ -433,6 +544,13 @@ class AndroidPlayer {
     Application.off(Application.backgroundEvent, this.onBackground);
     Application.android.off(AndroidApplication.activityStoppedEvent, this.onStopped);
     this.pipParams(false);
+    this.stopFollowingCast?.();
+    if (this.cast) {
+      const pb = this.cast.pb;
+      this.cast = null;
+      if (pb.method === "hls") void api.stopSession(pb.session_id);
+      stopCasting();
+    }
     this.media?.end();
     this.media = null;
     this.subs?.close();
@@ -497,7 +615,7 @@ class AndroidPlayer {
     this.s.controls[1](true);
     clearTimeout(this.hideTimer);
     this.hideTimer = setTimeout(() => {
-      if (this.exo.isPlaying() && this.s.scrubAt[0]() === null) this.s.controls[1](false);
+      if (this.isPlaying() && this.s.scrubAt[0]() === null) this.s.controls[1](false);
     }, CONTROLS_HIDE_MS);
   }
 
@@ -532,6 +650,8 @@ class AndroidPlayer {
         )
       : null;
     this.s.timing[1](track ? savedTiming(this.pb.item_id, track) : 0);
+    const client = this.cast ? remote() : null;
+    if (client && this.cast) castSubtitles(client, track ? (this.cast.tracks.get(track.key) ?? null) : null);
     if (announce) {
       const tracks = this.pb.subtitles.filter((s) => s.url);
       const i = track ? tracks.findIndex((s) => s.key === track.key) : -1;
@@ -784,12 +904,24 @@ class AndroidPlayer {
         </Show>
         {/* The controls. */}
         <gridlayout rows="auto, *, auto" class="player-controls" opacity={s.controls[0]() ? 1 : 0} isUserInteractionEnabled={s.controls[0]()}>
-          <gridlayout row={0} columns="auto, *" class="player-top">
+          <gridlayout row={0} columns="auto, *, auto" class="player-top">
             <contentview col={0} ref={(el: View) => ((el as unknown as { content: View }).content = btn("✕", () => this.close(), 22))} />
             <stacklayout col={1} class="player-titles">
               <label class="player-title" text={s.title[0]()} />
               <label class="player-stream" text={s.stream[0]()} />
             </stacklayout>
+            <contentview
+              col={2}
+              verticalAlignment="middle"
+              ref={(el: View) => {
+                const holder = new Placeholder();
+                holder.on("creatingView", (e: { view: unknown }) => {
+                  const activity = (Application.android.foregroundActivity ?? Application.android.startActivity) as android.content.Context;
+                  e.view = castButton(activity) ?? new android.view.View(activity);
+                });
+                (el as unknown as { content: View }).content = holder;
+              }}
+            />
           </gridlayout>
           <stacklayout row={1} orientation="horizontal" horizontalAlignment="center" verticalAlignment="middle" class="player-center">
             <contentview ref={(el: View) => ((el as unknown as { content: View }).content = btn("↺10", () => this.seekTo(this.position() - SKIP_SECS), 24))} />
@@ -797,8 +929,8 @@ class AndroidPlayer {
               class="player-icon big"
               text={s.playing[0]() ? "❚❚" : "▶"}
               on:tap={() => {
-                if (this.exo.isPlaying()) this.exo.pause();
-                else this.exo.play();
+                if (this.isPlaying()) this.pause();
+                else this.play();
                 this.showControls();
               }}
             />
@@ -834,6 +966,15 @@ class AndroidPlayer {
             </gridlayout>
           </stacklayout>
         </gridlayout>
+        <Show when={s.casting[0]()}>
+          <label
+            class="player-casting"
+            text={t("Playing on {device}", { device: s.casting[0]()! })}
+            verticalAlignment="middle"
+            horizontalAlignment="center"
+            isUserInteractionEnabled={false}
+          />
+        </Show>
         <Show when={s.toast[0]()}>
           <label class="player-toast" text={s.toast[0]()} verticalAlignment="top" horizontalAlignment="center" isUserInteractionEnabled={false} />
         </Show>

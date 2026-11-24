@@ -500,7 +500,12 @@
   `PlaybackService` (MediaSessionService, foreground while playing, in the manifest). Leaving the
   app keeps the sound, or (Android 12+) the picture in a picture-in-picture window (no controls or
   text subtitles); closing that window pauses. Everything else stays TypeScript: NativeScript
-  generates the Java stubs for `.extend(...)` classes. NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
+  generates the Java stubs for `.extend(...)` classes. Chromecast (`cast.android.ts`): Google's
+  Default Media Receiver (`CastOptionsProvider.java`, nothing hosted), the Cast button in the
+  player's top bar; casting asks the server for a stream the Chromecast plays (`CAST_PROFILE`:
+  H.264, AAC, 1080p; fMP4 HLS flagged as such), hands it the signed URL, text subtitles and
+  artwork, and the player becomes its remote (play/pause/seek/progress); ending it resumes here.
+  The server's open CORS lets the receiver fetch. NSD discovery, SpeechRecognizer, SF Symbol names as vector drawables
   (`res/drawable/sym_*.xml`). Build: JDK 17 + `ANDROID_HOME`, `npx ns build android`.
 - Playback (`player.ios.ts`; `player.android.tsx` alike): our own controls over an AVPlayerLayer, never AVPlayerViewController
   (it shows the server's growing HLS event playlists as "LIVE" with no seeking ahead). The

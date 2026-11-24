@@ -54,6 +54,7 @@ const ES: Record<string, string> = {
   "Continue Watching": "Seguir viendo",
   "My List": "Mi lista",
   "Ready to watch": "Listo para ver",
+  "Playing on {device}": "Reproduciendo en {device}",
   "{title} is ready to watch": "{title} ya está disponible",
   "The movie you asked for is in Panda now.": "La película que pediste ya está en Panda.",
   "The show you asked for is in Panda now.": "La serie que pediste ya está en Panda.",

@@ -270,3 +270,5 @@ ActionBar {
 .player-preview { width: 160; height: 90; border-radius: 6; border-width: 2; border-color: #ffffff; margin-bottom: 4; }
 .player-sub { color: #ffffff; font-size: 20; text-align: center; padding: 2 10; margin: 0 48; background-color: rgba(0, 0, 0, 0.6); border-radius: 4; horizontal-align: center; }
 .player-toast { color: #f4f1ea; font-size: 14; padding: 10 16; margin-top: 64; border-radius: 10; background-color: rgba(26, 26, 29, 0.92); }
+/* Casting: what's on the TV, over the paused phone (player.android.tsx). */
+.player-casting { color: #f4f1ea; font-size: 18; padding: 12 20; border-radius: 10; background-color: rgba(26, 26, 29, 0.85); }
