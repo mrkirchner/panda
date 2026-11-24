@@ -15,7 +15,7 @@ use panda_metadata::matching::normalize;
 use serde::{Deserialize, Serialize};
 
 use super::titles::{Title, movie_titles};
-use crate::auth::{CurrentUser, allowed_libraries};
+use crate::auth::{CurrentUser, access};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
@@ -133,8 +133,8 @@ fn has_genre(genres: Option<&str>, genre: &str) -> bool {
 }
 
 async fn library_shows(state: &AppState, user_id: i64) -> ApiResult<Vec<SeriesSummary>> {
-    let allowed = allowed_libraries(state, user_id).await?;
-    crate::catalog::series(state, allowed.as_deref()).await
+    let access = access(state, user_id).await?;
+    crate::catalog::series(state, &access).await
 }
 
 async fn find(
@@ -387,6 +387,9 @@ async fn discover(
     have_movies: &HashSet<String>,
     have_shows: &HashSet<i64>,
 ) -> Vec<Discover> {
+    if outside_hidden(state, user_id).await.unwrap_or(true) {
+        return Vec::new();
+    }
     let (movies, shows) = lookup(state, q).await;
     let mine: HashSet<(RequestKind, i64)> = state
         .db
@@ -650,24 +653,38 @@ async fn discover_sets(
 
 /// Titles you don't have, for one profile: what's in your library dropped; each marked as
 /// requested (by you, or already on Radarr/Sonarr), downloaded, or requestable.
+/// What this profile has asked for (kind, TMDB id).
+async fn my_requests(state: &AppState, user_id: i64) -> ApiResult<HashSet<(RequestKind, i64)>> {
+    Ok(state
+        .db
+        .requests_for_user(user_id)
+        .await?
+        .into_iter()
+        .filter_map(|r| r.tmdb_id.map(|id| (r.kind, id)))
+        .collect())
+}
+
+/// A profile with an age limit sees nothing from outside the library: TMDB's lists, suggestions,
+/// people's other work and pages of titles you don't have carry no rating Panda checked.
+pub(super) async fn outside_hidden(state: &AppState, user_id: i64) -> ApiResult<bool> {
+    Ok(crate::auth::access(state, user_id).await?.limited())
+}
+
 pub(super) async fn for_profile(
     state: &AppState,
     user_id: i64,
     items: Vec<Discover>,
 ) -> ApiResult<Vec<Discover>> {
+    if outside_hidden(state, user_id).await? {
+        return Ok(Vec::new());
+    }
     let integrations = state.integrations();
     // Per profile: drop what's in your library; mark what you've asked for.
     let have_movies: HashSet<String> =
         movie_titles(state, user_id, None).await?.into_iter().map(|t| t.id).collect();
     let have_shows: HashSet<i64> =
         library_shows(state, user_id).await?.into_iter().filter_map(|s| s.tmdb_id).collect();
-    let mine: HashSet<(RequestKind, i64)> = state
-        .db
-        .requests_for_user(user_id)
-        .await?
-        .into_iter()
-        .filter_map(|r| r.tmdb_id.map(|id| (r.kind, id)))
-        .collect();
+    let mine = my_requests(state, user_id).await?;
     let servers = on_servers(state).await;
     let can = |k: RequestKind| match k {
         RequestKind::Movie => !integrations.radarrs().is_empty(),
@@ -748,6 +765,9 @@ async fn recommendations(
         RequestKind::Series => !integrations.sonarrs().is_empty(),
     };
     let (Some(tmdb), true) = (integrations.tmdb.clone(), can) else { return Ok(Vec::new()) };
+    if outside_hidden(state, user_id).await? {
+        return Ok(Vec::new());
+    }
     let cache = match kind {
         RequestKind::Movie => &SUGGESTIONS,
         RequestKind::Series => &SHOW_SUGGESTIONS,
@@ -909,6 +929,8 @@ async fn collection_view(
     if parts.len() < 2 {
         return Ok(None);
     }
+    // An age limit: only the films of the series in the library (and within the limit).
+    let hide_outside = outside_hidden(state, user_id).await?;
     let mine: HashSet<i64> = state
         .db
         .requests_for_user(user_id)
@@ -919,8 +941,9 @@ async fn collection_view(
         .collect();
     let servers = on_servers(state).await;
     let can_request = !state.integrations().radarrs().is_empty();
-    let items = parts
+    let items: Vec<CollectionItem> = parts
         .into_iter()
+        .filter(|(_, d)| !hide_outside || titles.iter().any(|t| t.id == format!("m{}", d.tmdb_id)))
         .map(|(_, mut d)| {
             if let Some(t) = titles.iter().find(|t| t.id == format!("m{}", d.tmdb_id)) {
                 return CollectionItem { title: Some(t.clone()), suggestion: None };
@@ -932,6 +955,9 @@ async fn collection_view(
             CollectionItem { title: None, suggestion: Some(d) }
         })
         .collect();
+    if items.len() < 2 {
+        return Ok(None);
+    }
     Ok(Some(CollectionView { name, items }))
 }
 
@@ -970,6 +996,10 @@ async fn preview(
     };
     let integrations = state.integrations();
     let Some(tmdb) = integrations.tmdb.clone() else { return Err(ApiError::NotFound) };
+    // Titles you don't have aren't shown to a profile with an age limit (no rating checked).
+    if outside_hidden(&state, me.user.id).await? {
+        return Err(ApiError::NotFound);
+    }
     let cached = PREVIEWS
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -1226,22 +1256,18 @@ async fn person(
         (lead_tier(s.tmdb_id.and_then(|t| base.show_ids.get(&t).copied())), std::cmp::Reverse(s.year))
     });
     let have_shows: HashSet<i64> = shows.iter().filter_map(|s| s.tmdb_id).collect();
-    let mine: HashSet<(RequestKind, i64)> = state
-        .db
-        .requests_for_user(me.user.id)
-        .await?
-        .into_iter()
-        .filter_map(|r| r.tmdb_id.map(|t| (r.kind, t)))
-        .collect();
+    let mine = my_requests(&state, me.user.id).await?;
     let servers = on_servers(&state).await;
     let can = |k: RequestKind| match k {
         RequestKind::Movie => !integrations.radarrs().is_empty(),
         RequestKind::Series => !integrations.sonarrs().is_empty(),
     };
+    let hide_outside = outside_hidden(&state, me.user.id).await?;
     let roles = base
         .page
         .roles
         .iter()
+        .filter(|_| !hide_outside)
         .map(|row| RoleRow {
             role: row.role,
             items: row
@@ -1280,7 +1306,7 @@ async fn person(
                 .filter(|s| lead(lead_tier(s.tmdb_id.and_then(|t| base.show_ids.get(&t).copied()))))
                 .find_map(|s| s.backdrop.clone())
         })
-        .or_else(|| base.page.backdrop.clone());
+        .or_else(|| if hide_outside { None } else { base.page.backdrop.clone() });
     Ok(Json(PersonPage { backdrop, movies, shows, roles, ..base.page }))
 }
 

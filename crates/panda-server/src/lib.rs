@@ -28,6 +28,7 @@ pub async fn serve(state: AppState) -> anyhow::Result<()> {
     services::arr_cleanup::spawn(state.clone());
     services::request_ready::spawn(state.clone());
     services::markers::spawn(state.clone());
+    services::ratings::spawn(state.clone());
     services::library_health::spawn(state.clone());
     services::library_watch::spawn(state.clone());
     services::discovery::spawn(&state);

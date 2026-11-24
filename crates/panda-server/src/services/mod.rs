@@ -14,6 +14,7 @@ pub(crate) mod mail;
 pub(crate) mod markers;
 pub(crate) mod metadata;
 pub(crate) mod providers;
+pub(crate) mod ratings;
 pub(crate) mod request_ready;
 pub(crate) mod scanner;
 pub(crate) mod sessions;

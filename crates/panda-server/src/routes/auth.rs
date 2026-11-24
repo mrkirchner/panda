@@ -299,8 +299,8 @@ async fn avatar_allowed(state: &AppState, user_id: i64, avatar: &str) -> ApiResu
     if movies.iter().any(|m| m.poster.as_deref() == Some(key)) {
         return Ok(true);
     }
-    let allowed = crate::auth::allowed_libraries(state, user_id).await?;
-    let shows = crate::catalog::series(state, allowed.as_deref()).await?;
+    let access = crate::auth::access(state, user_id).await?;
+    let shows = crate::catalog::series(state, &access).await?;
     Ok(shows.iter().any(|s| s.poster.as_deref() == Some(key)))
 }
 
@@ -901,10 +901,39 @@ struct SwitchBody {
     device_token: String,
     user_id: i64,
     pin: Option<String>,
+    /// The account's parental PIN, to leave a limited profile for a less limited one.
+    #[serde(default)]
+    parental_pin: Option<String>,
 }
 
 /// Switch the TV to another profile. The PIN (if the profile has one) is checked here, on the
 /// server; the previous profile's session on this TV ends.
+/// A device on a profile with an age limit (even signed out since) moves to a less limited one
+/// only with the account's parental PIN (`super::age_limits`). Without one set (a limit an admin
+/// gave), nothing to ask.
+async fn leave_limited_profile(
+    state: &AppState,
+    device_id: i64,
+    to: i64,
+    pin: Option<&str>,
+) -> ApiResult<()> {
+    let Some(from) = state.db.device_profile_id(device_id).await?.filter(|f| *f != to) else { return Ok(()) };
+    let Some(from) = state.db.user(from).await? else { return Ok(()) };
+    let Some(limit) = from.max_age else { return Ok(()) };
+    let target = state.db.user(to).await?.ok_or(ApiError::Forbidden)?;
+    if target.max_age.is_some_and(|m| m <= limit) {
+        return Ok(());
+    }
+    if state.db.parental_pin_hash(from.account_id).await?.is_none() {
+        return Ok(());
+    }
+    match pin {
+        Some(pin) => super::age_limits::check_parental_pin(state, from.account_id, pin).await,
+        // The apps ask for it, then switch again with it.
+        None => Err(ApiError::Conflict("parental PIN needed".into())),
+    }
+}
+
 async fn device_switch(
     State(state): State<AppState>,
     Json(body): Json<SwitchBody>,
@@ -913,6 +942,7 @@ async fn device_switch(
     limit(&state, &format!("switch:{}", device.id), SWITCH_PER_DEVICE)?;
     let profiles = state.db.device_profiles(device.id).await?;
     let profile = profiles.iter().find(|p| p.user_id == body.user_id).ok_or(ApiError::Forbidden)?;
+    leave_limited_profile(&state, device.id, profile.user_id, body.parental_pin.as_deref()).await?;
     if profile.has_pin {
         let key = format!("pin:{}:{}", device.id, profile.user_id);
         state.limiter.hit(&key, PIN_PER_PROFILE).map_err(ApiError::TooManyRequests)?;

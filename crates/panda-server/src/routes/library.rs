@@ -5,7 +5,7 @@ use panda_db::{Item, ItemFilter, Library, SeriesSummary};
 use panda_media::probe::MediaInfo;
 use serde::Serialize;
 
-use crate::auth::{CurrentUser, allowed_libraries, ensure_item_access};
+use crate::auth::{CurrentUser, access, ensure_item_access};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
@@ -25,14 +25,9 @@ async fn list_libraries(
     State(state): State<AppState>,
     Extension(me): Extension<CurrentUser>,
 ) -> ApiResult<Json<Vec<Library>>> {
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let mut libs: Vec<Library> = state
-        .db
-        .libraries()
-        .await?
-        .into_iter()
-        .filter(|l| allowed.as_ref().is_none_or(|a| a.contains(&l.id)))
-        .collect();
+    let access = access(&state, me.user.id).await?;
+    let mut libs: Vec<Library> =
+        state.db.libraries().await?.into_iter().filter(|l| access.library(l.id)).collect();
     if !me.is_admin() {
         for l in &mut libs {
             l.folders.clear();
@@ -51,9 +46,9 @@ struct ItemWithProgress {
 async fn list_items(
     State(state): State<AppState>,
     Extension(me): Extension<CurrentUser>,
-    Query(mut filter): Query<ItemFilter>,
+    Query(filter): Query<ItemFilter>,
 ) -> ApiResult<Json<Vec<ItemWithProgress>>> {
-    filter.allowed_libraries = allowed_libraries(&state, me.user.id).await?;
+    let filter = access(&state, me.user.id).await?.filter(filter);
     let states = super::watch::states_by_key(&state, me.user.id).await?;
     let mut items = state.db.items(&filter).await?;
     episode_stills(&state, &mut items).await;
@@ -104,14 +99,14 @@ async fn offline_libraries(
     State(state): State<AppState>,
     Extension(me): Extension<CurrentUser>,
 ) -> ApiResult<Json<Vec<String>>> {
-    let allowed = allowed_libraries(&state, me.user.id).await?;
+    let access = access(&state, me.user.id).await?;
     Ok(Json(
         state
             .db
             .libraries()
             .await?
             .into_iter()
-            .filter(|l| allowed.as_ref().is_none_or(|a| a.contains(&l.id)))
+            .filter(|l| access.library(l.id))
             .filter(|l| crate::services::library_health::is_offline(&state, l.id))
             .map(|l| l.name)
             .collect(),
@@ -122,8 +117,8 @@ async fn list_series(
     State(state): State<AppState>,
     Extension(me): Extension<CurrentUser>,
 ) -> ApiResult<Json<Vec<SeriesSummary>>> {
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    Ok(Json(crate::catalog::series(&state, allowed.as_deref()).await?))
+    let access = access(&state, me.user.id).await?;
+    Ok(Json(crate::catalog::series(&state, &access).await?))
 }
 
 impl super::titles::Rankable for SeriesSummary {
@@ -144,10 +139,9 @@ async fn related_series(
     Extension(me): Extension<CurrentUser>,
     Path(name): Path<String>,
 ) -> ApiResult<Json<Vec<SeriesSummary>>> {
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let target =
-        crate::catalog::find_series(&state, allowed.as_deref(), &name).await?.ok_or(ApiError::NotFound)?;
-    let visible: Vec<SeriesSummary> = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = access(&state, me.user.id).await?;
+    let target = crate::catalog::find_series(&state, &access, &name).await?.ok_or(ApiError::NotFound)?;
+    let visible: Vec<SeriesSummary> = crate::catalog::series(&state, &access).await?;
     let genres = target.genres.clone();
     let others = visible.into_iter().filter(|s| s.series != target.series).collect();
     Ok(Json(super::titles::rank_related(genres.as_deref(), others, super::titles::RELATED_LIMIT)))

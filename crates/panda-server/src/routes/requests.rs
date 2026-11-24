@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use tokio::time::timeout;
 
 use super::titles::movie_titles;
-use crate::auth::{CurrentUser, allowed_libraries};
+use crate::auth::{CurrentUser, access};
 use crate::error::{ApiError, ApiResult};
 use crate::state::{AppState, Tier};
 
@@ -123,6 +123,10 @@ async fn create(
     Json(mut new): Json<NewRequest>,
 ) -> ApiResult<(StatusCode, Json<MediaRequest>)> {
     new.user_id = Some(me.user.id);
+    // A profile with an age limit sees nothing outside the library, so it asks for nothing.
+    if crate::auth::access(&state, me.user.id).await?.limited() {
+        return Err(ApiError::Forbidden);
+    }
     // Nothing to send it to: refuse before anything is saved (no stray failed request).
     let integrations = state.integrations();
     match new.kind {
@@ -403,12 +407,12 @@ async fn mine(
         return Ok(Json(Vec::new()));
     }
     let titles = movie_titles(&state, me.user.id, None).await?;
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let series = crate::catalog::series(&state, None).await?;
+    let access = access(&state, me.user.id).await?;
+    let series = crate::catalog::series(&state, &access).await?;
     let integrations = state.integrations();
 
     let out = join_all(requests.into_iter().map(|r| {
-        let (integrations, titles, series, allowed) = (&integrations, &titles, &series, &allowed);
+        let (integrations, titles, series) = (&integrations, &titles, &series);
         async move {
             let tiers = match r.kind {
                 RequestKind::Movie => {
@@ -448,7 +452,6 @@ async fn mine(
                 .then(|| {
                     series
                         .iter()
-                        .filter(|s| allowed.as_ref().is_none_or(|a| a.contains(&s.library_id)))
                         .find(|s| s.tmdb_id.is_some() && s.tmdb_id == r.tmdb_id)
                         .map(|s| s.series.clone())
                 })

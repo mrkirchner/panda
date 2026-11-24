@@ -186,16 +186,15 @@ pub(super) fn pick(
 pub(super) async fn next_episode(
     state: &AppState,
     series: &str,
-    allowed: Option<Vec<i64>>,
+    access: &crate::auth::Access,
     watched: &HashMap<String, WatchState>,
 ) -> ApiResult<Option<NextEpisode>> {
-    let filter = ItemFilter {
+    let filter = access.filter(ItemFilter {
         series: Some(series.to_string()),
         kind: Some(ItemKind::Episode),
-        allowed_libraries: allowed,
         limit: Some(10_000),
         ..Default::default()
-    };
+    });
     let mut episodes = state.db.items(&filter).await?; // season/episode order
     // Specials (season 0) last: an unwatched show starts at S01E01, not a bonus episode.
     episodes.sort_by_key(|e| (e.season.unwrap_or(0) < 1, e.season, e.episode));
@@ -233,6 +232,7 @@ mod tests {
             added_at: added.into(),
             versions: vec![],
             progress: None,
+            rating_age: None,
         }
     }
 
@@ -251,6 +251,7 @@ mod tests {
             poster: None,
             backdrop: Some("b".into()),
             latest_added_at: added.into(),
+            rating_age: None,
         }
     }
 

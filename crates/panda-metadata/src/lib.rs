@@ -9,6 +9,7 @@ pub mod images;
 pub mod matching;
 pub mod omdb;
 pub mod providers;
+pub mod ratings;
 pub mod tmdb;
 pub mod tvmaze;
 

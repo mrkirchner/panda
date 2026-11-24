@@ -183,8 +183,22 @@ impl Db {
             .bind(user_id)
             .execute(&mut *tx)
             .await?;
+        sqlx::query("UPDATE devices SET profile_id = ? WHERE id = ?")
+            .bind(user_id)
+            .bind(device_id)
+            .execute(&mut *tx)
+            .await?;
         tx.commit().await?;
         Ok(id)
+    }
+
+    /// The profile this device was last switched to (kept after it signs out).
+    pub async fn device_profile_id(&self, device_id: i64) -> Result<Option<i64>> {
+        let row: Option<(Option<i64>,)> = sqlx::query_as("SELECT profile_id FROM devices WHERE id = ?")
+            .bind(device_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        Ok(row.and_then(|(p,)| p))
     }
 
     pub async fn set_pin(&self, user_id: i64, pin_hash: Option<&str>) -> Result<()> {

@@ -48,6 +48,9 @@ pub struct Item {
     pub episode_overview: Option<String>,
     /// The episode's own still (image key), when TMDB has one.
     pub episode_still: Option<String>,
+    /// The youngest age its rating is for (`None`: not rated, or not looked up yet).
+    #[serde(skip)]
+    pub rating_age: Option<i64>,
 }
 
 /// Searchable columns copied out of the full ffprobe JSON.
@@ -75,6 +78,9 @@ pub struct ItemFilter {
     pub q: Option<String>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
+    /// A profile's age limit: only titles rated up to it (unrated ones never). Set by the server.
+    #[serde(skip)]
+    pub max_age: Option<i64>,
 }
 
 /// A show folder and what it matched.
@@ -104,6 +110,9 @@ pub struct SeriesSummary {
     pub backdrop: Option<String>,
     /// Newest episode's add time (for "Recently added").
     pub latest_added_at: String,
+    /// The youngest age the show's rating is for (`None`: not rated).
+    #[serde(skip)]
+    pub rating_age: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -128,7 +137,8 @@ macro_rules! item_columns {
              i.size_bytes, i.duration_secs, i.video_codec, i.width, i.height, i.dynamic_range, ",
             $probe,
             ", i.added_at, m.tmdb_id, m.title AS meta_title, m.overview, m.genres, m.rating, \
-             m.poster, m.backdrop, e.name AS episode_title, e.overview AS episode_overview, e.still AS episode_still \
+             m.poster, m.backdrop, m.rating_age, e.name AS episode_title, e.overview AS episode_overview, \
+             e.still AS episode_still \
              FROM items i \
              LEFT JOIN metadata m ON m.id = i.metadata_id \
              LEFT JOIN episode_metadata e \
@@ -424,6 +434,9 @@ impl Db {
         if let Some(id) = filter.library_id {
             qb.push(" AND i.library_id = ").push_bind(id);
         }
+        if let Some(age) = filter.max_age {
+            qb.push(" AND m.rating_age IS NOT NULL AND m.rating_age <= ").push_bind(age);
+        }
         if let Some(allowed) = &filter.allowed_libraries {
             qb.push(" AND i.library_id IN (");
             if allowed.is_empty() {
@@ -479,7 +492,8 @@ impl Db {
             // same but for case, are one show (named by one of its folders).
             "SELECT MIN(i.series) AS series, MIN(i.library_id) AS library_id, COUNT(*) AS episodes,
                     COUNT(DISTINCT i.season) AS seasons, m.tmdb_id, m.title AS meta_title, m.year,
-                    m.overview, m.genres, m.rating, m.poster, m.backdrop, MAX(i.added_at) AS latest_added_at
+                    m.overview, m.genres, m.rating, m.poster, m.backdrop, MAX(i.added_at) AS latest_added_at,
+                    MAX(m.rating_age) AS rating_age
              FROM items i LEFT JOIN metadata m ON m.id = i.metadata_id
              WHERE i.kind = 'episode' AND i.series IS NOT NULL
              GROUP BY COALESCE('t' || m.tmdb_id, 'n' || LOWER(i.series))

@@ -13,7 +13,7 @@ use panda_media::probe::MediaInfo;
 use serde::{Deserialize, Serialize};
 
 use super::playback::{PlaybackRequest, PlaybackResponse, load, play};
-use crate::auth::{CurrentUser, allowed_libraries};
+use crate::auth::{CurrentUser, access};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
@@ -59,6 +59,9 @@ pub(crate) struct Title {
     pub versions: Vec<Version>,
     /// The signed-in user's progress (most recent across versions).
     pub progress: Option<super::watch::Progress>,
+    /// The youngest age its rating is for (`None`: not rated); for profiles' age limits.
+    #[serde(skip)]
+    pub rating_age: Option<i64>,
 }
 
 fn version_label(i: &Item) -> String {
@@ -112,6 +115,7 @@ pub(crate) fn group_movies(items: Vec<Item>) -> Vec<Title> {
                 poster: first.poster.clone(),
                 backdrop: first.backdrop.clone(),
                 duration_secs: first.duration_secs,
+                rating_age: first.rating_age,
                 added_at: items.iter().map(|i| i.added_at.clone()).max().unwrap_or_default(),
                 versions: items
                     .iter()
@@ -165,11 +169,15 @@ pub(crate) async fn movie_titles(
 ) -> ApiResult<Vec<Title>> {
     // Built once for everyone (crate::catalog); here only this profile's access and progress.
     let catalog = crate::catalog::get(state).await?;
-    let allowed = allowed_libraries(state, user_id).await?;
+    let access = access(state, user_id).await?;
     let states = super::watch::states_by_key(state, user_id).await?;
-    let visible =
-        |lib: i64| library_id.is_none_or(|l| l == lib) && allowed.as_ref().is_none_or(|a| a.contains(&lib));
-    Ok(catalog.movies.iter().filter_map(|c| for_profile(c, &visible, &states)).collect())
+    let visible = |lib: i64| library_id.is_none_or(|l| l == lib) && access.library(lib);
+    Ok(catalog
+        .movies
+        .iter()
+        .filter(|c| access.title(&c.title))
+        .filter_map(|c| for_profile(c, &visible, &states))
+        .collect())
 }
 
 #[derive(Deserialize)]
@@ -197,9 +205,12 @@ async fn list_titles(
 pub(crate) async fn find_title(state: &AppState, user_id: i64, id: &str) -> ApiResult<Title> {
     let catalog = crate::catalog::get(state).await?;
     let c = catalog.movies.iter().find(|c| c.title.id == id).ok_or(ApiError::NotFound)?;
-    let allowed = allowed_libraries(state, user_id).await?;
+    let access = access(state, user_id).await?;
     let states = super::watch::states_by_key(state, user_id).await?;
-    let visible = |lib: i64| allowed.as_ref().is_none_or(|a| a.contains(&lib));
+    if !access.title(&c.title) {
+        return Err(ApiError::NotFound);
+    }
+    let visible = |lib: i64| access.library(lib);
     for_profile(c, &visible, &states).ok_or(ApiError::NotFound)
 }
 
@@ -327,6 +338,7 @@ mod tests {
             added_at: String::new(),
             versions: Vec::new(),
             progress: None,
+            rating_age: None,
         };
         if finished {
             t.progress = Some(crate::routes::watch::Progress {
@@ -723,8 +735,8 @@ pub(crate) async fn visible_series(
     user_id: i64,
     name: &str,
 ) -> ApiResult<panda_db::SeriesSummary> {
-    let allowed = allowed_libraries(state, user_id).await?;
-    crate::catalog::find_series(state, allowed.as_deref(), name).await?.ok_or(ApiError::NotFound)
+    let access = access(state, user_id).await?;
+    crate::catalog::find_series(state, &access, name).await?.ok_or(ApiError::NotFound)
 }
 
 pub(crate) fn build_details(

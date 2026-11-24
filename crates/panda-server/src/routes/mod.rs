@@ -7,6 +7,7 @@
 //! - admin:  `/api/admin/*` (admin role)
 
 mod admin;
+mod age_limits;
 mod auth;
 mod clips;
 mod favorites;
@@ -52,6 +53,7 @@ pub fn router(state: AppState) -> Router {
     let public = auth::public_routes();
     let user = Router::new()
         .merge(auth::user_routes())
+        .merge(age_limits::routes())
         .merge(library::routes())
         .merge(playback::user_routes())
         .merge(requests::routes())

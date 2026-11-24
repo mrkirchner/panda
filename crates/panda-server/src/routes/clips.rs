@@ -22,7 +22,7 @@ use tower_http::services::ServeFile;
 use super::playback::load;
 use super::titles::find_title;
 use crate::auth::middleware::MediaGrant;
-use crate::auth::{self, CurrentUser, allowed_libraries, ensure_item_access, with_token};
+use crate::auth::{self, CurrentUser, access, ensure_item_access, with_token};
 use crate::error::{ApiError, ApiResult};
 use crate::services::clips;
 use crate::state::AppState;
@@ -66,11 +66,8 @@ async fn series_clip(
     Path(name): Path<String>,
 ) -> ApiResult<Json<ClipUrl>> {
     super::titles::visible_series(&state, me.user.id, &name).await?;
-    let filter = ItemFilter {
-        series: Some(name),
-        allowed_libraries: allowed_libraries(&state, me.user.id).await?,
-        ..ItemFilter::default()
-    };
+    let filter =
+        access(&state, me.user.id).await?.filter(ItemFilter { series: Some(name), ..ItemFilter::default() });
     let items = state.db.items(&filter).await?;
     let item_id = first_episode(&items).ok_or(ApiError::NotFound)?;
     clip_url(&state, (&me.user).into(), item_id).await

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use super::featured::{self, Featured, FeaturedSeries, Pick};
 use super::titles::{Title, movie_titles};
 use crate::auth::middleware::MediaGrant;
-use crate::auth::{self, CurrentUser, allowed_libraries, ensure_item_access, with_token};
+use crate::auth::{self, CurrentUser, access, ensure_item_access, with_token};
 use crate::error::{ApiError, ApiResult};
 use crate::services::settings::now;
 use crate::state::AppState;
@@ -175,7 +175,7 @@ fn entry(i: &Item, s: Option<&WatchState>, up_next: bool, at: i64) -> ContinueEn
 async fn continue_watching(state: &AppState, user_id: i64) -> ApiResult<Vec<ContinueEntry>> {
     let states = state.db.watch_states(user_id).await?;
     let by_key: HashMap<&str, &WatchState> = states.iter().map(|s| (s.watch_key.as_str(), s)).collect();
-    let allowed = allowed_libraries(state, user_id).await?;
+    let access = access(state, user_id).await?;
     let mut out: Vec<ContinueEntry> = Vec::new();
     let mut seen_series: Vec<String> = Vec::new();
 
@@ -197,7 +197,7 @@ async fn continue_watching(state: &AppState, user_id: i64) -> ApiResult<Vec<Cont
                 None => continue,
             },
         };
-        if allowed.as_ref().is_some_and(|a| !a.contains(&item.library_id)) {
+        if !access.item(&item) {
             continue;
         }
         if let Some(series) = &item.series {
@@ -212,13 +212,12 @@ async fn continue_watching(state: &AppState, user_id: i64) -> ApiResult<Vec<Cont
             out.push(entry(&item, Some(s), false, s.last_played_at));
         } else if s.finished && item.kind == "episode" {
             // Up next: the first later episode not yet finished.
-            let filter = ItemFilter {
+            let filter = access.filter(ItemFilter {
                 series: item.series.clone(),
                 kind: Some(ItemKind::Episode),
-                allowed_libraries: allowed.clone(),
                 limit: Some(10_000),
                 ..Default::default()
-            };
+            });
             let here = (item.season.unwrap_or(0), item.episode.unwrap_or(0));
             let next = state.db.items(&filter).await?.into_iter().find(|e| {
                 (e.season.unwrap_or(0), e.episode.unwrap_or(0)) > here
@@ -252,8 +251,8 @@ pub(super) fn year_of(secs: i64) -> i64 {
 async fn home(State(state): State<AppState>, Extension(me): Extension<CurrentUser>) -> ApiResult<Json<Home>> {
     let mut movies = movie_titles(&state, me.user.id, None).await?;
     movies.sort_by(|a, b| b.added_at.cmp(&a.added_at));
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let mut shows: Vec<SeriesSummary> = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = access(&state, me.user.id).await?;
+    let mut shows: Vec<SeriesSummary> = crate::catalog::series(&state, &access).await?;
     shows.sort_by(|a, b| b.latest_added_at.cmp(&a.latest_added_at));
 
     // Hero: picked from the whole library, before the rows are cut down.
@@ -273,7 +272,7 @@ async fn home(State(state): State<AppState>, Extension(me): Extension<CurrentUse
             },
             Pick::Show(i) => {
                 let summary = shows[i].clone();
-                let next = featured::next_episode(&state, &summary.series, allowed.clone(), &watched).await?;
+                let next = featured::next_episode(&state, &summary.series, &access, &watched).await?;
                 Featured {
                     reason,
                     movie: None,
@@ -430,8 +429,8 @@ async fn top_shelf(
 
     // Newest first, movies and shows mixed.
     let movies = movie_titles(&state, user_id, None).await?;
-    let allowed = allowed_libraries(&state, user_id).await?;
-    let shows: Vec<SeriesSummary> = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = access(&state, user_id).await?;
+    let shows: Vec<SeriesSummary> = crate::catalog::series(&state, &access).await?;
     let mut recent: Vec<(String, ShelfItem)> = movies
         .iter()
         .map(|t| {

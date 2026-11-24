@@ -236,22 +236,66 @@ pub(crate) fn with_token(path: &str, token: &str) -> String {
     format!("{path}?t={token}")
 }
 
-/// Libraries a user may see (`None` = all).
-pub(crate) async fn allowed_libraries(state: &AppState, user_id: i64) -> ApiResult<Option<Vec<i64>>> {
-    let user = state.db.user(user_id).await?.ok_or(crate::error::ApiError::Unauthorized)?;
-    Ok(state.db.allowed_libraries(&user).await?)
+/// What a profile may see: its account's libraries, and titles rated up to its age limit.
+/// Every list, page and stream goes through this.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct Access {
+    /// `None` = every library.
+    pub libraries: Option<Vec<i64>>,
+    /// `None` = no age limit. A limited profile never sees an unrated title.
+    pub max_age: Option<i64>,
 }
 
-/// 404 (not 403) for items in libraries the user can't see, so their existence isn't revealed.
+impl Access {
+    pub(crate) fn library(&self, id: i64) -> bool {
+        self.libraries.as_ref().is_none_or(|l| l.contains(&id))
+    }
+
+    /// A rating within the limit (an unrated title only without one).
+    pub(crate) fn rating(&self, age: Option<i64>) -> bool {
+        self.max_age.is_none_or(|max| age.is_some_and(|a| a <= max))
+    }
+
+    /// This profile has an age limit: things from outside the library (TMDB's lists, people's
+    /// other work) carry no rating here, so they aren't shown.
+    pub(crate) fn limited(&self) -> bool {
+        self.max_age.is_some()
+    }
+
+    pub(crate) fn item(&self, i: &panda_db::Item) -> bool {
+        self.library(i.library_id) && self.rating(i.rating_age)
+    }
+
+    pub(crate) fn title(&self, t: &crate::routes::Title) -> bool {
+        self.rating(t.rating_age)
+    }
+
+    pub(crate) fn series(&self, s: &panda_db::SeriesSummary) -> bool {
+        self.library(s.library_id) && self.rating(s.rating_age)
+    }
+
+    /// `filter` narrowed to what this profile may see.
+    pub(crate) fn filter(&self, mut filter: panda_db::ItemFilter) -> panda_db::ItemFilter {
+        filter.allowed_libraries.clone_from(&self.libraries);
+        filter.max_age = self.max_age;
+        filter
+    }
+}
+
+/// What `user_id` may see.
+pub(crate) async fn access(state: &AppState, user_id: i64) -> ApiResult<Access> {
+    let user = state.db.user(user_id).await?.ok_or(crate::error::ApiError::Unauthorized)?;
+    Ok(Access { libraries: state.db.allowed_libraries(&user).await?, max_age: user.max_age })
+}
+
+/// 404 (not 403) for items the user can't see (another library, over their age limit), so their
+/// existence isn't revealed.
 pub(crate) async fn ensure_item_access(
     state: &AppState,
     user_id: i64,
     item: &panda_db::Item,
 ) -> ApiResult<()> {
-    match allowed_libraries(state, user_id).await? {
-        Some(allowed) if !allowed.contains(&item.library_id) => Err(crate::error::ApiError::NotFound),
-        _ => Ok(()),
-    }
+    if access(state, user_id).await?.item(item) { Ok(()) } else { Err(crate::error::ApiError::NotFound) }
 }
 
 #[cfg(test)]

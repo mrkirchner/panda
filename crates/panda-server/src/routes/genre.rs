@@ -15,7 +15,7 @@ use serde::Serialize;
 use super::featured::{self, Rng};
 use super::home_more::{Spot, add_logos, genres_of, movie_spot, show_spot};
 use super::titles::{Title, movie_titles};
-use crate::auth::{CurrentUser, allowed_libraries};
+use crate::auth::{CurrentUser, access};
 use crate::error::{ApiError, ApiResult};
 use crate::services::settings::now;
 use crate::state::AppState;
@@ -73,8 +73,8 @@ async fn genre_page(
     Path(name): Path<String>,
 ) -> ApiResult<Json<GenrePage>> {
     let movies = movie_titles(&state, me.user.id, None).await?;
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let shows = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = access(&state, me.user.id).await?;
+    let shows = crate::catalog::series(&state, &access).await?;
     let mut page = build(Some(&name), &movies, &shows, featured::daily_seed(now(), me.user.id))
         .ok_or(ApiError::NotFound)?;
     add_logos(&state, page.featured.iter_mut()).await;
@@ -88,13 +88,14 @@ async fn library_page(
     Extension(me): Extension<CurrentUser>,
     Path(id): Path<i64>,
 ) -> ApiResult<Json<GenrePage>> {
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    if allowed.as_ref().is_some_and(|a| !a.contains(&id)) {
+    let access = access(&state, me.user.id).await?;
+    if !access.library(id) {
         return Err(ApiError::NotFound);
     }
     let library = state.db.libraries().await?.into_iter().find(|l| l.id == id).ok_or(ApiError::NotFound)?;
     let (movies, shows) = if library.kind == "shows" {
-        (Vec::new(), crate::catalog::series(&state, Some(&[id])).await?)
+        let shows = crate::catalog::series(&state, &access).await?;
+        (Vec::new(), shows.into_iter().filter(|s| s.library_id == id).collect())
     } else {
         (movie_titles(&state, me.user.id, Some(id)).await?, Vec::new())
     };
@@ -114,8 +115,8 @@ async fn kind_page(
     let (movies, shows) = match kind.as_str() {
         "movies" => (movie_titles(&state, me.user.id, None).await?, Vec::new()),
         "shows" => {
-            let allowed = allowed_libraries(&state, me.user.id).await?;
-            (Vec::new(), crate::catalog::series(&state, allowed.as_deref()).await?)
+            let access = access(&state, me.user.id).await?;
+            (Vec::new(), crate::catalog::series(&state, &access).await?)
         }
         _ => return Err(ApiError::NotFound),
     };

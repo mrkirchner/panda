@@ -227,9 +227,9 @@ async fn item_sidecars(state: &AppState, user_id: i64, item: &Item) -> ApiResult
     else {
         return Ok(out);
     };
-    let allowed = crate::auth::allowed_libraries(state, user_id).await?;
+    let access = crate::auth::access(state, user_id).await?;
     for (v, lib) in title.title.versions.iter().zip(&title.libraries) {
-        if v.item_id == item.id || allowed.as_ref().is_some_and(|a| !a.contains(lib)) {
+        if v.item_id == item.id || !access.library(*lib) {
             continue;
         }
         let Some(other) = state.db.item(v.item_id).await? else { continue };
@@ -324,11 +324,11 @@ async fn other_version_paths(state: &AppState, user_id: i64, item: &Item) -> Api
     else {
         return Ok(Vec::new());
     };
-    let allowed = crate::auth::allowed_libraries(state, user_id).await?;
+    let access = crate::auth::access(state, user_id).await?;
     let mut out = Vec::new();
     for (v, lib) in title.title.versions.iter().zip(&title.libraries) {
         if v.item_id != item.id
-            && allowed.as_ref().is_none_or(|a| a.contains(lib))
+            && access.library(*lib)
             && let Some(other) = state.db.item(v.item_id).await?
         {
             out.push(other.path);
@@ -663,13 +663,12 @@ pub(super) struct NextUp {
 
 async fn next_episode(state: &AppState, user_id: i64, item: &Item) -> ApiResult<Option<NextUp>> {
     let Some(series) = item.series.clone().filter(|_| item.kind == "episode") else { return Ok(None) };
-    let filter = panda_db::ItemFilter {
+    let filter = auth::access(state, user_id).await?.filter(panda_db::ItemFilter {
         series: Some(series.clone()),
         kind: Some(panda_db::ItemKind::Episode),
-        allowed_libraries: auth::allowed_libraries(state, user_id).await?,
         limit: Some(10_000),
         ..Default::default()
-    };
+    });
     let here = (item.season.unwrap_or(0), item.episode.unwrap_or(0));
     let next = state
         .db

@@ -110,6 +110,7 @@ mod tests {
                 email: None,
                 preview_sound: true,
                 token_gen: 0,
+                max_age: None,
             },
             session_id: 1,
             via,

@@ -217,15 +217,7 @@ pub struct ReleaseDate {
 impl MovieFull {
     /// The age rating in `region` ("PG-13"), from the first release that has one.
     pub fn certification(&self, region: &str) -> Option<String> {
-        self.release_dates
-            .results
-            .iter()
-            .find(|c| c.iso_3166_1.eq_ignore_ascii_case(region))?
-            .release_dates
-            .iter()
-            .filter_map(|r| r.certification.as_deref().map(str::trim))
-            .find(|c| !c.is_empty())
-            .map(String::from)
+        self.release_dates.in_country(region)
     }
 }
 
@@ -295,15 +287,7 @@ pub struct ContentRating {
 impl TvFull {
     /// The age rating in `region` ("TV-MA").
     pub fn certification(&self, region: &str) -> Option<String> {
-        self.content_ratings
-            .results
-            .iter()
-            .find(|c| c.iso_3166_1.eq_ignore_ascii_case(region))?
-            .rating
-            .as_deref()
-            .map(str::trim)
-            .filter(|r| !r.is_empty())
-            .map(String::from)
+        self.content_ratings.in_country(region)
     }
 }
 
@@ -596,6 +580,16 @@ impl Tmdb {
     }
 
     /// A film series and its films (in no particular order).
+    /// A film's release dates with their age ratings, per country.
+    pub async fn release_dates(&self, id: i64) -> Result<ReleaseDates> {
+        self.get(&format!("movie/{id}/release_dates"), &[]).await
+    }
+
+    /// A show's age ratings, per country.
+    pub async fn content_ratings(&self, id: i64) -> Result<ContentRatings> {
+        self.get(&format!("tv/{id}/content_ratings"), &[]).await
+    }
+
     pub async fn collection(&self, id: i64) -> Result<Collection> {
         let mut c: Collection = self.get(&format!("collection/{id}"), &[]).await?;
         for p in &mut c.parts {

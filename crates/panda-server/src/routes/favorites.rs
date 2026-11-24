@@ -7,7 +7,7 @@ use axum::{Extension, Json, Router};
 use serde::{Deserialize, Serialize};
 
 use super::titles::movie_titles;
-use crate::auth::{CurrentUser, allowed_libraries};
+use crate::auth::{CurrentUser, access};
 use crate::error::{ApiError, ApiResult};
 use crate::services::settings::now;
 use crate::state::AppState;
@@ -66,8 +66,8 @@ pub(crate) async fn ready_list(state: &AppState, user_id: i64) -> ApiResult<Vec<
     if ready.is_empty() {
         return Ok(Vec::new());
     }
-    let allowed = allowed_libraries(state, user_id).await?;
-    let series = crate::catalog::series(state, allowed.as_deref()).await?;
+    let access = access(state, user_id).await?;
+    let series = crate::catalog::series(state, &access).await?;
     let refs = ready
         .into_iter()
         .filter_map(|r| match (r.kind, r.tmdb_id) {
@@ -87,8 +87,8 @@ pub(crate) async fn ready_list(state: &AppState, user_id: i64) -> ApiResult<Vec<
 async fn entries(state: &AppState, user_id: i64, refs: Vec<(String, String)>) -> ApiResult<Vec<MyListEntry>> {
     let favs = refs;
     let titles = movie_titles(state, user_id, None).await?;
-    let allowed = allowed_libraries(state, user_id).await?;
-    let series: Vec<_> = crate::catalog::series(state, allowed.as_deref()).await?;
+    let access = access(state, user_id).await?;
+    let series: Vec<_> = crate::catalog::series(state, &access).await?;
     Ok(favs
         .into_iter()
         .filter_map(|(kind, reference)| match kind.as_str() {
@@ -134,8 +134,8 @@ async fn add(
     let visible = match body.kind {
         FavoriteKind::Title => movie_titles(&state, me.user.id, None).await?.iter().any(|t| t.id == body.id),
         FavoriteKind::Series => {
-            let allowed = allowed_libraries(&state, me.user.id).await?;
-            crate::catalog::find_series(&state, allowed.as_deref(), &body.id).await?.is_some()
+            let access = access(&state, me.user.id).await?;
+            crate::catalog::find_series(&state, &access, &body.id).await?.is_some()
         }
     };
     if !visible {

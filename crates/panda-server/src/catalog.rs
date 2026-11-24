@@ -12,6 +12,7 @@ use std::sync::Arc;
 use panda_db::{ItemFilter, ItemKind, SeriesSummary};
 use tokio::sync::Mutex;
 
+use crate::auth::Access;
 use crate::error::ApiResult;
 use crate::routes::{Title, group_movies, watch_key};
 use crate::state::AppState;
@@ -74,20 +75,20 @@ async fn build(state: &AppState, version: i64) -> ApiResult<Catalog> {
     Ok(Catalog { movies, series, version })
 }
 
-/// Every show visible with `allowed` (`None` = all libraries).
-pub(crate) async fn series(state: &AppState, allowed: Option<&[i64]>) -> ApiResult<Vec<SeriesSummary>> {
+/// Every show `access` may see (its libraries, its age limit).
+pub(crate) async fn series(state: &AppState, access: &Access) -> ApiResult<Vec<SeriesSummary>> {
     let catalog = get(state).await?;
-    Ok(catalog.series.iter().filter(|s| allowed.is_none_or(|a| a.contains(&s.library_id))).cloned().collect())
+    Ok(catalog.series.iter().filter(|s| access.series(s)).cloned().collect())
 }
 
 /// The show a series name refers to, whichever of its folders' spellings it is: exactly, ignoring
 /// case, or through the TMDB show that folder matched (two folders of one show are one show).
 pub(crate) async fn find_series(
     state: &AppState,
-    allowed: Option<&[i64]>,
+    access: &Access,
     name: &str,
 ) -> ApiResult<Option<SeriesSummary>> {
-    let shows = series(state, allowed).await?;
+    let shows = series(state, access).await?;
     if let Some(s) = shows.iter().find(|s| s.series == name || s.series.eq_ignore_ascii_case(name)) {
         return Ok(Some(s.clone()));
     }

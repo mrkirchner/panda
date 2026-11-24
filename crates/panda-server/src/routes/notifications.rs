@@ -40,8 +40,8 @@ async fn list(
     if ready.is_empty() {
         return Ok(Json(Vec::new()));
     }
-    let allowed = crate::auth::allowed_libraries(&state, me.user.id).await?;
-    let series = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = crate::auth::access(&state, me.user.id).await?;
+    let series = crate::catalog::series(&state, &access).await?;
     Ok(Json(
         ready
             .into_iter()

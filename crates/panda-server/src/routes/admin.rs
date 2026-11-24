@@ -413,6 +413,14 @@ struct UserUpdate {
     disabled: Option<bool>,
     /// `[]` = all libraries. Set on an account's owner: it applies to every profile in it.
     libraries: Option<Vec<i64>>,
+    /// A profile's age limit (left out: unchanged).
+    age_limit: Option<AgeLimit>,
+}
+
+/// `{ "max_age": 13 }`, or `{ "max_age": null }` for none.
+#[derive(Deserialize)]
+struct AgeLimit {
+    max_age: Option<i64>,
 }
 
 async fn update_user(
@@ -443,6 +451,9 @@ async fn update_user(
             return Err(ApiError::Validation("library access is set on the account's owner".into()));
         }
         state.db.set_user_libraries(id, &libs).await?;
+    }
+    if let Some(limit) = body.age_limit {
+        state.db.set_max_age(id, super::age_limits::valid(limit.max_age)?).await?;
     }
     Ok(StatusCode::NO_CONTENT)
 }

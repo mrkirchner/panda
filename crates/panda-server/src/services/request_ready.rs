@@ -65,8 +65,8 @@ pub(crate) async fn check(state: &AppState) -> anyhow::Result<usize> {
     let mut arrived = 0;
     for (uid, requests) in by_user {
         let titles = crate::routes::titles::movie_titles(state, uid, None).await?;
-        let allowed = crate::auth::allowed_libraries(state, uid).await?;
-        let series = catalog::series(state, allowed.as_deref()).await?;
+        let access = crate::auth::access(state, uid).await?;
+        let series = catalog::series(state, &access).await?;
         for r in requests {
             let here = match r.kind {
                 RequestKind::Movie => {

@@ -1664,3 +1664,155 @@ async fn up_next_and_skip_markers_follow_library_access() {
     let mut stranger = Client::new(&server.app);
     assert_eq!(stranger.get(&format!("/api/items/{one}/markers")).await.status, StatusCode::UNAUTHORIZED);
 }
+
+#[tokio::test]
+#[allow(clippy::too_many_lines)] // One story: rating titles, setting a limit, what the kid sees, leaving.
+async fn age_limits_are_the_owners_with_a_parental_pin_and_hide_what_they_should() {
+    if !ffmpeg_available() {
+        return;
+    }
+    let server = server().await;
+    let mut admin = admin(&server).await;
+    let mut parent = invited_user(&server, &mut admin, "parent").await;
+    let parent_id = parent.get("/api/auth/me").await.json()["user"]["id"].as_i64().unwrap();
+    let (tv_device, _) = pair(&server, &mut parent, None).await;
+    let tv_device = tv_device.unwrap();
+    let mut tv = tv_client(&server);
+    let kid =
+        tv.post("/api/auth/device/profiles/new", json!({ "device_token": tv_device, "name": "Kid" })).await;
+    let kid_id = kid.json()["id"].as_i64().unwrap();
+
+    // The two films: one rated for 7 and up (PG), the other 17 (R).
+    let db = &server.state.db;
+    let items = admin.get("/api/items").await.json();
+    let (pg, r) = (item_id(&items, "Test Movie"), item_id(&items, "Other Film"));
+    let mut metas = Vec::new();
+    for (item, tmdb_id, cert, age) in [(pg, 101, "PG", 7), (r, 102, "R", 17)] {
+        let meta = db
+            .upsert_metadata(&panda_db::NewMetadata {
+                kind: panda_db::MetadataKind::Movie,
+                tmdb_id,
+                title: format!("Film {tmdb_id}"),
+                original_title: None,
+                year: Some(2020),
+                overview: None,
+                tagline: None,
+                genres: None,
+                runtime_mins: None,
+                rating: None,
+                poster: None,
+                backdrop: None,
+            })
+            .await
+            .unwrap();
+        db.set_item_metadata(&[item], Some(meta)).await.unwrap();
+        db.set_title_rating(meta, Some(cert), Some(age), "US", 0).await.unwrap();
+        metas.push(meta);
+    }
+
+    // Setting a limit: the owner, with the account's parental PIN (set with their password).
+    let limit = |max_age: Option<i64>, pin: &str| json!({ "max_age": max_age, "pin": pin });
+    let url = format!("/api/account/age-limits/{kid_id}");
+    let listed = parent.get("/api/account/age-limits").await.json();
+    assert_eq!(listed["has_parental_pin"], false);
+    assert_eq!(listed["profiles"][0]["user_id"], kid_id, "{listed}");
+    assert_eq!(parent.send("PUT", &url, Some(limit(Some(7), ""))).await.status, StatusCode::CONFLICT);
+    let set_pin = |pw: &str| json!({ "current_password": pw, "pin": "2468" });
+    assert_eq!(
+        parent.send("PUT", "/api/account/parental-pin", Some(set_pin("wrong"))).await.status,
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        parent.send("PUT", "/api/account/parental-pin", Some(set_pin("another long password"))).await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        parent.send("PUT", &url, Some(limit(Some(7), "0000"))).await.status,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(
+        parent.send("PUT", &url, Some(limit(Some(8), "2468"))).await.status,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(parent.send("PUT", &url, Some(limit(Some(7), "2468"))).await.status, StatusCode::NO_CONTENT);
+    // Never the owner, never another account's profile.
+    let own = format!("/api/account/age-limits/{parent_id}");
+    assert_eq!(
+        parent.send("PUT", &own, Some(limit(Some(7), "2468"))).await.status,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let admin_id = admin.get("/api/auth/me").await.json()["user"]["id"].as_i64().unwrap();
+    let other = format!("/api/account/age-limits/{admin_id}");
+    assert_eq!(parent.send("PUT", &other, Some(limit(Some(7), "2468"))).await.status, StatusCode::NOT_FOUND);
+
+    // The kid, on the TV: only the PG film, anywhere it could show up.
+    let sw = |user_id: i64, parental: Option<&str>| json!({ "device_token": tv_device, "user_id": user_id, "parental_pin": parental });
+    let kid_session = tv.post("/api/auth/device/switch", sw(kid_id, None)).await;
+    assert_eq!(kid_session.status, StatusCode::OK);
+    let mut kid = tv_client(&server);
+    kid.bearer = Some(kid_session.json()["token"].as_str().unwrap().to_string());
+    let titles: Vec<String> = kid
+        .get("/api/titles")
+        .await
+        .json()
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|t| t["title"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(titles, ["Film 101"]);
+    let kid_items = kid.get("/api/items").await.json();
+    assert_eq!(kid_items.as_array().unwrap().len(), 1, "{kid_items}");
+    assert_eq!(kid.get("/api/titles/m102").await.status, StatusCode::NOT_FOUND);
+    assert_eq!(kid.post(&format!("/api/items/{r}/playback"), json!({})).await.status, StatusCode::NOT_FOUND);
+    assert_eq!(kid.get(&format!("/api/items/{r}")).await.status, StatusCode::NOT_FOUND);
+    assert!(kid.get("/api/find?q=Film").await.json()["movies"].to_string().contains("Film 101"));
+    assert!(!kid.get("/api/find?q=Film").await.json()["movies"].to_string().contains("Film 102"));
+    assert!(kid.get("/api/home").await.text().find("Film 102").is_none());
+    // Nothing from outside the library, and no requests.
+    assert_eq!(kid.get("/api/discover/movie/603").await.status, StatusCode::NOT_FOUND);
+    assert_eq!(
+        kid.post("/api/requests", json!({ "kind": "movie", "title": "X", "tmdb_id": 603 })).await.status,
+        StatusCode::FORBIDDEN
+    );
+    // The kid can't touch limits, nor the PIN.
+    assert_eq!(kid.get("/api/account/age-limits").await.status, StatusCode::FORBIDDEN);
+    assert_eq!(kid.send("PUT", &url, Some(limit(None, "2468"))).await.status, StatusCode::FORBIDDEN);
+    assert_eq!(
+        kid.send("PUT", "/api/account/parental-pin", Some(json!({ "current_pin": "2468", "pin": null })))
+            .await
+            .status,
+        StatusCode::FORBIDDEN
+    );
+    // An unrated title is hidden too.
+    db.set_title_rating(metas[0], None, None, "US", 0).await.unwrap();
+    assert_eq!(kid.get("/api/titles").await.json(), json!([]));
+    db.set_title_rating(metas[0], Some("PG"), Some(7), "US", 0).await.unwrap();
+    // Leaving the kid's profile for the parent's: the parental PIN, even after signing out.
+    assert!(kid.post("/api/auth/logout", json!({})).await.status.is_success());
+    assert_eq!(tv.post("/api/auth/device/switch", sw(parent_id, None)).await.status, StatusCode::CONFLICT);
+    assert_eq!(
+        tv.post("/api/auth/device/switch", sw(parent_id, Some("1111"))).await.status,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let back = tv.post("/api/auth/device/switch", sw(parent_id, Some("2468"))).await;
+    assert_eq!(back.status, StatusCode::OK);
+    // From the parent's profile, picking any profile needs no PIN (the owner has none).
+    assert_eq!(tv.post("/api/auth/device/switch", sw(kid_id, None)).await.status, StatusCode::OK);
+
+    // An admin lifts it from the admin UI (no PIN: the admin signed in with a password).
+    let r2 = admin
+        .send(
+            "PATCH",
+            &format!("/api/admin/users/{kid_id}"),
+            Some(json!({ "age_limit": { "max_age": null } })),
+        )
+        .await;
+    assert_eq!(r2.status, StatusCode::NO_CONTENT);
+    assert_eq!(server.state.db.user(kid_id).await.unwrap().unwrap().max_age, None);
+    assert_eq!(
+        tv.post("/api/auth/device/switch", sw(parent_id, None)).await.status,
+        StatusCode::OK,
+        "no limit, no PIN"
+    );
+}

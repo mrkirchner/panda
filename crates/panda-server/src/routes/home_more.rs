@@ -29,7 +29,7 @@ use super::featured::{self, Rng};
 use super::search::{Discover, for_profile, to_discover};
 use super::titles::{Title, movie_titles};
 use crate::auth::CurrentUser;
-use crate::auth::allowed_libraries;
+use crate::auth::access;
 use crate::error::ApiResult;
 use crate::services::settings::now;
 use crate::state::AppState;
@@ -238,8 +238,8 @@ async fn home_more(
     Extension(me): Extension<CurrentUser>,
 ) -> ApiResult<Json<HomeMore>> {
     let movies = movie_titles(&state, me.user.id, None).await?;
-    let allowed = allowed_libraries(&state, me.user.id).await?;
-    let shows = crate::catalog::series(&state, allowed.as_deref()).await?;
+    let access = access(&state, me.user.id).await?;
+    let shows = crate::catalog::series(&state, &access).await?;
     let t = now();
     let seed = featured::daily_seed(t, me.user.id);
 

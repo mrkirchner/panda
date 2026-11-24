@@ -47,6 +47,9 @@ pub struct User {
     /// In every signed URL; bumped to revoke them all (password change, sign out everywhere).
     #[serde(skip)]
     pub token_gen: i64,
+    /// The oldest age rating this profile may watch (`None`: no limit). Titles without a
+    /// rating are hidden from a limited profile.
+    pub max_age: Option<i64>,
 }
 
 /// Only for verifying a login. Never serialized.
@@ -99,8 +102,22 @@ pub enum DevicePoll {
 
 macro_rules! user_columns {
     () => {
-        "id, username, role, disabled, created_at, last_login_at, account_id, managed, display_name, language, avatar, email, preview_sound, token_gen"
+        "id, username, role, disabled, created_at, last_login_at, account_id, managed, display_name, language, avatar, email, preview_sound, token_gen, max_age"
     };
+}
+
+impl Db {
+    /// Every profile of the account `account_id` owns (the owner first).
+    pub async fn account_profiles(&self, account_id: i64) -> Result<Vec<User>> {
+        Ok(sqlx::query_as(concat!(
+            "SELECT ",
+            user_columns!(),
+            " FROM users WHERE account_id = ? ORDER BY id != account_id, id"
+        ))
+        .bind(account_id)
+        .fetch_all(&self.pool)
+        .await?)
+    }
 }
 
 /// Last-seen updates are written at most this often per session (avoids a write per request).
@@ -197,7 +214,7 @@ impl Db {
             " FROM (SELECT u.id, u.username, u.role,
                            u.disabled OR EXISTS (SELECT 1 FROM users o WHERE o.id = u.account_id AND o.disabled = 1) AS disabled,
                            u.created_at, u.last_login_at, u.account_id, u.managed, u.display_name, u.language,
-                           u.avatar, u.email, u.preview_sound, u.token_gen
+                           u.avatar, u.email, u.preview_sound, u.token_gen, u.max_age
                     FROM users u WHERE u.id = ?)"
         ))
             .bind(id)
