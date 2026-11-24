@@ -15,7 +15,17 @@
 // scrubber (Now Playing).
 import { Application, ImageSource, Utils } from "@nativescript/core";
 import { absolute, api, HttpError, imageUrl } from "@tv/api/client";
-import type { AudioTrack, Item, Playback, SubtitleTrack } from "@tv/api/types";
+import type { AudioTrack, Item, Markers, Playback, SubtitleTrack } from "@tv/api/types";
+import {
+  beforeUpNext,
+  countdownAllowed,
+  inIntro,
+  MARKER_RETRY_SECS,
+  nextLabel,
+  noteAutoplay,
+  noteInteraction,
+  upNext,
+} from "@tv/playback/skips";
 import { formatTime } from "@tv/format";
 import { lang, t } from "@tv/i18n";
 import { languageName } from "@tv/format";
@@ -183,6 +193,12 @@ class PlayerSession {
   private retries: number[] = [];
   private canSearchSubs = false;
   private finding = false;
+  /** Skip intro and Up next (the TV's rules, @tv/playback/skips). */
+  private markers: Markers | undefined;
+  private upNextDismissed = false;
+  /** Set when the next episode takes this player's place (opened once this one has closed). */
+  private nextTarget: PlayTarget | null = null;
+  private stillShown: string | null = null;
 
   // Views
   private readonly vc = new PlayerController();
@@ -217,6 +233,13 @@ class PlayerSession {
   );
   private readonly toastLabel = UILabel.new();
   private pip: AVPictureInPictureController | null = null;
+  private readonly skipButton = UIButton.buttonWithType(UIButtonType.System);
+  private readonly upNextCard = UIView.new();
+  private readonly upNextImage = UIImageView.new();
+  private readonly upNextHeading = textLabel(13);
+  private readonly upNextName = textLabel(15, true);
+  private readonly creditsButton = UIButton.buttonWithType(UIButtonType.System);
+  private readonly nextButton = UIButton.buttonWithType(UIButtonType.System);
 
   constructor(
     private readonly target: PlayTarget,
@@ -250,6 +273,7 @@ class PlayerSession {
 
   private load(pb: Playback, at: number) {
     this.pb = pb;
+    this.markers = pb.markers;
     this.item = AVPlayerItem.playerItemWithURL(NSURL.URLWithString(absolute(pb.url)));
     this.player.replaceCurrentItemWithPlayerItem(this.item);
     this.offset = pb.method === "hls" ? pb.start_secs : 0;
@@ -376,6 +400,20 @@ class PlayerSession {
       null,
       () => this.tick(),
     );
+    if (this.pb.markers?.pending) {
+      const id = this.pb.item_id;
+      for (const secs of MARKER_RETRY_SECS) {
+        this.timers.push(
+          setTimeout(() => {
+            if (this.closed || !this.markers?.pending) return;
+            api.markers(id).then(
+              m => (this.markers = m),
+              () => {},
+            );
+          }, secs * 1000),
+        );
+      }
+    }
     this.timers.push(
       setInterval(() => {
         if (this.player.rate !== 0) void this.save();
@@ -422,6 +460,7 @@ class PlayerSession {
     this.closed = true;
     void this.save();
     for (const t of this.timers) clearInterval(t);
+    const next = this.nextTarget;
     clearTimeout(this.stallTimer);
     clearTimeout(this.hideTimer);
     clearTimeout(this.toastTimer);
@@ -436,10 +475,12 @@ class PlayerSession {
     if (this.pb.method === "hls") void api.stopSession(this.pb.session_id);
     releaseAudioSession();
     this.imageCache.clear();
-    this.vc.dismissViewControllerAnimatedCompletion(true, () => {
+    // On to the next episode: this player goes without animating and the next one opens.
+    this.vc.dismissViewControllerAnimatedCompletion(!next, () => {
       this.keep.length = 0;
       setPlayerOpen(false);
-      this.onClose?.();
+      if (next) play(next, 0, this.onClose).catch(() => this.onClose?.());
+      else this.onClose?.();
     });
   }
 
@@ -463,8 +504,56 @@ class PlayerSession {
     if (this.item?.status === AVPlayerItemStatus.Failed && this.pending === null) this.recover();
     this.setPlayIcon();
     this.showSubs();
-    // The end: saved as watched (the server marks it finished), and the player closes.
-    if (dur > 0 && pos >= dur - 1 && this.player.rate === 0 && this.pending === null) this.close();
+    this.showSkips(pos, dur);
+    // The end: saved as watched (the server marks it finished), then the next episode (unless
+    // nobody's been here for a while) or the player closes.
+    if (dur > 0 && pos >= dur - 1 && this.player.rate === 0 && this.pending === null) {
+      if (this.pb.next && countdownAllowed()) this.playNext(true);
+      else this.close();
+    }
+  }
+
+  /** Skip intro over the intro; Up next at the credits, counting down to the next episode. */
+  private showSkips(pos: number, dur: number) {
+    const next = this.pb.next ?? null;
+    if (this.upNextDismissed && beforeUpNext(this.markers, dur, next, pos)) this.upNextDismissed = false;
+    const state = upNext(this.markers, dur, next, pos, this.upNextDismissed);
+    this.skipButton.hidden = state.show || !inIntro(this.markers, pos);
+    this.upNextCard.hidden = !state.show || !next;
+    if (state.show && next) {
+      const { heading, name } = nextLabel(next);
+      this.upNextHeading.text =
+        state.secondsLeft === null
+          ? t("Up next")
+          : t("Next episode in {secs}", { secs: String(state.secondsLeft) });
+      this.upNextName.text = `${heading}  ${name}`.trim();
+      const art = imageUrl(next.still ?? next.backdrop ?? null) ?? null;
+      if (art && art !== this.stillShown) {
+        this.stillShown = art;
+        ImageSource.fromUrl(art).then(
+          src => (this.upNextImage.image = src.ios as UIImage),
+          () => {},
+        );
+      }
+    }
+    if (state.go && this.pending === null) this.playNext(true);
+  }
+
+  private skipTheIntro() {
+    noteInteraction();
+    const end = this.markers?.intro_end;
+    if (end != null) this.seekTo(end);
+    this.skipButton.hidden = true;
+  }
+
+  /** The next episode in this player's place (`auto`: the countdown, not a tap). */
+  private playNext(auto: boolean) {
+    const next = this.pb.next;
+    if (!next || this.closed) return;
+    if (auto) noteAutoplay();
+    else noteInteraction();
+    this.nextTarget = { kind: "item", id: next.item_id };
+    this.close();
   }
 
   /** Buffering while playing: the TV's step-down rules (StallMonitor). */
@@ -594,6 +683,36 @@ class PlayerSession {
     this.toastLabel.alpha = 0;
     view.addSubview(this.toastLabel);
 
+    // Skip intro and Up next: over the picture, above the controls (shown or not).
+    const gold = UIColor.colorWithRedGreenBlueAlpha(0.83, 0.68, 0.42, 1);
+    const ink = UIColor.colorWithRedGreenBlueAlpha(0.08, 0.07, 0.06, 1);
+    const pill = (b: UIButton, title: string, fill: UIColor, color: UIColor) => {
+      b.setTitleForState(title, UIControlState.Normal);
+      b.setTitleColorForState(color, UIControlState.Normal);
+      if (b.titleLabel) b.titleLabel.font = UIFont.boldSystemFontOfSize(15);
+      b.backgroundColor = fill;
+      b.layer.cornerRadius = 10;
+    };
+    pill(this.skipButton, t("Skip intro"), UIColor.colorWithRedGreenBlueAlpha(0.96, 0.95, 0.92, 1), ink);
+    pill(this.creditsButton, t("Watch credits"), UIColor.colorWithWhiteAlpha(1, 0.16), UIColor.whiteColor);
+    pill(this.nextButton, t("Play next episode"), gold, ink);
+    this.skipButton.hidden = true;
+    view.addSubview(this.skipButton);
+    this.upNextCard.backgroundColor = UIColor.colorWithRedGreenBlueAlpha(0.1, 0.1, 0.11, 0.94);
+    this.upNextCard.layer.cornerRadius = 14;
+    this.upNextCard.clipsToBounds = true;
+    this.upNextCard.hidden = true;
+    this.upNextImage.contentMode = UIViewContentMode.ScaleAspectFill;
+    this.upNextImage.clipsToBounds = true;
+    this.upNextImage.layer.cornerRadius = 8;
+    this.upNextImage.backgroundColor = UIColor.colorWithWhiteAlpha(0.2, 1);
+    this.upNextHeading.textColor = UIColor.colorWithWhiteAlpha(1, 0.65);
+    this.upNextName.numberOfLines = 2;
+    for (const v of [this.upNextImage, this.upNextHeading, this.upNextName, this.creditsButton, this.nextButton]) {
+      this.upNextCard.addSubview(v);
+    }
+    view.addSubview(this.upNextCard);
+
     // Picture in Picture: from the button, and on its own when you leave the app while playing.
     if (AVPictureInPictureController.isPictureInPictureSupported()) {
       this.pip = AVPictureInPictureController.alloc().initWithPlayerLayer(this.layer);
@@ -632,13 +751,24 @@ class PlayerSession {
       UIControlEvents.TouchUpInside | UIControlEvents.TouchUpOutside | UIControlEvents.TouchCancel,
       () => this.scrubbed(),
     );
+    on(this.skipButton, UIControlEvents.TouchUpInside, () => this.skipTheIntro());
+    on(this.creditsButton, UIControlEvents.TouchUpInside, () => {
+      noteInteraction();
+      this.upNextDismissed = true;
+      this.upNextCard.hidden = true;
+    });
+    on(this.nextButton, UIControlEvents.TouchUpInside, () => this.playNext(false));
     on(this.subsButton, UIControlEvents.TouchUpInside, () => this.subtitleMenu());
     on(this.audioButton, UIControlEvents.TouchUpInside, () => this.audioMenu());
     on(this.qualityButton, UIControlEvents.TouchUpInside, () => this.qualityMenu());
 
     // A tap anywhere else shows or hides the controls.
     const tapTarget = new Target();
-    tapTarget.fn = () => (this.controls.alpha > 0 ? this.hideControls() : this.showControls());
+    tapTarget.fn = () => {
+      noteInteraction();
+      if (this.controls.alpha > 0) this.hideControls();
+      else this.showControls();
+    };
     this.keep.push(tapTarget);
     const tap = UITapGestureRecognizer.alloc().initWithTargetAction(tapTarget, "run");
     view.addGestureRecognizer(tap);
@@ -681,6 +811,18 @@ class PlayerSession {
     const remainW = 80;
     this.slider.frame = CGRectMake(sliderX, barY, b.width - sliderX - right - buttonsW - remainW - 12, 44);
     this.remainLabel.frame = CGRectMake(this.slider.frame.origin.x + this.slider.frame.size.width + 4, barY, remainW, 44);
+
+    // Skip intro and Up next: bottom right, just above the scrubber.
+    this.skipButton.frame = CGRectMake(b.width - right - 132, barY - 52, 132, 44);
+    const cardW = Math.min(360, b.width - left - right);
+    const cardH = 150;
+    this.upNextCard.frame = CGRectMake(b.width - right - cardW, barY - cardH - 8, cardW, cardH);
+    this.upNextImage.frame = CGRectMake(12, 12, 140, 79);
+    this.upNextHeading.frame = CGRectMake(164, 12, cardW - 176, 18);
+    this.upNextName.frame = CGRectMake(164, 32, cardW - 176, 40);
+    const half = (cardW - 36) / 2;
+    this.creditsButton.frame = CGRectMake(12, 102, half, 36);
+    this.nextButton.frame = CGRectMake(24 + half, 102, half, 36);
 
     if (b.width !== this.drawnWidth) {
       this.drawnWidth = b.width;
