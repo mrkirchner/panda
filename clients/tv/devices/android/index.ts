@@ -10,6 +10,9 @@ export const config: DeviceConfig = merge({}, common, <Partial<DeviceConfig>>{
   name: "android",
   // NSD in the wrapper (MainActivity.Discovery): the servers announcing `_panda._tcp`.
   discover: () => androidDiscover().then(urls => ({ urls })),
+  // The wrapper's window keeps the screen on while video plays (MainActivity.Screen).
+  keepAwake: (on: boolean) =>
+    (globalThis as unknown as { PandaScreen?: { keepAwake(on: boolean): void } }).PandaScreen?.keepAwake(on),
 });
 
 /** Ask the wrapper to look (a few seconds); none when it can't (an older wrapper). */

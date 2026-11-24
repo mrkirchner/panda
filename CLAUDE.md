@@ -300,6 +300,9 @@
   episode cards; TMDB's `next_episode` greyed at the end of its season with its date, or in the
   meta line when its season isn't in the library), More Like This, Cast & Crew, `InfoSection`
   (each page passes its own Information/Files facts). Ratings get their own line under the facts.
+- While video plays the screen stays on: `DeviceConfig.keepAwake` (`src/playback/awake.ts`, the
+  player's play/pause/close): Samsung `webapis.appcommon.setScreenSaver`, Apple TV's idle timer,
+  Android TV's window flag (`PandaScreen`), else the browser's Wake Lock (LG, browsers).
 - Out of sight (Home, another app, the TV asleep): `src/lifecycle.ts` (`onAppVisibility`) from
   `visibilitychange` (browsers, LG, Samsung) or the hosts' `pandaSetHidden` (Apple TV's
   suspend/resume, Android TV's onPause/onResume). The player saves and pauses (back again: paused,

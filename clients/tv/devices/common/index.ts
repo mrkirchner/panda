@@ -4,8 +4,31 @@ import { DESIGN_HEIGHT, DESIGN_WIDTH, logicalPixelRatio, resolution } from "#dev
 import { perf } from "#devices/tier";
 import { fpsInterval } from "#devices/debug";
 
+/** The browser's screen wake lock while video plays (where it exists: Chromium, Safari, webOS). */
+type Sentinel = { release(): Promise<void>; addEventListener(t: "release", fn: () => void): void };
+let wakeLock: Sentinel | null = null;
+let wantAwake = false;
+function browserKeepAwake(on: boolean): void {
+  wantAwake = on;
+  const wl = (navigator as unknown as { wakeLock?: { request(t: "screen"): Promise<Sentinel> } }).wakeLock;
+  if (on && !wakeLock && wl) {
+    wl.request("screen").then(
+      lock => {
+        if (!wantAwake) return void lock.release();
+        wakeLock = lock;
+        lock.addEventListener("release", () => (wakeLock = null));
+      },
+      () => {},
+    );
+  } else if (!on && wakeLock) {
+    void wakeLock.release();
+    wakeLock = null;
+  }
+}
+
 export const config = {
   name: "common",
+  keepAwake: browserKeepAwake,
   quality: {
     image: {
       ratio: 1,

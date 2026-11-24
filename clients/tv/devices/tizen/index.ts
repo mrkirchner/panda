@@ -5,6 +5,21 @@ import { TizenDevice } from "./device";
 
 export const config: DeviceConfig = merge({}, common, <Partial<DeviceConfig>>{
   name: "tizen",
+  // Samsung's screen saver, off while video plays (its app review asks for this).
+  keepAwake: (on: boolean) => {
+    type AppCommon = {
+      setScreenSaver(state: number): void;
+      AppCommonScreenSaverState: { SCREEN_SAVER_ON: number; SCREEN_SAVER_OFF: number };
+    };
+    const ac = (globalThis as unknown as { webapis?: { appcommon?: AppCommon } }).webapis?.appcommon;
+    try {
+      ac?.setScreenSaver(
+        on ? ac.AppCommonScreenSaverState.SCREEN_SAVER_OFF : ac.AppCommonScreenSaverState.SCREEN_SAVER_ON,
+      );
+    } catch {
+      // An older TV without it: nothing to do.
+    }
+  },
   // Tizen web apps can't browse for services: the TV's own address, whose network is scanned.
   discover: async () => {
     const net = (globalThis as unknown as { webapis?: { network?: { getIp?: () => string } } }).webapis

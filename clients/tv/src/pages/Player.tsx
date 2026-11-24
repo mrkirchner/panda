@@ -61,6 +61,7 @@ const SUBTITLE_MENU_W = 520;
 import { lang, t } from "../i18n";
 import { audioChoice, read, write } from "../platform/settings";
 import { onAppVisibility } from "../lifecycle";
+import { keepAwake } from "../playback/awake";
 
 /** A scrub lands this long after the last Left/Right press (OK lands it at once). */
 const SEEK_COMMIT_MS = 900;
@@ -225,10 +226,12 @@ export default function Player() {
   };
   const onPlay = () => {
     setPlaying(true);
+    keepAwake(true);
     // The timing panel keeps the controls hidden (the subtitles stay where they normally sit).
     if (!timingOpen()) poke();
   };
   const onPause = () => {
+    keepAwake(false);
     reportProgress(true);
     setPlaying(false);
     if (timingOpen()) return;
@@ -663,6 +666,7 @@ export default function Player() {
   let stopVisibility: (() => void) | undefined;
   onCleanup(() => {
     stopVisibility?.();
+    keepAwake(false);
     clearTimeout(toastTimer);
     clearTimeout(hideTimer);
     clearTimeout(seekTimer);

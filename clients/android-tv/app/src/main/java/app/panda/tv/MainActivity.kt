@@ -15,6 +15,7 @@ import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONArray
@@ -46,10 +47,25 @@ class MainActivity : Activity() {
             isFocusable = true
             isFocusableInTouchMode = true
             addJavascriptInterface(Discovery(), "PandaNative")
+            addJavascriptInterface(Screen(), "PandaScreen")
         }
         setContentView(web)
         web.loadUrl("https://appassets.androidplatform.net/assets/www/index.html")
         web.requestFocus()
+    }
+
+    /**
+     * The screen kept on while video plays (no screen saver or ambient mode):
+     * `PandaScreen.keepAwake(on)` from the app (devices/android in the client).
+     */
+    inner class Screen {
+        @JavascriptInterface
+        fun keepAwake(on: Boolean) {
+            runOnUiThread {
+                if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            }
+        }
     }
 
     /**

@@ -43,6 +43,12 @@ export interface DeviceConfig {
   /** What this device can tell about Panda servers nearby (src/api/discover.ts): servers it
    * found by name (Bonjour/NSD) and/or its own address, whose network is then scanned. */
   discover?: Discovery["find"];
+  /**
+   * Keep the screen on (no screen saver, no sleep) while video plays (`on`), or let it go. Each
+   * TV has its own way: Samsung's app review asks for it; Android TV and Apple TV start their
+   * screen saver after a few idle minutes otherwise.
+   */
+  keepAwake?: (on: boolean) => void;
 }
 
 export interface Device {

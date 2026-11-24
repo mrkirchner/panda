@@ -22,6 +22,13 @@ export const config: DeviceConfig = merge({}, common, <Partial<DeviceConfig>>{
   initialize: async () => AppleTvDevice.initialize(),
   // Menu on Home goes back to the Apple TV home screen.
   exitOnRootBack: true,
+  // tvOS's idle timer (the screen saver) off while video plays.
+  keepAwake: (on: boolean) => {
+    const app = (
+      globalThis as unknown as { UIApplication?: { sharedApplication: { idleTimerDisabled: boolean } } }
+    ).UIApplication;
+    if (app) app.sharedApplication.idleTimerDisabled = on;
+  },
   // Bonjour (clients/appletv/app/discovery.ts): the servers announcing `_panda._tcp`.
   discover: async () => {
     const find = (globalThis as { pandaDiscover?: () => Promise<string[]> }).pandaDiscover;
