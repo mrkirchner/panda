@@ -15,6 +15,7 @@ import { Credits, Facts, MoreRow, PeopleRow, Ratings, trackList } from "../compo
 import { facts, genres, load, message, refreshAll, runtime } from "../data";
 import { go, paths } from "../nav";
 import { bestProgress, discoverStatus, refreshRequests, requestFor } from "../requests";
+import { notifications } from "../platform/notifications";
 
 function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
   const data = load<Preview>(() => api.preview(props.kind, props.tmdbId));
@@ -47,6 +48,8 @@ function PreviewView(props: { kind: "movie" | "series"; tmdbId: number }) {
     setError("");
     try {
       await api.request(i, seasons);
+      // Told when it arrives (asked here, when it means something).
+      void notifications.permission();
       await refreshRequests();
       data.reload();
       refreshAll();

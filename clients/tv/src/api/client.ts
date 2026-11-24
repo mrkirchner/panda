@@ -483,6 +483,10 @@ export const api = {
   discover: () => request<DiscoverSet[]>("/api/discover"),
   /** Ask Radarr/Sonarr for a title found through search. */
   /** `seasons`: shows only, just these (omit for all). */
+  /** The server's Web Push key (the web app's notifications), and this browser's subscription. */
+  pushKey: () => request<{ public_key: string }>("/api/push/key"),
+  pushSubscribe: (sub: PushSubscriptionJSON) =>
+    request<void>("/api/push/subscription", { method: "PUT", body: JSON.stringify(sub) }),
   /** Requests of this profile that arrived and haven't been looked at (for alerts). */
   notifications: () => request<Arrival[]>("/api/notifications"),
   request: (d: Discover, seasons?: number[] | null) =>

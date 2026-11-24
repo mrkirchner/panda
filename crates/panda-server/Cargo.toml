@@ -12,6 +12,10 @@ name = "panda"
 path = "src/main.rs"
 
 [dependencies]
+web-push-native.workspace = true
+http.workspace = true
+reqwest.workspace = true
+base64.workspace = true
 mdns-sd.workspace = true
 gethostname.workspace = true
 anyhow.workspace = true

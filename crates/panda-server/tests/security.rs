@@ -1569,3 +1569,42 @@ async fn outside_services_are_admin_only_and_unknown_names_are_not_settings() {
         assert_eq!(admin.send("DELETE", &path, None).await.status, StatusCode::NOT_FOUND, "{name}");
     }
 }
+
+#[tokio::test]
+async fn push_subscriptions_are_browser_push_services_and_the_profiles_own() {
+    if !ffmpeg_available() {
+        return;
+    }
+    let server = server().await;
+    let mut admin = admin(&server).await;
+    let mut sam = invited_user(&server, &mut admin, "sam").await;
+    let mut anon = Client::new(&server.app);
+    let keys = json!({ "p256dh": "BPk", "auth": "QQ" });
+    let sub = |endpoint: &str| json!({ "endpoint": endpoint, "keys": keys.clone() });
+    // Signed in only.
+    assert_eq!(anon.get("/api/push/key").await.status, StatusCode::UNAUTHORIZED);
+    let good = sub("https://fcm.googleapis.com/fcm/send/abc");
+    assert_eq!(
+        anon.send("PUT", "/api/push/subscription", Some(good.clone())).await.status,
+        StatusCode::UNAUTHORIZED
+    );
+    // The server posts to it later: never anything but a browser's push service.
+    for bad in [
+        "http://fcm.googleapis.com/x",
+        "https://192.168.1.5:8096/api/admin/users",
+        "https://fcm.googleapis.com.evil.example/x",
+    ] {
+        let r = sam.send("PUT", "/api/push/subscription", Some(sub(bad))).await;
+        assert_eq!(r.status, StatusCode::UNPROCESSABLE_ENTITY, "{bad}");
+    }
+    assert_eq!(sam.send("PUT", "/api/push/subscription", Some(good)).await.status, StatusCode::NO_CONTENT);
+    let key = sam.get("/api/push/key").await.json();
+    assert_eq!(key["public_key"].as_str().unwrap().len(), 87, "an uncompressed P-256 point, base64url");
+    // Someone else can't remove it.
+    let gone = json!({ "endpoint": "https://fcm.googleapis.com/fcm/send/abc" });
+    admin.send("DELETE", "/api/push/subscription", Some(gone.clone())).await;
+    let sam_id = sam.get("/api/auth/me").await.json()["user"]["id"].as_i64().unwrap();
+    assert_eq!(server.state.db.push_subscriptions(sam_id).await.unwrap().len(), 1);
+    sam.send("DELETE", "/api/push/subscription", Some(gone)).await;
+    assert!(server.state.db.push_subscriptions(sam_id).await.unwrap().is_empty());
+}

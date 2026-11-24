@@ -56,6 +56,9 @@ mimalloc = "0.1"
 # Security
 argon2 = "0.6.0"
 base64 = "0.23.1"
+# Web Push for the web app's notifications (RFC 8291 encryption, RFC 8292 VAPID; pure Rust).
+web-push-native = "0.5.0"
+http = "1.4.2"
 chacha20poly1305 = "0.11.0"
 getrandom = "0.4.3"
 hmac = "0.13.0"

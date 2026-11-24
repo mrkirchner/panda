@@ -690,7 +690,10 @@ async fn arrival_is_told(admin: &mut Client, sam: &mut Client) {
     assert!(sam.get("/api/notifications").await.json().as_array().unwrap().is_empty());
     // Someone else's id does nothing.
     let id = news[0]["id"].as_i64().unwrap();
-    assert_eq!(sam.post("/api/notifications/seen", json!({ "ids": [id] })).await.status, StatusCode::NO_CONTENT);
+    assert_eq!(
+        sam.post("/api/notifications/seen", json!({ "ids": [id] })).await.status,
+        StatusCode::NO_CONTENT
+    );
     assert_eq!(admin.get("/api/notifications").await.json().as_array().unwrap().len(), 1);
     // Home shows it in "Ready to watch" (theirs only) until its page is opened.
     let ready = |v: serde_json::Value| v["ready"].as_array().unwrap().iter().any(|e| e["id"] == "m603");

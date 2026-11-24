@@ -18,3 +18,4 @@ pub(crate) mod scanner;
 pub(crate) mod sessions;
 pub(crate) mod settings;
 pub(crate) mod trickplay;
+pub(crate) mod web_push;

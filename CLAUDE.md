@@ -105,6 +105,11 @@
   iPhone (`notifications.ios.ts`): UNUserNotificationCenter (shown as a banner in the app too,
   tapping opens the title via `onOpen`), a background app refresh task (`app.panda.mobile.arrivals`,
   Info.plist; iOS runs it when it decides) and a check whenever the app comes back.
+  Web app: Web Push (`services/web_push.rs`: the server's own VAPID key, encrypted as
+  `web_push.vapid`; subscriptions per profile, migration 0028; `PUT/DELETE /api/push/subscription`
+  only takes a browser push service's https address, Google/Mozilla/Apple/Microsoft, since the
+  server posts to it), shown by `clients/watch/public/sw.js`; subscribed after a first request
+  (`src/platform/notifications.ts`), kept up at every start once allowed.
 - Radarr/Sonarr cleanup (`services/arr_cleanup.rs`, off by default, switches per kind, weekly
   plus "Run now"): only titles Panda requested and has in its library, a week after download,
   quality cutoff met; shows also ended with every monitored episode on disk. Removes the entry

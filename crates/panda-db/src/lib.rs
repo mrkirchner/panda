@@ -6,6 +6,7 @@ mod items;
 mod libraries;
 mod metadata;
 mod provider_values;
+mod push;
 mod requests;
 mod settings;
 mod watch;
@@ -16,6 +17,7 @@ pub use items::{FileState, Item, ItemFilter, ItemKind, ProbeSummary, SeriesFolde
 pub use libraries::{Library, LibraryStats};
 pub use metadata::{MetadataKind, NewEpisode, NewMetadata, PendingEpisode, PendingMovie, SeasonMatch};
 pub use provider_values::{Artwork, ProviderValue, ShownEpisode, StaleTitle, TITLE_LEVEL};
+pub use push::PushSubscription;
 pub use requests::{MediaRequest, NewRequest, RequestKind, RequestStatus};
 pub use settings::Setting;
 pub use watch::{FINISHED_FRACTION, MIN_PROGRESS_SECS, WatchState};

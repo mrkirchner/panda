@@ -79,11 +79,29 @@ pub(crate) async fn check(state: &AppState) -> anyhow::Result<usize> {
             if here {
                 state.db.mark_request_ready(r.id, now).await?;
                 arrived += 1;
+                push(state, uid, &r).await;
             }
         }
     }
     email_arrivals(state).await?;
     Ok(arrived)
+}
+
+/// Tell the requester's browsers (the web app's notifications), when they asked to be.
+async fn push(state: &AppState, uid: i64, r: &MediaRequest) {
+    let open = match (r.kind, r.tmdb_id) {
+        (RequestKind::Movie, Some(id)) => Some(format!("/title/m{id}")),
+        _ => None,
+    };
+    let what = if r.kind == RequestKind::Series { "show" } else { "movie" };
+    let message = crate::services::web_push::Message {
+        title: format!("{} is ready to watch", r.title),
+        body: format!("The {what} you asked for is in Panda now."),
+        open,
+    };
+    if let Err(e) = crate::services::web_push::send(state, uid, &message).await {
+        tracing::warn!(error = %e, "web push failed");
+    }
 }
 
 /// Email each arrival once: to whoever asked, else their account's owner. Without mail set up

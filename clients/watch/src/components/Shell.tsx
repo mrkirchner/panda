@@ -13,6 +13,7 @@ import { appPath, href, go, paths } from "../nav";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./icons";
 import { OfflineBanner } from "./Offline";
+import { subscribe } from "../platform/notifications";
 
 interface Tab {
   label: string;
@@ -27,6 +28,9 @@ export function Shell(props: { children?: JSX.Element }) {
     const onScroll = () => setScrolled(window.scrollY > 24);
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
+    // Notifications already allowed: this profile's subscription is kept up (a profile switch
+    // moves it, an expired one is made again).
+    void subscribe().catch(() => {});
     return () => window.removeEventListener("scroll", onScroll);
   });
 
