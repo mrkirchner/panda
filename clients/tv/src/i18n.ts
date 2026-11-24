@@ -439,6 +439,18 @@ const ES: Record<string, string> = {
   "Top picks": "Lo mejor para ti",
   "Up next": "A continuación",
   "Skip intro": "Saltar intro",
+  "Parental controls": "Control parental",
+  "Parental PIN": "PIN parental",
+  "Choose a parental PIN": "Elige un PIN parental",
+  "Change parental PIN": "Cambiar PIN parental",
+  "No limit": "Sin límite",
+  "All ages": "Todas las edades",
+  "Age limit": "Límite de edad",
+  "Password: {dots}": "Contraseña: {dots}",
+  "Type your password to choose a parental PIN. It's asked to change age limits and to leave a profile that has one.":
+    "Escribe tu contraseña para elegir un PIN parental. Se pide para cambiar los límites de edad y para salir de un perfil que tenga uno.",
+  "A profile with an age limit only sees titles rated for that age. Leaving it needs the parental PIN.":
+    "Un perfil con límite de edad solo ve títulos clasificados para esa edad. Para salir de él hace falta el PIN parental.",
   "Next episode in {secs}": "Siguiente episodio en {secs}",
   "Play next episode": "Ver siguiente episodio",
   "Watch credits": "Ver créditos",

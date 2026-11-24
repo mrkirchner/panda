@@ -336,6 +336,21 @@ export interface AudioTrack {
   title?: string;
 }
 
+/** Parental controls: the account's other profiles and their age limits (`max_age`: the oldest
+ * rating they may watch, null = none). */
+export interface AgeLimits {
+  has_parental_pin: boolean;
+  /** The limits offered, as ages (0 = all ages). */
+  limits: number[];
+  profiles: { user_id: number; name: string; avatar: string | null; max_age: number | null }[];
+}
+
+/** "All ages", "13+", "No limit". */
+export function ageLimitLabel(maxAge: number | null, t: (s: string) => string): string {
+  if (maxAge === null) return t("No limit");
+  return maxAge === 0 ? t("All ages") : `${maxAge}+`;
+}
+
 /** Where an episode's intro and credits are (file time, seconds), for Skip intro and Up next.
  * `pending`: the server is still listening for them; ask again later (`api.markers`). */
 export interface Markers {

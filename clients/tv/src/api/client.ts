@@ -26,6 +26,7 @@ import type {
   Home,
   HomeMore,
   Item,
+  AgeLimits,
   Markers,
   Library,
   Me,
@@ -63,6 +64,11 @@ export class HttpError extends Error {
 }
 
 /** What to say when a PIN was refused (the server answers "wrong PIN", or too many tries). */
+/** A switch the server refused until the parental PIN is given (leaving a limited profile). */
+export function needsParentalPin(e: unknown): boolean {
+  return e instanceof HttpError && e.status === 409;
+}
+
 export function pinMessage(e: unknown): string {
   const m = e instanceof Error ? e.message : String(e);
   return /too many/i.test(m)
@@ -310,10 +316,27 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ device_token: getDeviceSecret(), name }),
     }),
-  switchProfile: (userId: number, pin?: string) =>
+  /** `parentalPin`: leaving a profile with an age limit for a less limited one (the server
+   * answers 409 without it: see `needsParentalPin`). */
+  switchProfile: (userId: number, pin?: string, parentalPin?: string) =>
     request<{ token: string }>("/api/auth/device/switch", {
       method: "POST",
-      body: JSON.stringify({ device_token: getDeviceSecret(), user_id: userId, pin }),
+      body: JSON.stringify({ device_token: getDeviceSecret(), user_id: userId, pin, parental_pin: parentalPin }),
+    }),
+  /** Parental controls (the account's owner): each profile's age limit. */
+  ageLimits: () => request<AgeLimits>("/api/account/age-limits"),
+  setAgeLimit: (userId: number, maxAge: number | null, pin: string) =>
+    request<void>(`/api/account/age-limits/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify({ max_age: maxAge, pin }),
+    }),
+  checkParentalPin: (pin: string) =>
+    request<void>("/api/account/parental-pin/check", { method: "POST", body: JSON.stringify({ pin }) }),
+  /** Set or change the parental PIN: with the owner's password, or the current PIN. */
+  setParentalPin: (pin: string | null, current: { password?: string; pin?: string }) =>
+    request<void>("/api/account/parental-pin", {
+      method: "PUT",
+      body: JSON.stringify({ pin, current_password: current.password, current_pin: current.pin }),
     }),
   home: () => request<Home>("/api/home"),
   homeMore: () => request<HomeMore>("/api/home/more"),

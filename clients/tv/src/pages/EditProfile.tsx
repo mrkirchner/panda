@@ -297,6 +297,14 @@ export default function EditProfile() {
               icon="chevron"
               onSelect={() => (hasPin() ? setPanel("pin") : startPin({ kind: "new" }))}
             />
+            {/* The account's owner: each profile's age limit, behind the parental PIN. */}
+            <Show when={me()?.primary}>
+              <SettingRow
+                label={t("Parental controls")}
+                icon="chevron"
+                onSelect={() => navigate("/parental")}
+              />
+            </Show>
             {/* Their own sign-in (email + a password they choose); the owner always has one. */}
             <Show when={me() && !me()!.primary}>
               <SettingRow

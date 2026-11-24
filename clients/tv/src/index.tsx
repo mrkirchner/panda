@@ -14,6 +14,7 @@ import Title from "./pages/Title";
 import Library from "./pages/Library";
 import Profiles from "./pages/Profiles";
 import EditProfile from "./pages/EditProfile";
+import ParentalControls from "./pages/ParentalControls";
 import Person from "./pages/Person";
 import Genre from "./pages/Genre";
 import Browse from "./pages/Browse";
@@ -75,6 +76,7 @@ render(() => {
       <Route path="/library/:id/all" component={Library} />
       <Route path="/profiles" component={Profiles} />
       <Route path="/profile/edit" component={EditProfile} />
+      <Route path="/parental" component={ParentalControls} />
       <Route path="/debug" component={Debug} />
       <Route path="/about" component={About} />
       <Route path="/search" component={Search} />

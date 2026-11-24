@@ -7,7 +7,7 @@
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::routing::{get, put};
+use axum::routing::{get, post, put};
 use axum::{Extension, Json, Router};
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,7 @@ pub(super) fn routes() -> Router<AppState> {
         .route("/account/age-limits", get(list))
         .route("/account/age-limits/{id}", put(set))
         .route("/account/parental-pin", put(set_parental_pin))
+        .route("/account/parental-pin/check", post(check))
 }
 
 /// A limit as asked for: one of [`AGE_LIMITS`], or none.
@@ -131,6 +132,22 @@ async fn set(
     }
     check_parental_pin(&state, owner, &body.pin).await?;
     state.db.set_max_age(target.id, max_age).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+struct PinOnly {
+    pin: String,
+}
+
+/// The parental PIN is right (the apps ask once, then change limits with it): the owner only,
+/// with the same limit on guesses.
+async fn check(
+    State(state): State<AppState>,
+    Extension(me): Extension<CurrentUser>,
+    Json(body): Json<PinOnly>,
+) -> ApiResult<StatusCode> {
+    check_parental_pin(&state, owner(&me)?, &body.pin).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

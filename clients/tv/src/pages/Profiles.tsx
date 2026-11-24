@@ -2,7 +2,7 @@ import { createEffect, createResource, createSignal, For, Show } from "solid-js"
 import { useNavigate, useSearchParams } from "@solidjs/router";
 import { Text, View, type ElementNode } from "@solidtv/solid";
 import { Column, Row } from "@solidtv/solid/primitives";
-import { api, ensureSession, HttpError, resetSession, pinMessage } from "../api/client";
+import { api, needsParentalPin, ensureSession, HttpError, resetSession, pinMessage } from "../api/client";
 import type { DeviceProfile } from "../api/types";
 import { currentUser, setDeviceSecret, setToken } from "../api/session";
 import { Avatar } from "../components/Avatar";
@@ -178,11 +178,13 @@ export default function Profiles() {
   );
   void ensureSession().catch(() => {});
   const [pinFor, setPinFor] = createSignal<DeviceProfile | null>(null);
+  /** Leaving a profile with an age limit: the parental PIN is asked (after the profile's own). */
+  const [parental, setParental] = createSignal<{ p: DeviceProfile; pin?: string } | null>(null);
   const [error, setError] = createSignal("");
 
   /** Sign in as `p` (its PIN first, if it has one), then watch, or edit it in edit mode. Editing
    * signs in too, so a profile is only ever changed or deleted as itself. */
-  async function switchTo(p: DeviceProfile, pin?: string) {
+  async function switchTo(p: DeviceProfile, pin?: string, parentalPin?: string) {
     const next = editing() ? "/profile/edit" : "/";
     if (p.user_id === currentUser()?.id && editing()) return navigate(next);
     if (p.has_pin && pin === undefined) {
@@ -190,13 +192,19 @@ export default function Profiles() {
       return void setPinFor(p);
     }
     try {
-      const res = await api.switchProfile(p.user_id, pin);
+      const res = await api.switchProfile(p.user_id, pin, parentalPin);
       setToken(res.token);
       resetSession();
       await ensureSession();
       setPinFor(null);
+      setParental(null);
       navigate(next, { replace: next === "/" });
     } catch (e) {
+      if (needsParentalPin(e)) {
+        setError("");
+        setPinFor(null);
+        return void setParental({ p, pin });
+      }
       setError(pinMessage(e));
     }
   }
@@ -366,6 +374,18 @@ export default function Profiles() {
           onSubmit={pin => void switchTo(pinFor()!, pin)}
           onCancel={() => setPinFor(null)}
         />
+      </Show>
+      <Show when={parental()} keyed>
+        {ask => (
+          <View width={screen.width} height={screen.height} color={color.background} zIndex={30}>
+            <PinEntry
+              title={t("Parental PIN")}
+              error={error()}
+              onSubmit={pin => void switchTo(ask.p, ask.pin, pin)}
+              onCancel={() => setParental(null)}
+            />
+          </View>
+        )}
       </Show>
       {/* Add profile: the name being typed, above the keyboard sheet. */}
       <View

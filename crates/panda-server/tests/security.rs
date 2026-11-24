@@ -1735,6 +1735,16 @@ async fn age_limits_are_the_owners_with_a_parental_pin_and_hide_what_they_should
         StatusCode::UNPROCESSABLE_ENTITY
     );
     assert_eq!(parent.send("PUT", &url, Some(limit(Some(7), "2468"))).await.status, StatusCode::NO_CONTENT);
+    // The apps check the PIN once before showing the limits; the kid can't (below).
+    let check = |pin: &str| json!({ "pin": pin });
+    assert_eq!(
+        parent.post("/api/account/parental-pin/check", check("2468")).await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        parent.post("/api/account/parental-pin/check", check("1357")).await.status,
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
     // Never the owner, never another account's profile.
     let own = format!("/api/account/age-limits/{parent_id}");
     assert_eq!(
@@ -1776,6 +1786,10 @@ async fn age_limits_are_the_owners_with_a_parental_pin_and_hide_what_they_should
         StatusCode::FORBIDDEN
     );
     // The kid can't touch limits, nor the PIN.
+    assert_eq!(
+        kid.post("/api/account/parental-pin/check", check("2468")).await.status,
+        StatusCode::FORBIDDEN
+    );
     assert_eq!(kid.get("/api/account/age-limits").await.status, StatusCode::FORBIDDEN);
     assert_eq!(kid.send("PUT", &url, Some(limit(None, "2468"))).await.status, StatusCode::FORBIDDEN);
     assert_eq!(
