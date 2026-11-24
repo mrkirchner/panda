@@ -441,6 +441,8 @@ const ES: Record<string, string> = {
   "Skip intro": "Saltar intro",
   "Next episode in {secs}": "Siguiente episodio en {secs}",
   "Play next episode": "Ver siguiente episodio",
+  "Watch credits": "Ver créditos",
+  "AirPlay": "AirPlay",
   "Username or email": "Usuario o correo",
   "Wrong username or password.": "Usuario o contraseña incorrectos.",
   "airs {date}": "se emite el {date}",

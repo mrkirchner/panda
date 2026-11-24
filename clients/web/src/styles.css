@@ -2200,6 +2200,54 @@ h3 {
         transform: rotate(360deg);
     }
 }
+/* Skip intro and Up next: bottom right, above the controls while they show (Player.tsx). */
+.skip-intro,
+.up-next {
+    position: absolute;
+    z-index: 4;
+    right: clamp(12px, 3vw, 32px);
+    bottom: max(var(--space-xl), env(safe-area-inset-bottom));
+    transition: transform 0.2s ease;
+    will-change: transform;
+}
+.skip-intro.raised,
+.up-next.raised {
+    transform: translateY(-96px);
+}
+.skip-intro {
+    background: var(--text);
+    color: #141210;
+}
+.up-next {
+    width: min(360px, calc(100% - var(--space-xl) * 2));
+    border-radius: var(--radius-lg);
+    background: rgb(26 26 29 / 94%);
+    overflow: hidden;
+}
+.up-next img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--surface-2);
+}
+.up-next-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md) var(--space-lg) 0;
+}
+.up-next-text b {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.up-next-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    padding: var(--space-md) var(--space-lg) var(--space-lg);
+}
 .player-toast {
     position: absolute;
     z-index: 5;

@@ -5,7 +5,17 @@
 // Space/K play-pause, ←/→ or J/L 10 s, ↑/↓ volume, M mute, F full screen, C subtitles, Esc back.
 import { useParams, useSearchParams } from "@solidjs/router";
 import { absolute, api, imageUrl } from "@tv/api/client";
-import type { SubtitleTrack } from "@tv/api/types";
+import type { Markers, SubtitleTrack } from "@tv/api/types";
+import {
+  beforeUpNext,
+  countdownAllowed,
+  inIntro,
+  MARKER_RETRY_SECS,
+  nextLabel,
+  noteAutoplay,
+  noteInteraction,
+  upNext,
+} from "@tv/playback/skips";
 import { formatTime, languageName } from "@tv/format";
 import { lang, t } from "@tv/i18n";
 import { audioLabels } from "@tv/playback/audio";
@@ -36,7 +46,13 @@ const CONTROLS_HIDE_MS = 3500;
 const SKIP_SECS = 10;
 const PREVIEW_SETTLE_MS = 150;
 
-export default function Player() {
+/** The player, made anew for each file: Up next moves to the next episode's address. */
+export default function PlayerPage() {
+  const params = useParams<{ kind: string; id: string }>();
+  return <For each={[`${params.kind}/${params.id}`]}>{() => <Player />}</For>;
+}
+
+function Player() {
   const params = useParams<{ kind: string; id: string }>();
   const [search] = useSearchParams<{ start?: string; version?: string; back?: string }>();
   let video: HTMLVideoElement | undefined;
@@ -115,6 +131,47 @@ export default function Player() {
   /** Subtitles can be searched for (Bazarr), and it's worth it: nothing in your language among
    * the tracks, and the audio isn't in it either (the TV's rule). */
   const canFind = () => canSearch() && !tracks().some((s) => mine(s.language)) && !mine(audioLanguage());
+  // ---- Skip intro, Up next (the TV's rules: @tv/playback/skips) ----
+
+  /** Markers asked again when the server was still finding them. */
+  const [freshMarkers, setFreshMarkers] = createSignal<Markers | null>(null);
+  const markers = () => freshMarkers() ?? pb()?.markers;
+  const next = () => pb()?.next ?? null;
+  /** "Watch credits": the card stays away until a seek back before them. */
+  const [dismissed, setDismissed] = createSignal(false);
+  const skipIntro = () => inIntro(markers(), position());
+  const upNextState = createMemo(() => {
+    tick();
+    const d = engine?.duration() ?? 0;
+    return upNext(markers(), d, next(), position(), dismissed());
+  });
+  const skipTheIntro = () => {
+    const end = markers()?.intro_end;
+    if (end != null) engine?.seekTo(end);
+    noteInteraction();
+  };
+  const playNext = (auto: boolean) => {
+    const n = next();
+    if (!n || closing) return;
+    if (auto) noteAutoplay();
+    else noteInteraction();
+    closing = true;
+    engine?.close();
+    subs()?.close();
+    const back = search.back ? `?back=${encodeURIComponent(search.back)}` : "";
+    go(`/play/item/${n.item_id}${back}`, { replace: true });
+  };
+  const followMarkers = (itemId: number) =>
+    MARKER_RETRY_SECS.map((secs) =>
+      setTimeout(() => {
+        if (!markers()?.pending || closing) return;
+        void api
+          .markers(itemId)
+          .then(setFreshMarkers)
+          .catch(() => {});
+      }, secs * 1000),
+    );
+
   const showing = createMemo<Showing>(() => {
     tick();
     const s = subs();
@@ -250,6 +307,11 @@ export default function Player() {
     else if (document.fullscreenEnabled) void document.documentElement.requestFullscreen().catch(() => {});
     else iosVideo()?.webkitEnterFullscreen?.();
   };
+  const [airplay, setAirplay] = createSignal(false);
+  const showAirplay = () =>
+    (
+      video as (HTMLVideoElement & { webkitShowPlaybackTargetPicker?: () => void }) | undefined
+    )?.webkitShowPlaybackTargetPicker?.();
   const pipSupported = () => typeof document !== "undefined" && !!document.pictureInPictureEnabled;
   const togglePip = () => {
     if (!video) return;
@@ -310,7 +372,8 @@ export default function Player() {
         engine?.close();
         setFatal(text);
       },
-      onEnded: leave,
+      // The end: the next episode (unless nobody's been here for a while), else back.
+      onEnded: () => (next() && countdownAllowed() ? playNext(true) : leave()),
       onInfo: mediaSession,
       // A new stream (a restart): the same subtitle track again, with its new address.
       onStream: () => {
@@ -332,6 +395,7 @@ export default function Player() {
         setLoading(false);
         chooseSubs(initialTrack(engine.pb.subtitles, audioLanguage()), false);
         showControls();
+        if (engine.pb.markers?.pending) markerTimers = followMarkers(engine.pb.item_id);
       },
       (e) => {
         if (closing) return;
@@ -341,13 +405,24 @@ export default function Player() {
     );
     void features().then((f) => setCanSearch(!!f?.subtitle_search));
 
-    const clock = setInterval(bump, 250);
+    let markerTimers: ReturnType<typeof setTimeout>[] = [];
+    const clock = setInterval(() => {
+      bump();
+      const pos = engine?.position() ?? 0;
+      if (dismissed() && beforeUpNext(markers(), engine?.duration() ?? 0, next(), pos)) setDismissed(false);
+      if (upNextState().go) playNext(true);
+    }, 250);
+    // AirPlay (Safari, with the file or HLS played by the browser itself, not shaka).
+    const onTargets = (e: Event) =>
+      setAirplay((e as Event & { availability?: string }).availability === "available");
+    v.addEventListener("webkitplaybacktargetavailabilitychanged", onTargets);
     // The system's controls follow along once a second (their skip buttons step from here).
     const mediaClock = setInterval(
       () => engine && media?.setPosition(engine.position(), engine.playing()),
       1000,
     );
     const onKey = (e: KeyboardEvent) => {
+      noteInteraction();
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.target instanceof HTMLInputElement) return;
       if (overlayOpen()) return;
@@ -403,6 +478,8 @@ export default function Player() {
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       clearInterval(clock);
+      markerTimers.forEach(clearTimeout);
+      v.removeEventListener("webkitplaybacktargetavailabilitychanged", onTargets);
       clearInterval(mediaClock);
       clearTimeout(hideTimer);
       clearTimeout(toastTimer);
@@ -447,10 +524,12 @@ export default function Player() {
         // A mouse moving shows the controls (touches show them by tapping, below).
         if (e.pointerType === "mouse") showControls();
       }}
+      onPointerDown={noteInteraction}
     >
       <video
         ref={(el) => (video = el)}
         playsinline
+        x-webkit-airplay="allow"
         onPointerUp={(e) => {
           // A mouse click plays or pauses; a tap shows or hides the controls.
           if (e.pointerType === "mouse") {
@@ -522,6 +601,47 @@ export default function Player() {
             {t("Back")}
           </button>
         </div>
+      </Show>
+      {/* Skip intro, and the next episode at the credits: above the controls, there or not. */}
+      <Show when={skipIntro() && !upNextState().show}>
+        <button class={["btn skip-intro", { raised: controls() || !playing() }]} onClick={skipTheIntro}>
+          {t("Skip intro")}
+        </button>
+      </Show>
+      <Show when={upNextState().show && next()}>
+        {(n) => (
+          <div
+            class={["up-next", { raised: controls() || !playing() }]}
+            role="dialog"
+            aria-label={t("Up next")}
+          >
+            <img src={imageUrl(n().still ?? n().backdrop ?? null) ?? ""} alt="" />
+            <div class="up-next-text">
+              <span class="muted">
+                {upNextState().secondsLeft === null
+                  ? t("Up next")
+                  : t("Next episode in {secs}", { secs: String(upNextState().secondsLeft) })}
+              </span>
+              <b>
+                {nextLabel(n()).heading} {nextLabel(n()).name}
+              </b>
+            </div>
+            <div class="up-next-actions">
+              <button
+                class="btn small glass"
+                onClick={() => {
+                  noteInteraction();
+                  setDismissed(true);
+                }}
+              >
+                {t("Watch credits")}
+              </button>
+              <button class="btn small primary" onClick={() => playNext(false)}>
+                {t("Play next episode")}
+              </button>
+            </div>
+          </div>
+        )}
       </Show>
       <Show when={toastText()}>
         <div class="player-toast" role="status">
@@ -709,6 +829,11 @@ export default function Player() {
             <button class="icon-btn" aria-label={t("Quality")} onClick={(e) => void qualityMenu(e)}>
               <Icon name="gear" />
             </button>
+            <Show when={airplay()}>
+              <button class="icon-btn" aria-label={t("AirPlay")} onClick={showAirplay}>
+                <Icon name="airplay" />
+              </button>
+            </Show>
             <Show when={pipSupported()}>
               <button class="icon-btn" aria-label={t("Picture in Picture")} onClick={togglePip}>
                 <Icon name="pip" />
