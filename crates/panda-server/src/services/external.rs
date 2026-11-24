@@ -14,7 +14,7 @@
 //! Adding a service: a variant of [`Service`] with its `Spec`, a config type implementing
 //! [`ServiceConfig`] (its fields, how admin input merges, how it's checked, what the admin sees),
 //! its arm in `routes/admin.rs` `put_service`, its field in `settings::SettingsView` and its card
-//! in the admin UI (clients/web). Clients the server keeps go in `settings::build_integrations`.
+//! in the admin UI (clients/admin). Clients the server keeps go in `settings::build_integrations`.
 
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};

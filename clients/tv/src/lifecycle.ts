@@ -1,6 +1,6 @@
 // The app going out of sight (the Home button, another app, the TV or screen going to sleep) and
 // coming back. Browsers, LG webOS and Samsung Tizen say so with `visibilitychange`; the native
-// hosts (Apple TV: ../appletv/app/app.ts, Android TV: clients/android-tv MainActivity) call
+// hosts (Apple TV: ../appletv/app/app.ts, Android TV: clients/androidtv MainActivity) call
 // `globalThis.pandaSetHidden(hidden)` from their own lifecycle. Playback pauses and saves where it
 // is, preview clips stop (Samsung's app review asks that nothing keeps playing out of sight).
 type Listener = (hidden: boolean) => void;

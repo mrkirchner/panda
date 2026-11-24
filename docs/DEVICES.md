@@ -48,7 +48,7 @@ TIZEN_PROFILE=<profile name> pnpm package:tizen
 
 ## Android TV, Google TV and Fire TV
 
-One APK works on all of them (clients/android-tv wraps the TV app in a WebView).
+One APK works on all of them (clients/androidtv wraps the TV app in a WebView).
 
 One-time setup (build machine): a JDK 17, the Android SDK (`ANDROID_HOME`) and Gradle.
 

@@ -1,4 +1,4 @@
-# Panda web app (clients/watch)
+# Panda web app (clients/web)
 
 Watching Panda in a browser on a phone, tablet or computer: the TV app's pages (Home with its
 hero and expanding rows, Movies, Shows, each library, genres, the All grid, a movie, a show, a

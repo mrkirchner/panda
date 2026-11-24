@@ -68,8 +68,8 @@ if (device === "tizen") {
 }
 
 if (device === "android") {
-  // The WebView wrapper in clients/android-tv bundles this build as its assets.
-  const project = join("..", "android-tv");
+  // The WebView wrapper in clients/androidtv bundles this build as its assets.
+  const project = join("..", "androidtv");
   const www = join(project, "app", "src", "main", "assets", "www");
   rmSync(www, { recursive: true, force: true });
   cpSync(out, www, { recursive: true });

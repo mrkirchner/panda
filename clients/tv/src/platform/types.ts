@@ -1,6 +1,6 @@
 // What a platform provides to Panda's apps, capability by capability. The TV app's devices
 // (../../devices: browser, LG, Tizen, Android TV, Apple TV), the phone app (clients/mobile:
-// iOS, Android) and the web app (clients/watch) each answer these in their own way; shared code
+// iOS, Android) and the web app (clients/web) each answer these in their own way; shared code
 // and screens only see these shapes. A new platform implements the ones it can: optional ones
 // that are missing turn their feature off (the button isn't offered), as the apps already do for
 // the server's own features (`/api/features`).

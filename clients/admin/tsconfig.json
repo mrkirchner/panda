@@ -13,16 +13,7 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client", "node"],
-    "baseUrl": ".",
-    "paths": {
-      "@tv/*": ["../tv/src/*"],
-      "#devices/debug": ["../tv/devices/debug.ts"],
-      "#devices/resolution": ["./src/shims/resolution.ts"],
-      "#devices/devices": ["../tv/devices/devices.ts"],
-      "#device": ["./src/shims/device.ts"],
-      "solid-js": ["./node_modules/solid-js"]
-    }
+    "types": ["vite/client", "node"]
   },
   "include": ["src", "vite.config.ts"]
 }

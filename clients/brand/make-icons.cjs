@@ -76,16 +76,16 @@ const text = (content, file) => {
 
 // --- Web admin UI: favicon (the rounded app icon, as SVG) and the iOS home-screen icon.
 const tile = squareIcon(64, { radius: 14, fill: 0.84 });
-text(tile + "\n", path.join(CLIENTS, "web/public/favicon.svg"));
-png(squareIcon(180, { fill: 0.8 }), path.join(CLIENTS, "web/public/apple-touch-icon.png"), 180);
+text(tile + "\n", path.join(CLIENTS, "admin/public/favicon.svg"));
+png(squareIcon(180, { fill: 0.8 }), path.join(CLIENTS, "admin/public/apple-touch-icon.png"), 180);
 
 // --- LG webOS (80 and 130), Samsung Tizen (117), Android TV launcher (96, xhdpi).
 png(squareIcon(80), path.join(CLIENTS, "tv/devices/lg/package/icon.png"), 80);
 png(squareIcon(130), path.join(CLIENTS, "tv/devices/lg/package/largeIcon.png"), 130);
 png(squareIcon(117), path.join(CLIENTS, "tv/devices/tizen/package/icon.png"), 117);
-png(squareIcon(96), path.join(CLIENTS, "android-tv/app/src/main/res/mipmap-xhdpi/ic_launcher.png"), 96);
+png(squareIcon(96), path.join(CLIENTS, "androidtv/app/src/main/res/mipmap-xhdpi/ic_launcher.png"), 96);
 // Android TV home-screen banner (320x180 xhdpi): mark and name.
-png(banner(320, 180), path.join(CLIENTS, "android-tv/app/src/main/res/drawable/banner.png"), 320);
+png(banner(320, 180), path.join(CLIENTS, "androidtv/app/src/main/res/drawable/banner.png"), 320);
 
 /**
  * The mark as one colour (Android's notification icons are a white shape on clear): the play

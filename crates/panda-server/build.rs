@@ -1,8 +1,8 @@
-//! Bundles the admin web UI into the binary: the built site (`clients/web/dist`, from
+//! Bundles the admin web UI into the binary: the built site (`clients/admin/dist`, from
 //! `pnpm build`) is copied to `$OUT_DIR/web`, which `routes/web.rs` embeds. Without a build the
 //! folder is empty and the server serves the UI from disk (or tells you to run `pnpm dev`).
 //! The TV app's browser build (`clients/tv/dist/server`, `pnpm build:server`) goes to
-//! `$OUT_DIR/tv` the same way, served at `/tv`, and the web app for watching (`clients/watch/dist`,
+//! `$OUT_DIR/tv` the same way, served at `/tv`, and the web app for watching (`clients/web/dist`,
 //! `pnpm build`) to `$OUT_DIR/watch`, served at `/watch`.
 
 use std::path::{Path, PathBuf};
@@ -24,14 +24,14 @@ fn copy_dir(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 fn main() {
-    let dist = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../clients/web/dist");
+    let dist = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../clients/admin/dist");
     let out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR")).join("web");
     let _ = std::fs::remove_dir_all(&out);
     std::fs::create_dir_all(&out).expect("create web dir");
     if dist.join("index.html").is_file() {
         copy_dir(&dist, &out).expect("copy admin UI build");
     } else {
-        println!("cargo:warning=admin UI not built (clients/web/dist); the binary won't include it");
+        println!("cargo:warning=admin UI not built (clients/admin/dist); the binary won't include it");
     }
     println!("cargo:rerun-if-changed={}", dist.display());
 
@@ -46,14 +46,14 @@ fn main() {
     }
     println!("cargo:rerun-if-changed={}", tv.display());
 
-    let watch = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../clients/watch/dist");
+    let watch = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../clients/web/dist");
     let watch_out = PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR")).join("watch");
     let _ = std::fs::remove_dir_all(&watch_out);
     std::fs::create_dir_all(&watch_out).expect("create watch dir");
     if watch.join("index.html").is_file() {
         copy_dir(&watch, &watch_out).expect("copy web app build");
     } else {
-        println!("cargo:warning=web app not built (clients/watch: pnpm build); /watch won't be served");
+        println!("cargo:warning=web app not built (clients/web: pnpm build); /watch won't be served");
     }
     println!("cargo:rerun-if-changed={}", watch.display());
     println!("cargo:rerun-if-changed=build.rs");

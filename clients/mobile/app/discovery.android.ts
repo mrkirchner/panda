@@ -1,5 +1,5 @@
 // Panda servers on the home network on Android: NSD (Android's Bonjour), as the Android TV app
-// does (clients/android-tv MainActivity.Discovery). The server announces `_panda._tcp`
+// does (clients/androidtv MainActivity.Discovery). The server announces `_panda._tcp`
 // (crates/panda-server/src/services/discovery.rs); the Connect screen asks through
 // through the platform (platform.android.ts) and checks each address before offering it.
 import { Application, Utils } from "@nativescript/core";

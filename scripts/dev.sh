@@ -8,6 +8,6 @@ cd "$(dirname "$0")/.."
 trap 'kill 0' EXIT INT TERM
 scripts/restart-dev-server.sh
 tail -n 0 -F target/panda-dev.log &
-(cd clients/web && pnpm dev 2>&1 | sed 's/^/[web] /') &
+(cd clients/admin && pnpm dev 2>&1 | sed 's/^/[admin] /') &
 echo "server  http://localhost:8096   admin (live)  http://localhost:5174"
 wait

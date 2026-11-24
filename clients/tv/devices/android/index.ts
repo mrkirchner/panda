@@ -3,7 +3,7 @@ import { config as common } from "#devices/common";
 import { merge } from "lodash-es";
 
 /**
- * Android TV / Fire TV (WebView wrapper in clients/android-tv). The wrapper turns the remote's
+ * Android TV / Fire TV (WebView wrapper in clients/androidtv). The wrapper turns the remote's
  * Back button into Escape, which the common key map already treats as Back.
  */
 export const config: DeviceConfig = merge({}, common, <Partial<DeviceConfig>>{

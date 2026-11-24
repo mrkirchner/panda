@@ -1520,7 +1520,7 @@ async fn a_password_change_revokes_signed_urls() {
     assert_eq!(shelf.get(&format!("/api/topshelf/items?t={fresh}")).await.status, StatusCode::OK);
 }
 
-/// The web app for watching (`/watch`, clients/watch) is static and public, like the admin UI:
+/// The web app for watching (`/watch`, clients/web) is static and public, like the admin UI:
 /// every page of it carries a CSP that forbids framing and inline scripts, and a missing asset is
 /// a 404, never the app's page (a stale bundle must not load HTML as script).
 #[tokio::test]

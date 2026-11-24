@@ -104,7 +104,7 @@ pub struct ServerConfig {
     pub trust_proxy: bool,
     /// Force the cookie `Secure` flag. Default: on when the request arrived over HTTPS.
     pub secure_cookies: Option<bool>,
-    /// Built admin UI (`clients/web/dist`). Default: that path if it exists, else `web/`
+    /// Built admin UI (`clients/admin/dist`). Default: that path if it exists, else `web/`
     /// next to the binary. Without it, only the API is served (use `pnpm dev` for the UI).
     pub web_dir: Option<PathBuf>,
     /// Announce this server on the local network (mDNS `_panda._tcp`), so TV apps find it
@@ -233,7 +233,7 @@ impl Config {
         }
         let candidates = [
             self.server.web_dir.clone(),
-            Some(PathBuf::from("clients/web/dist")),
+            Some(PathBuf::from("clients/admin/dist")),
             std::env::current_exe().ok().and_then(|exe| exe.parent().map(|d| d.join("web"))),
         ];
         candidates.into_iter().flatten().find(|d| d.join("index.html").is_file())

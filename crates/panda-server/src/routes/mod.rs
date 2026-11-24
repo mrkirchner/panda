@@ -92,7 +92,7 @@ pub fn router(state: AppState) -> Router {
         .route("/tv", axum::routing::get(|| async { axum::response::Redirect::permanent("/tv/") }))
         .route("/tv/", axum::routing::get(web::serve_tv))
         .route("/tv/{*rest}", axum::routing::get(web::serve_tv))
-        // The web app for watching (clients/watch), for phones, tablets and computers.
+        // The web app for watching (clients/web), for phones, tablets and computers.
         .route("/watch", axum::routing::get(|| async { axum::response::Redirect::permanent("/watch/") }))
         .route("/watch/", axum::routing::get(web::serve_watch))
         .route("/watch/{*rest}", axum::routing::get(web::serve_watch))

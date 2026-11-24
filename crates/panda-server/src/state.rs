@@ -162,7 +162,7 @@ impl AppState {
             Some(d) => tracing::info!(dir = %d.display(), "serving admin UI"),
             None if crate::routes::web_bundled() => tracing::info!("serving the built-in admin UI"),
             None => {
-                tracing::info!("admin UI not built; run `pnpm dev` in clients/web (http://localhost:5174)");
+                tracing::info!("admin UI not built; run `pnpm dev` in clients/admin (http://localhost:5174)");
             }
         }
 

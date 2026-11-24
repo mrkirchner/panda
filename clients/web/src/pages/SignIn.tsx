@@ -1,69 +1,96 @@
-import { createMemo, createSignal, Show } from "solid-js";
-import { useParams } from "@solidjs/router";
-import { api } from "../api/client";
-import { Notice, useAction } from "../components/ui";
-import { passwordProblem } from "../format";
+// Sign this browser in, as the TV's password sign-in (`/api/auth/device/login`: the web login's
+// checks and limits): the browser joins the account as a device, and lands on Who's watching
+// when the account has several profiles. Served by Panda, a browser already signed in to Panda's
+// web pages skips this (session.ts).
+import { useSearchParams } from "@solidjs/router";
+import { api, landingPath } from "@tv/api/client";
+import { getServer } from "@tv/api/server";
+import { getDeviceSecret } from "@tv/api/session";
+import { t } from "@tv/i18n";
+import { Show, createSignal } from "solid-js";
+import { message } from "../data";
+import { go, href, nextPath } from "../nav";
+import { SERVED_BY_PANDA, browserName, signedIn } from "../session";
 
-/** A sign-in link for a profile: the person chooses their password (the email came with it). */
 export default function SignIn() {
-  const params = useParams<{ code: string }>();
-  const check = createMemo(() => api.signInLinkCheck(params.code ?? ""));
-  const [problem, setProblem] = createSignal<string | null>(null);
-  const [done, setDone] = createSignal(false);
-  const { busy, error, run } = useAction();
+  const [search] = useSearchParams<{ next?: string }>();
+  const [username, setUsername] = createSignal("");
+  const [password, setPassword] = createSignal("");
+  const [busy, setBusy] = createSignal(false);
+  const [error, setError] = createSignal("");
 
-  const submit = async (e: SubmitEvent) => {
+  const submit = async (e: Event) => {
     e.preventDefault();
-    const f = new FormData(e.currentTarget as HTMLFormElement);
-    const pw = String(f.get("password"));
-    const p = passwordProblem(pw, String(f.get("confirm")));
-    setProblem(p);
-    if (p) return;
-    if (await run(() => api.signInLinkUse(params.code ?? "", pw))) setDone(true);
+    if (busy()) return;
+    setBusy(true);
+    setError("");
+    try {
+      signedIn(await api.deviceLogin(username().trim(), password(), browserName(), getDeviceSecret()));
+      const landing = await landingPath();
+      go(
+        landing === "/"
+          ? nextPath(search.next)
+          : `${landing}${search.next ? `?next=${encodeURIComponent(search.next)}` : ""}`,
+        {
+          replace: true,
+        },
+      );
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div class="card">
-      <Show
-        when={check().valid}
-        fallback={
-          <>
-            <h1>Set up your Panda sign-in</h1>
-            <Notice kind="error">This link is invalid, already used, or expired. Ask for a new one.</Notice>
-          </>
-        }
-      >
-        <h1>Hi {check().name}, choose your password</h1>
-        <Show
-          when={!done()}
-          fallback={
-            <Notice kind="ok">
-              All set. Sign in on any TV with {check().email} and your new password: on the TV, choose Sign in
-              and enter them.
-            </Notice>
-          }
-        >
-          <p class="muted">You'll sign in with {check().email}.</p>
-          <form class="stack" onSubmit={submit}>
-            <input type="email" name="email" autocomplete="username" value={check().email ?? ""} hidden />
-            <label>
-              Password
-              <span class="hint">At least 10 characters.</span>
-              <input name="password" type="password" autocomplete="new-password" required />
-            </label>
-            <label>
-              Confirm password
-              <input name="confirm" type="password" autocomplete="new-password" required />
-            </label>
-            <Show when={problem() ?? error()}>
-              <Notice kind="error">{problem() ?? error()}</Notice>
-            </Show>
-            <button class="primary" disabled={busy()}>
-              {busy() ? "Saving..." : "Save password"}
-            </button>
-          </form>
+    <div class="center-page">
+      <form class="panel" onSubmit={(e) => void submit(e)}>
+        <div class="brand">
+          <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" />
+          <span>Panda</span>
+        </div>
+        <h1>{t("Sign in")}</h1>
+        <p class="lede">{SERVED_BY_PANDA ? t("With your Panda account.") : (getServer() ?? "")}</p>
+        <div class="field">
+          <label for="username">{t("Email or username")}</label>
+          <input
+            id="username"
+            class="input"
+            autocomplete="username"
+            autocapitalize="none"
+            value={username()}
+            onInput={(e) => setUsername(e.currentTarget.value)}
+          />
+        </div>
+        <div class="field">
+          <label for="password">{t("Password")}</label>
+          <input
+            id="password"
+            class="input"
+            type="password"
+            autocomplete="current-password"
+            value={password()}
+            onInput={(e) => setPassword(e.currentTarget.value)}
+          />
+        </div>
+        <Show when={error()}>
+          <p class="error">{error()}</p>
         </Show>
-      </Show>
+        <button
+          class="btn primary block"
+          type="submit"
+          disabled={busy() || !username().trim() || !password()}
+        >
+          {busy() ? t("Signing in...") : t("Sign in")}
+        </button>
+        <Show when={!SERVED_BY_PANDA}>
+          <p class="panel-foot">
+            <a class="link-btn" href={href("/connect")}>
+              {t("Another server")}
+            </a>
+          </p>
+        </Show>
+      </form>
     </div>
   );
 }

@@ -86,7 +86,7 @@ pub(super) async fn serve_tv(req: Request) -> Response {
     )
 }
 
-/// The web app for watching (`/watch`, clients/watch): history routing, so every unknown path
+/// The web app for watching (`/watch`, clients/web): history routing, so every unknown path
 /// under it is the app's `index.html`.
 pub(super) async fn serve_watch(req: Request) -> Response {
     serve_embedded(
@@ -94,7 +94,7 @@ pub(super) async fn serve_watch(req: Request) -> Response {
         "/watch",
         BundledWatch::get,
         WATCH_CSP,
-        "Web app not built. Run `pnpm build` in clients/watch.",
+        "Web app not built. Run `pnpm build` in clients/web.",
     )
 }
 
@@ -128,7 +128,7 @@ pub(super) async fn serve(State(state): State<AppState>, req: Request) -> Respon
     } else {
         return (
             StatusCode::NOT_FOUND,
-            "Admin UI not built. Run `pnpm build` in clients/web, or `pnpm dev` for development.",
+            "Admin UI not built. Run `pnpm build` in clients/admin, or `pnpm dev` for development.",
         )
             .into_response();
     };

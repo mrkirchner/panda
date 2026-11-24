@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build the single Panda server program: the admin UI (clients/web), the TV app for browsers
-# (clients/tv) and the web app for watching (clients/watch) are built first and then
+# Build the single Panda server program: the admin UI (clients/admin), the TV app for browsers
+# (clients/tv) and the web app for watching (clients/web) are built first and then
 # bundled into the binary (crates/panda-server/build.rs). Output: target/release/panda.
 #
 #   scripts/build-release.sh                                   for this machine
@@ -15,11 +15,11 @@ target=""
 if [[ "${1:-}" == "--target" ]]; then target="${2:?--target needs a target triple}"; fi
 
 if [[ -z "${PANDA_SKIP_UI:-}" ]]; then
-  (cd clients/web && pnpm install --frozen-lockfile && pnpm build)
+  (cd clients/admin && pnpm install --frozen-lockfile && pnpm build)
   # The TV app for browsers, served at /tv.
   (cd clients/tv && pnpm install --frozen-lockfile && pnpm build:server)
   # The web app for watching, served at /watch (shares the TV app's sources: after it).
-  (cd clients/watch && pnpm install --frozen-lockfile && pnpm build)
+  (cd clients/web && pnpm install --frozen-lockfile && pnpm build)
 fi
 
 if [[ -z "$target" ]]; then

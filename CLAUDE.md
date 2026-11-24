@@ -108,7 +108,7 @@
   Web app: Web Push (`services/web_push.rs`: the server's own VAPID key, encrypted as
   `web_push.vapid`; subscriptions per profile, migration 0028; `PUT/DELETE /api/push/subscription`
   only takes a browser push service's https address, Google/Mozilla/Apple/Microsoft, since the
-  server posts to it), shown by `clients/watch/public/sw.js`; subscribed after a first request
+  server posts to it), shown by `clients/web/public/sw.js`; subscribed after a first request
   (`src/platform/notifications.ts`), kept up at every start once allowed.
 - Radarr/Sonarr cleanup (`services/arr_cleanup.rs`, off by default, switches per kind, weekly
   plus "Run now"): only titles Panda requested and has in its library, a week after download,
@@ -216,10 +216,10 @@
   fewest re-encodes to 1080p that kept up) can be applied: `max_hardware_encodes`, applied at once
   (`Sessions::set_hardware_limit`) and at start, over panda.toml's `[transcoding] max_hardware`.
 - Development: `scripts/dev.sh` starts the server and the live-reloading admin UI (the TV app
-  separately: `pnpm start` in clients/tv; the web app: `pnpm dev` in clients/watch).
+  separately: `pnpm start` in clients/tv; the web app: `pnpm dev` in clients/web).
 
-## Admin web UI (clients/web)
-- Bundled into the server binary: `crates/panda-server/build.rs` copies `clients/web/dist` (minus
+## Admin web UI (clients/admin)
+- Bundled into the server binary: `crates/panda-server/build.rs` copies `clients/admin/dist` (minus
   source maps) into `$OUT_DIR/web`, embedded by `routes/web.rs` (rust-embed). One program serves
   the UI at `/` and the API at `/api`. `[server] web_dir` overrides with a folder. Release builds:
   `scripts/build-release.sh` (builds the UI first). A stale dist is embedded as-is, so rebuild the
@@ -411,7 +411,7 @@
   `Config.preventDefaultOnHandledKeys`.
 - Dev server base path is `/common/` (set per device by `devices/deviceConfigPlugin.ts`).
 
-## Web app for watching (clients/watch)
+## Web app for watching (clients/web)
 - The TV app's pages and player for phones, tablets and computers in a browser, served by Panda at
   `/watch/` (`build.rs` -> `$OUT_DIR/watch`, `routes/web.rs` `serve_watch`, its own CSP with blob:
   media for shaka-player). `pnpm build:standalone` for hosting elsewhere (Connect + password

@@ -165,7 +165,7 @@ Three terminals from the repo root:
 cargo run
 
 # 2. Admin web UI with hot reload (http://localhost:5174, proxies /api to :8096)
-cd clients/web && pnpm install && pnpm dev
+cd clients/admin && pnpm install && pnpm dev
 
 # 3. TV app (opens http://localhost:<port>/common/, talks to :8096).
 #    Renders at 1080p or 720p depending on the screen; force one with ?res=720 / ?res=1080
@@ -179,7 +179,7 @@ First run:
 2. The TV app shows a pairing code. Enter it at http://localhost:5174/link.
 3. Manage libraries, TMDB/Sonarr/Radarr, users and devices in the admin UI.
 
-Production: `pnpm build` in `clients/web` and the server serves the UI itself at `/` (or set
+Production: `pnpm build` in `clients/admin` and the server serves the UI itself at `/` (or set
 `web_dir`). `cargo run --release` for a fast build.
 
 ### Metadata (TMDB)
@@ -267,7 +267,7 @@ if ffmpeg isn't on `$PATH`.
 
 ## Roadmap
 
-- Admin web UI (`clients/web`, SolidJS 2.0) with first-run wizard; settings in SQLite
+- Admin web UI (`clients/admin`, SolidJS 2.0) with first-run wizard; settings in SQLite
 - Remote bitrate caps per user; optional TOTP two-factor
 - Multi-server client (pair one TV with several Panda servers), then optional federation
 - Fix-match UI for unmatched items; weekly metadata refresh

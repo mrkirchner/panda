@@ -371,7 +371,7 @@ const ES: Record<string, string> = {
   "Checking {url}...": "Comprobando {url}...",
   "Can't reach a Panda server at {url}. Check the address and that it's on.":
     "No se puede conectar con un servidor de Panda en {url}. Comprueba la dirección y que esté encendido.",
-  // Web app (clients/watch)
+  // Web app (clients/web)
   "Audio: {name}": "Audio: {name}",
   "Back 10 seconds": "Atrás 10 segundos",
   Change: "Cambiar",
