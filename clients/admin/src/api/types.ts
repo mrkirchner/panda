@@ -17,6 +17,8 @@ export interface User {
   display_name: string | null;
   /** Signs in with this (or the username) once it has its own sign-in. */
   email: string | null;
+  /** The oldest age rating this profile may watch; null = no limit. */
+  max_age?: number | null;
   /** Admin list only: libraries this user may see; null = all. */
   libraries?: number[] | null;
 }

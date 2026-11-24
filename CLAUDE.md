@@ -34,6 +34,19 @@
   other sessions. Editing/deleting a profile on a TV signs in as it first (PIN
   enforced); the owner (primary) can't be deleted from a TV, and deleting an owner deletes the
   account (FK cascade). Library access is set on the owner and applies to the whole account.
+- Age limits (per profile, `users.max_age`): every title's age rating from TMDB for `[tmdb] region`
+  (else the US) as the youngest age it's for (`panda_metadata::ratings`, any country's system),
+  stored on `metadata` by `services/ratings.rs` in the background (90-day refresh). All access goes
+  through `auth::Access` (`auth::access`: libraries + age limit): catalog lists, `ItemFilter`
+  (`access.filter`), `ensure_item_access`; a new list must use it. Limited profiles see no
+  unrated titles, nothing from outside the library (`outside_hidden`: TMDB rows, suggestions,
+  previews, people's other work) and can't request. Set by the account's owner behind the
+  account's parental PIN (`routes/age_limits.rs`, `/api/account/...`; set with the owner's
+  password) or by an admin (`age_limit` in the user PATCH). The parental PIN is asked only to
+  change limits and to leave a limited profile for a less limited one on a device
+  (`devices.profile_id` remembers the last profile past sign-out; 409 until given); picking a
+  profile otherwise needs no PIN. Apps: Edit profile > Parental controls (owner), and Who's
+  watching retries a switch with the parental PIN (`needsParentalPin`).
 - Preview clips (`panda_media::clip`, `services/clips.rs`, `routes/clips.rs`): ~30 s from a
   seek a few minutes in (never a full pass), 720p H.264 + AAC faststart MP4, `-sn`, HDR
   tone-mapped, from the title's smallest version (a show's first episode). Cached in

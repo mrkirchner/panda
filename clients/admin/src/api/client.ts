@@ -171,8 +171,10 @@ export const api = {
   ) => send<void>("PUT", `/api/admin/settings/${service}`, { ...body, api_key: body.api_key || undefined }),
   removeArr: (service: ArrService) => send<void>("DELETE", `/api/admin/settings/${service}`),
   users: () => request<User[]>("/api/admin/users"),
-  updateUser: (id: number, patch: { role?: Role; disabled?: boolean; libraries?: number[] }) =>
-    send<void>("PATCH", `/api/admin/users/${id}`, patch),
+  updateUser: (
+    id: number,
+    patch: { role?: Role; disabled?: boolean; libraries?: number[]; age_limit?: { max_age: number | null } },
+  ) => send<void>("PATCH", `/api/admin/users/${id}`, patch),
   deleteUser: (id: number) => send<void>("DELETE", `/api/admin/users/${id}`),
   resetPassword: (id: number, new_password: string) =>
     send<void>("POST", `/api/admin/users/${id}/password`, { new_password }),

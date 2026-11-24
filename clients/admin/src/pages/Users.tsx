@@ -6,6 +6,16 @@ import { Card, ConfirmButton, Notice, useAction } from "../components/ui";
 import { ago, passwordProblem, until } from "../format";
 import { SessionContext } from "../session";
 
+/** The age limits offered (the server's AGE_LIMITS), "" = none. */
+const AGE_LIMITS = [
+  { value: "", label: "No limit" },
+  { value: "0", label: "All ages" },
+  { value: "7", label: "7+" },
+  { value: "10", label: "10+" },
+  { value: "13", label: "13+" },
+  { value: "16", label: "16+" },
+];
+
 export default function Users() {
   return (
     <AdminOnly>
@@ -228,6 +238,9 @@ function UsersInner() {
                 <tr>
                   <th>Profile</th>
                   <th>Role</th>
+                  <th title="The oldest age rating the profile may watch; unrated titles are hidden too">
+                    Age limit
+                  </th>
                   <th>Status</th>
                   <th>Last sign-in</th>
                   <th />
@@ -237,7 +250,7 @@ function UsersInner() {
                 {(a) => (
                   <tbody>
                     <tr>
-                      <td colspan="5" style={{ "padding-top": "1rem" }}>
+                      <td colspan="6" style={{ "padding-top": "1rem" }}>
                         <strong>{shown(a.owner)}'s account</strong>{" "}
                         <span class="muted">
                           {a.profiles.length} of 8 profiles | {libraryNames(a.owner)}
@@ -279,6 +292,32 @@ function UsersInner() {
                                   <option value="admin" selected={u.role === "admin"}>
                                     Admin
                                   </option>
+                                </select>
+                              </Show>
+                            </td>
+                            <td>
+                              {/* Also on each account owner's own Parental controls (with the
+                                  account's parental PIN); admins are never limited. */}
+                              <Show when={u.role !== "admin"} fallback={<span class="muted">-</span>}>
+                                <select
+                                  onChange={(e) => {
+                                    const v = e.currentTarget.value;
+                                    void act
+                                      .run(() =>
+                                        api.updateUser(u.id, {
+                                          age_limit: { max_age: v === "" ? null : Number(v) },
+                                        }),
+                                      )
+                                      .then(() => refresh(users));
+                                  }}
+                                >
+                                  <For each={AGE_LIMITS}>
+                                    {(l) => (
+                                      <option value={l.value} selected={String(u.max_age ?? "") === l.value}>
+                                        {l.label}
+                                      </option>
+                                    )}
+                                  </For>
                                 </select>
                               </Show>
                             </td>
