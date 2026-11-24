@@ -238,6 +238,20 @@ export interface Home {
   recently_added_shows: SeriesSummary[];
 }
 
+/** A request of this profile whose title arrived (`/api/notifications`). */
+export interface Arrival {
+  /** The request's id. */
+  id: number;
+  kind: "movie" | "series";
+  title: string;
+  year: number | null;
+  poster: string | null;
+  ready_at: number | null;
+  /** What opens it: a movie's title id, or a show's name. */
+  title_id: string | null;
+  series: string | null;
+}
+
 export interface DeviceProfile {
   user_id: number;
   username: string;

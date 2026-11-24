@@ -88,6 +88,12 @@ export const SETTINGS = {
   /** The web app's subtitle choice (its own key: /tv and /watch share a browser's storage). */
   webSubtitles: setting("panda.watch.subtitles", json(isSubtitlePref)),
 
+  /** Request arrivals this phone has already notified about (request ids, newest last). */
+  notifiedArrivals: setting(
+    "panda.notified",
+    json((v: unknown): v is number[] => Array.isArray(v)),
+  ),
+
   // ---- TV display and debugging (Debug page) ----
   /** Output resolution override: 720 or 1080 (devices/resolution.ts). */
   resolution: setting("panda.res", oneOf("720", "1080")),

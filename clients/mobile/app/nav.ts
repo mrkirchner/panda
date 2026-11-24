@@ -116,6 +116,19 @@ export function showRoot(page: Page): void {
 
 export const back = () => current?.goBack();
 
+/**
+ * Run `fn` once the frame in use shows a loaded page (a root just set up, the tabs at launch,
+ * builds its first page a moment later; a page pushed before that ends up under it).
+ */
+export function afterLoaded(fn: () => void): void {
+  const since = Date.now();
+  const check = () => {
+    if (current?.currentPage?.isLoaded || Date.now() - since > 10_000) fn();
+    else setTimeout(check, 100);
+  };
+  setTimeout(check, 100);
+}
+
 let closeSheet: (() => void) | null = null;
 
 /**

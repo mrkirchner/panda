@@ -18,6 +18,8 @@
 	<!-- Playing on in the background, with its controls on the lock screen (nowPlaying.android.ts). -->
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+	<!-- "Ready to watch" (notifications.android.ts); asked after a first request (Android 13+). -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 	<queries>
 		<intent>
 			<action android:name="android.speech.RecognitionService" />

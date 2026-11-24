@@ -8,6 +8,7 @@ import {
   stopClip,
 } from "./clip.android";
 import { findServers } from "./discovery.android";
+import { notifications } from "./notifications.android";
 import { nowPlaying } from "./nowPlaying.android";
 import { pageSnap } from "./paging.android";
 import { prompt } from "./prompt.android";
@@ -36,4 +37,5 @@ export const platform = {
   // The SF Symbol names drawn as vector drawables (App_Resources/Android/src/main/res/drawable/sym_*.xml).
   icon: (name) => `res://sym_${name.replace(/\./g, "_")}`,
   nowPlaying,
+  notifications,
 } satisfies PhonePlatform as PhonePlatform;

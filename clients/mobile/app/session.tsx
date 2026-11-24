@@ -2,7 +2,7 @@
 import { api, landingPath, resetSession } from "@tv/api/client";
 import { currentUser, getDeviceSecret, setUnauthorizedHandler } from "@tv/api/session";
 import { t } from "@tv/i18n";
-import { back, open } from "./nav";
+import { afterLoaded, back, open } from "./nav";
 import { MyList } from "./screens/MyList";
 import { Avatar } from "./avatar";
 import { editProfileScreen } from "./screens/EditProfile";
@@ -35,8 +35,8 @@ export function relabel(reopen: () => void) {
   if (rootShows === "tabs") goHome();
   else if (rootShows === "profiles") goProfiles();
   else return;
-  // After the new root's frames exist.
-  setTimeout(reopen, 400);
+  // After the new root's first page is up.
+  afterLoaded(reopen);
 }
 
 export function goHome() {

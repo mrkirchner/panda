@@ -15,6 +15,7 @@ import { GhostRow, Logo } from "./cards";
 import { pickSeasons } from "./SeasonPicker";
 import { seriesScreen } from "./Series";
 import { titleScreen } from "./Title";
+import { platform } from "../platform";
 
 export function previewScreen(kind: "movie" | "series", tmdbId: number) {
   const data = load<Preview>(() => api.preview(kind, tmdbId));
@@ -41,6 +42,8 @@ export function previewScreen(kind: "movie" | "series", tmdbId: number) {
     setError("");
     try {
       await api.request(i, seasons);
+      // Told when it arrives (asked here, when it means something).
+      void platform.notifications?.permission();
       data.reload();
       refreshAll();
     } catch (e) {

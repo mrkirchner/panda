@@ -38,6 +38,7 @@ import type {
   Title,
   TitleDetails,
   User,
+  Arrival,
 } from "./types";
 
 /** Panda server origin (see api/server.ts). */
@@ -482,6 +483,8 @@ export const api = {
   discover: () => request<DiscoverSet[]>("/api/discover"),
   /** Ask Radarr/Sonarr for a title found through search. */
   /** `seasons`: shows only, just these (omit for all). */
+  /** Requests of this profile that arrived and haven't been looked at (for alerts). */
+  notifications: () => request<Arrival[]>("/api/notifications"),
   request: (d: Discover, seasons?: number[] | null) =>
     request<unknown>("/api/requests", {
       method: "POST",

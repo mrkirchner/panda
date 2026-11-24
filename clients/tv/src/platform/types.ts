@@ -98,6 +98,10 @@ export function nowPlayingInfo(
 export interface Notifications {
   /** Ask once; answers what the person allowed. */
   permission(): Promise<"granted" | "denied" | "unsupported">;
-  /** `open`: the app path to go to when it's tapped ("/title/m927"). */
-  show(n: { id: string; title: string; body: string; open?: string }): Promise<void>;
+  /** `open`: the app path to go to when it's tapped ("/title/m927"). Answers whether it was
+   * shown (not without permission). */
+  show(n: { id: string; title: string; body: string; open?: string }): Promise<boolean>;
+  /** Run `check` now and then in the background, as often as the OS allows (Android: about every
+   * 15 minutes; iOS: when it decides), app closed included. */
+  watch?(check: () => Promise<void>): void;
 }

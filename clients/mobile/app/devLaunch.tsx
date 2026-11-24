@@ -3,7 +3,8 @@
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
 //              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile |
-//              prompt:pin|email|text (the one-line question, platform.prompt)
+//              prompt:pin|email|text (the one-line question, platform.prompt) |
+//              check-arrivals (Android: a background "ready to watch" check in 20 s)
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
@@ -98,6 +99,10 @@ export function devLaunch() {
       openPreview(kind === "series" ? "series" : "movie", Number(id));
     }
     else if (what === "profiles") goProfiles();
+    else if (what === "check-arrivals" && __ANDROID__) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      (require("./notifications.android") as { checkSoon(secs: number): void }).checkSoon(20);
+    }
     else if (what === "prompt") {
       const kind = arg === "pin" || arg === "email" ? arg : "text";
       void platform

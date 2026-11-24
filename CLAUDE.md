@@ -97,6 +97,11 @@
   only with mail set up), and show in Home's "Ready to watch" row (`/api/home` `ready`, every app)
   for 7 days or until their page is opened (title/series details mark them seen).
   `GET /api/notifications` + `POST /api/notifications/seen` (own requests only) are for alerts.
+  Phone alerts: `app/arrivals.ts` (`checkArrivals`, each arrival notified once, remembered in
+  `SETTINGS.notifiedArrivals`) run by `platform.notifications.watch`: Android's WorkManager about
+  every 15 minutes with the app closed too (`ReadyWorker`, Java: WorkManager builds workers off the
+  main thread, where NativeScript has no JavaScript); the permission is asked after a first
+  request; tapping opens the title (`panda.open` extra, after the first page: `nav.afterLoaded`).
 - Radarr/Sonarr cleanup (`services/arr_cleanup.rs`, off by default, switches per kind, weekly
   plus "Run now"): only titles Panda requested and has in its library, a week after download,
   quality cutoff met; shows also ended with every monitored episode on disk. Removes the entry
