@@ -51,6 +51,9 @@ function firstScroll(view: View | undefined): ScrollView | ListView | null {
 }
 
 /** Before the tabs are built: Search's starting query. */
+/** A screen to open was asked for at launch (it goes there, not to Who's watching). */
+export const devOpens = () => argAfter("-pandaOpen") !== null;
+
 export function devPrepare() {
   const query = argAfter("-pandaSearch");
   if (query) setStartQuery(query);

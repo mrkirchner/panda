@@ -3,7 +3,7 @@
 // as that profile first (its PIN, if it has one), so a profile is only changed as itself.
 import { Dialogs } from "@nativescript/core";
 import { api, ensureSession, pinMessage, resetSession } from "@tv/api/client";
-import { getToken, setDeviceSecret, setToken } from "@tv/api/session";
+import { currentUser, getToken, setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal, onCleanup } from "solid-js";
@@ -12,6 +12,7 @@ import { platform } from "../platform";
 import { load } from "../data";
 import { open } from "../nav";
 import { goHome, goSignIn, setOnProfiles } from "../session";
+import { aboutScreen } from "./About";
 import { editProfileScreen } from "./EditProfile";
 
 /** The server's per-account limit (MAX_PROFILES). */
@@ -34,6 +35,8 @@ export function Profiles() {
 
   /** Sign in as `p` (PIN first), then watch, or edit it in edit mode. */
   const pick = async (p: DeviceProfile) => {
+    // Editing yourself: no switch and no PIN (the TV's way).
+    if (editing() && p.user_id === currentUser()?.id) return openEdit();
     let pin: string | undefined;
     if (p.has_pin) {
       const entered = await platform.prompt({
@@ -118,6 +121,9 @@ export function Profiles() {
           text={editing() ? t("Done") : t("Edit profiles")}
           on:tap={() => setEditing(e => !e)}
         />
+        <Show when={!editing()}>
+          <button class="secondary" text={t("About Panda")} on:tap={() => open(() => aboutScreen(), { title: t("About Panda") })} />
+        </Show>
         <button class="secondary" text={t("Sign out of this phone")} on:tap={signOut} />
       </stacklayout>
     </scrollview>

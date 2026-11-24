@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 15 draws apps under the status and navigation bars unless they opt out: the app's
+         pages are laid out below the status bar and above the navigation bar, as before.
+         NativeScript's own inset handling misses the bars once the root changes (Who's watching,
+         then the tabs): Home's bar ends up under the status bar. Android 16 (targetSdk 36) ends
+         the opt-out; by then the pages need to take the insets themselves. -->
+    <style name="AppThemeBase35" parent="AppThemeBase29">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+
+    <style name="AppTheme" parent="AppThemeBase35">
+    </style>
+</resources>

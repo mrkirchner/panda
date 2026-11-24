@@ -3,7 +3,7 @@
 // limit), or edit one (signs in as it first). Sign out of this browser at the bottom.
 import { useSearchParams } from "@solidjs/router";
 import { api, ensureSession, HttpError, pinMessage } from "@tv/api/client";
-import { setDeviceSecret, setToken } from "@tv/api/session";
+import { currentUser, setDeviceSecret, setToken } from "@tv/api/session";
 import type { DeviceProfile } from "@tv/api/types";
 import { t } from "@tv/i18n";
 import { For, Show, createSignal } from "solid-js";
@@ -11,7 +11,7 @@ import { Avatar } from "../components/Avatar";
 import { Icon } from "../components/icons";
 import { ask } from "../components/ui";
 import { load, message } from "../data";
-import { go, nextPath, paths } from "../nav";
+import { go, href, nextPath, paths } from "../nav";
 import { profileChanged, signOutBrowser } from "../session";
 
 /** The server's per-account limit (MAX_PROFILES). */
@@ -34,6 +34,8 @@ export default function Profiles() {
   const [error, setError] = createSignal("");
 
   const pick = async (p: DeviceProfile) => {
+    // Editing yourself: no switch and no PIN (the TV's way).
+    if (editing() && p.user_id === currentUser()?.id) return go(paths.editProfile);
     let pin: string | undefined;
     if (p.has_pin) {
       const r = await ask(p.display_name || p.username, {
@@ -114,6 +116,11 @@ export default function Profiles() {
         <button class={["btn", { primary: editing() }]} onClick={() => setEditing((e) => !e)}>
           {editing() ? t("Done") : t("Edit profiles")}
         </button>
+        <Show when={!editing()}>
+          <a class="btn" href={href("/about")}>
+            {t("About")}
+          </a>
+        </Show>
         <button class="btn" onClick={signOutBrowser}>
           {t("Sign out of this browser")}
         </button>

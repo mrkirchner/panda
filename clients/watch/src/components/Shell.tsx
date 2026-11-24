@@ -10,11 +10,9 @@ import { For, createMemo, createSignal, onSettled } from "solid-js";
 import { libraries } from "../features";
 import { load } from "../data";
 import { appPath, href, go, paths } from "../nav";
-import { signOutBrowser } from "../session";
 import { Avatar } from "./Avatar";
 import { Icon, type IconName } from "./icons";
 import { OfflineBanner } from "./Offline";
-import { pick } from "./ui";
 
 interface Tab {
   label: string;
@@ -58,18 +56,9 @@ export function Shell(props: { children?: JSX.Element }) {
     { label: "My List", path: paths.myList, icon: "bookmark" },
   ];
 
-  const profileMenu = async (e: MouseEvent) => {
-    const options = [t("Switch profile"), t("Edit profile"), t("About"), t("Sign out of this browser")];
-    const i = await pick(
-      currentUser()?.name,
-      options.map((label) => ({ label })),
-      e.currentTarget as Element,
-    );
-    if (i === 0) go(paths.profiles);
-    else if (i === 1) go(paths.editProfile);
-    else if (i === 2) go("/about");
-    else if (i === 3) signOutBrowser();
-  };
+  /** The profile button: Who's watching, as the TV's top bar opens it (editing, About and
+   * signing out are there). */
+  const profileMenu = () => go(paths.profiles);
 
   return (
     <div class="app">
@@ -91,7 +80,7 @@ export function Shell(props: { children?: JSX.Element }) {
           <a class="icon-btn top-search" href={href("/search")} aria-label={t("Search")}>
             <Icon name="search" />
           </a>
-          <button class="profile-btn" aria-label={t("Profile")} onClick={(e) => void profileMenu(e)}>
+          <button class="profile-btn" aria-label={t("Profile")} onClick={profileMenu}>
             <Avatar name={currentUser()?.name ?? "?"} picture={currentUser()?.avatar} size={34} />
           </button>
         </div>

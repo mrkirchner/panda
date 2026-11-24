@@ -217,6 +217,11 @@
   `--link` is a deeper gold for text on light backgrounds). Keep the two in step.
 
 ## Platform contract (all apps)
+- Flows are the TV's everywhere: the avatar opens the Who's watching page (Back returns; editing
+  a profile, About and signing out are there, no profile menu), launch picks a profile first when
+  the account has several (`landingPath`), editing yourself needs no switch or PIN. Overlays are
+  only where the TV has them, in each platform's own form (the TV's Dropdown = a menu, its
+  season panel = a sheet, PinEntry = the PIN prompt, ConfirmDialog = a confirm).
 - What an app needs from its platform is typed once in `clients/tv/src/platform/types.ts`
   (`PlaybackProfile`, `Discovery`, `Voice`, `NowPlaying` with `nowPlayingInfo()` for the wording,
   `Notifications`: no app shows any yet; push needs server work first). Each client answers it: the TV's

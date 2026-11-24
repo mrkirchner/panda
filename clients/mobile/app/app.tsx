@@ -2,13 +2,13 @@
 // then the app: one Frame whose pages are the screens (nav.ts).
 import "./shims/globals";
 import { Application, Frame } from "@nativescript/core";
-import { AuthError, ensureSession } from "@tv/api/client";
+import { AuthError, ensureSession, landingPath } from "@tv/api/client";
 import { getServer } from "@tv/api/server";
 import { getDeviceSecret, getToken } from "@tv/api/session";
 import { open, setRootFrame } from "./nav";
 import { Connect } from "./screens/Connect";
 import { goHome, goProfiles, goSignIn } from "./session";
-import { devLaunch, devPrepare } from "./devLaunch";
+import { devLaunch, devOpens, devPrepare } from "./devLaunch";
 
 // The Panda servers on this network: Bonjour on iPhone, NSD on Android (discovery.*.ts).
 
@@ -36,8 +36,10 @@ if (__IOS__) {
 function start() {
   if (!getServer()) return open(() => <Connect />, { clear: true });
   if (!getToken()) return getDeviceSecret() ? goProfiles() : goSignIn();
-  ensureSession().then(() => {
+  ensureSession().then(async () => {
     if (__DEV__) devPrepare();
+    // An account with several profiles picks one first, as the TV does at launch.
+    if ((await landingPath()) === "/profiles" && !(__DEV__ && devOpens())) return goProfiles();
     goHome();
     if (__DEV__) devLaunch();
   }, (e: unknown) => {

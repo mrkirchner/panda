@@ -1,11 +1,9 @@
 // Where to go after launch, sign-in, or a profile switch.
 import { api, landingPath, resetSession } from "@tv/api/client";
-import { currentUser, getDeviceSecret, setDeviceSecret, setToken, setUnauthorizedHandler } from "@tv/api/session";
-import { Dialogs } from "@nativescript/core";
+import { currentUser, getDeviceSecret, setUnauthorizedHandler } from "@tv/api/session";
 import { t } from "@tv/i18n";
 import { back, open } from "./nav";
 import { MyList } from "./screens/MyList";
-import { aboutScreen } from "./screens/About";
 import { Avatar } from "./avatar";
 import { editProfileScreen } from "./screens/EditProfile";
 import { Home } from "./screens/Home";
@@ -16,25 +14,13 @@ import { showTabs } from "./tabs";
 import { Profiles } from "./screens/Profiles";
 import { SignIn } from "./screens/SignIn";
 
-/** Home's profile button: edit this profile, switch, or sign this phone out. */
-async function profileMenu() {
-  const edit = t("Edit profile");
-  const change = t("Switch profile");
-  const out = t("Sign out of this phone");
-  const about = t("About Panda");
-  const pick = await Dialogs.action({
-    title: currentUser()?.name ?? "",
-    cancelButtonText: t("Cancel"),
-    actions: getDeviceSecret() ? [edit, change, about, out] : [edit, about, out],
-  });
-  if (pick === edit) open(() => editProfileScreen(back), { title: t("Edit profile") });
-  else if (pick === change) goProfiles();
-  else if (pick === about) open(() => aboutScreen(), { title: t("About Panda") });
-  else if (pick === out) {
-    setToken(null);
-    setDeviceSecret(null);
-    goSignIn();
-  }
+/**
+ * Home's profile button: Who's watching, as the TV's top bar opens it (a page; Back returns).
+ * Editing a profile, About and signing out are there, as on the TV.
+ */
+function profileMenu() {
+  if (!getDeviceSecret()) return void open(() => editProfileScreen(back), { title: t("Edit profile") });
+  open(() => <Profiles />, { title: t("Who's watching?") });
 }
 
 /** Signed in: the tab bar, starting on Home. */
