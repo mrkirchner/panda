@@ -119,7 +119,14 @@ class MainActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
+    // The app's own lifecycle (clients/tv/src/lifecycle.ts): playback pauses and saves, preview
+    // clips stop, while it's out of sight. Told before the WebView pauses its JavaScript.
+    private fun setHidden(hidden: Boolean) {
+        web.evaluateJavascript("window.pandaSetHidden && window.pandaSetHidden($hidden)", null)
+    }
+
     override fun onPause() {
+        setHidden(true)
         web.onPause()
         super.onPause()
     }
@@ -127,6 +134,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         web.onResume()
+        setHidden(false)
     }
 
     override fun onDestroy() {

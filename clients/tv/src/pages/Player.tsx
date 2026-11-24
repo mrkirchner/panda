@@ -60,6 +60,7 @@ const SUBTITLE_MENU_W = 520;
 
 import { lang, t } from "../i18n";
 import { audioChoice, read, write } from "../platform/settings";
+import { onAppVisibility } from "../lifecycle";
 
 /** A scrub lands this long after the last Left/Right press (OK lands it at once). */
 const SEEK_COMMIT_MS = 900;
@@ -648,11 +649,20 @@ export default function Player() {
     };
     for (const [name, fn] of events) player.video.addEventListener(name, fn);
     window.addEventListener("keydown", onAnyKey, true);
+    // Out of sight (Home, another app, the TV asleep): save now, while the app still runs, and
+    // pause. Back again, it waits paused with its controls up (an expired stream restarts on play).
+    stopVisibility = onAppVisibility(hidden => {
+      if (!hidden || !player) return;
+      reportProgress(true);
+      if (!player.video.paused) player.pause();
+    });
     const at = Number(search.start ?? 0);
     await start(Number.isFinite(at) && at > 0 ? at : 0, true);
   });
 
+  let stopVisibility: (() => void) | undefined;
   onCleanup(() => {
+    stopVisibility?.();
     clearTimeout(toastTimer);
     clearTimeout(hideTimer);
     clearTimeout(seekTimer);

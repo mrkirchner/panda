@@ -161,6 +161,12 @@ function boot(canvas: Canvas): void {
   installNativeTextInput(root);
   const bridge = new KeyBridge({ target: document });
   bindLifecycle(() => renderer as unknown as PausableRenderer | undefined, bridge, Application);
+  // The app's own lifecycle (../../tv/src/lifecycle.ts): playback pauses and saves, preview
+  // clips stop, while tvOS has it in the background.
+  const setHidden = (hidden: boolean) =>
+    (globalThis as unknown as { pandaSetHidden?: (hidden: boolean) => void }).pandaSetHidden?.(hidden);
+  Application.on(Application.suspendEvent, () => setHidden(true));
+  Application.on(Application.resumeEvent, () => setHidden(false));
   if (isTvOS) bindRemote(bridge, Application.ios.window);
   replayKeys(bridge);
   import("../../tv/src/index").catch((error: unknown) => console.error("Panda failed to start", error));

@@ -13,6 +13,7 @@ import { perf } from "#devices/tier";
 import { api } from "../api/client";
 import { currentUser } from "../api/session";
 import { browserPreviewPlayer } from "./previewPlayer";
+import { onAppVisibility } from "../lifecycle";
 
 export type PreviewSource = { kind: "title"; id: string } | { kind: "series"; name: string };
 export type PreviewRect = { x: number; y: number; w: number; h: number; radius: number };
@@ -82,6 +83,11 @@ export function stopPreview(owner?: symbol): void {
   player().stop();
   setActive(null);
 }
+
+// Out of sight, no clip plays on (the page starts it again when it's looked at).
+onAppVisibility(hidden => {
+  if (hidden) stopPreview();
+});
 
 /** How long a page's backdrop rests before its preview clip starts. */
 export const BACKDROP_PREVIEW_DELAY_MS = 2500;

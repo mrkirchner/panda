@@ -295,6 +295,10 @@
   episode cards; TMDB's `next_episode` greyed at the end of its season with its date, or in the
   meta line when its season isn't in the library), More Like This, Cast & Crew, `InfoSection`
   (each page passes its own Information/Files facts). Ratings get their own line under the facts.
+- Out of sight (Home, another app, the TV asleep): `src/lifecycle.ts` (`onAppVisibility`) from
+  `visibilitychange` (browsers, LG, Samsung) or the hosts' `pandaSetHidden` (Apple TV's
+  suspend/resume, Android TV's onPause/onResume). The player saves and pauses (back again: paused,
+  controls up; a stream the server ended meanwhile restarts where it was), preview clips stop.
 - Back (`b`/Backspace/Escape; LG 461, Samsung 10009) is handled at the app root: previous page,
   except on main pages: the top bar first, then Home (Home stays). Overlays handle `onBack`
   themselves and return true.
