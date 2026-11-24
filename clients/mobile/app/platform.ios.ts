@@ -3,6 +3,7 @@ import { Device } from "@nativescript/core";
 import { findServers } from "@appletv/discovery";
 import type { PhonePlatform } from "./platformTypes";
 import { playClip, setPlayerOpen, setSheetOpen, stopClip } from "./clip.ios";
+import { notifications } from "./notifications.ios";
 import { nowPlaying } from "./nowPlaying.ios";
 import { pageSnap } from "./paging.ios";
 import { prompt } from "./prompt.ios";
@@ -23,4 +24,5 @@ export const platform = {
   deviceName: () => Device.model || "iPhone",
   icon: (name) => `sys://${name}`,
   nowPlaying,
+  notifications,
 } satisfies PhonePlatform as PhonePlatform;

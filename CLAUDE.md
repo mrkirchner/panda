@@ -102,6 +102,9 @@
   every 15 minutes with the app closed too (`ReadyWorker`, Java: WorkManager builds workers off the
   main thread, where NativeScript has no JavaScript); the permission is asked after a first
   request; tapping opens the title (`panda.open` extra, after the first page: `nav.afterLoaded`).
+  iPhone (`notifications.ios.ts`): UNUserNotificationCenter (shown as a banner in the app too,
+  tapping opens the title via `onOpen`), a background app refresh task (`app.panda.mobile.arrivals`,
+  Info.plist; iOS runs it when it decides) and a check whenever the app comes back.
 - Radarr/Sonarr cleanup (`services/arr_cleanup.rs`, off by default, switches per kind, weekly
   plus "Run now"): only titles Panda requested and has in its library, a week after download,
   quality cutoff met; shows also ended with every monitored episode on disk. Removes the entry

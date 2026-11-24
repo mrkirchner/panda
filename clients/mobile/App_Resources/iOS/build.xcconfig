@@ -2,3 +2,5 @@
 IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 TARGETED_DEVICE_FAMILY = 1,2;
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+// "Ready to watch" background checks (notifications.ios.ts).
+OTHER_LDFLAGS = $(inherited) -framework BackgroundTasks -framework UserNotifications

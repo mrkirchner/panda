@@ -104,4 +104,6 @@ export interface Notifications {
   /** Run `check` now and then in the background, as often as the OS allows (Android: about every
    * 15 minutes; iOS: when it decides), app closed included. */
   watch?(check: () => Promise<void>): void;
+  /** Where a tapped notification's `open` path goes (platforms that hand it over this way). */
+  onOpen?(go: (path: string) => void): void;
 }

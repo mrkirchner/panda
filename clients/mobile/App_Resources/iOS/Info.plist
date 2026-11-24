@@ -57,6 +57,12 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<!-- "Ready to watch" checks when iOS allows (notifications.ios.ts). -->
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>app.panda.mobile.arrivals</string>
 	</array>
 	<!-- A Panda server at home answers on plain http (http://192.168.1.20:8096). -->
 	<key>NSAppTransportSecurity</key>

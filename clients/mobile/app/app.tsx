@@ -40,6 +40,9 @@ if (__IOS__) {
 // iOS's background refresh). Here at the top, so a background start (no screens) has it too.
 const notes = platform.notifications;
 if (notes?.watch) notes.watch(() => checkArrivals(notes));
+notes?.onOpen?.(path => {
+  if (getToken()) afterLoaded(() => openPath(path));
+});
 
 /** A notification's page ("/title/m927", "/series/Name"), opened over Home. */
 function openPath(path: string | null | undefined): void {

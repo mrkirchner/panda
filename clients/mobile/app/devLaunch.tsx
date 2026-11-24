@@ -24,6 +24,7 @@ const { devSeek, play } = platform.player;
 import { selectTab } from "./tabs";
 import { devDrag, devExpand, devScrollRow } from "./screens/cards";
 import { devType, setStartQuery } from "./screens/Search";
+import { checkArrivals } from "./arrivals";
 
 /** A launch option: `-pandaOpen title:m1` on iOS (simctl launch arguments), the intent extra
  * `pandaOpen` on Android (`adb shell am start -n app.panda.mobile/com.tns.NativeScriptActivity
@@ -99,9 +100,14 @@ export function devLaunch() {
       openPreview(kind === "series" ? "series" : "movie", Number(id));
     }
     else if (what === "profiles") goProfiles();
-    else if (what === "check-arrivals" && __ANDROID__) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      (require("./notifications.android") as { checkSoon(secs: number): void }).checkSoon(20);
+    else if (what === "check-arrivals") {
+      if (__ANDROID__) {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        (require("./notifications.android") as { checkSoon(secs: number): void }).checkSoon(20);
+      } else if (platform.notifications) {
+        // iOS: the simulator runs no background refresh; the same check, now.
+        void platform.notifications.permission().then(() => checkArrivals(platform.notifications!));
+      }
     }
     else if (what === "prompt") {
       const kind = arg === "pin" || arg === "email" ? arg : "text";
