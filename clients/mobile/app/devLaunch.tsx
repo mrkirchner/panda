@@ -2,7 +2,8 @@
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
-//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile
+//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile |
+//              prompt:pin|email|text (the one-line question, platform.prompt)
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
 //   -pandaScroll <points>   then scroll the page down that far
 //   -pandaSeek <secs>       8 s after launch, seek the open player there
@@ -94,6 +95,12 @@ export function devLaunch() {
       openPreview(kind === "series" ? "series" : "movie", Number(id));
     }
     else if (what === "profiles") goProfiles();
+    else if (what === "prompt") {
+      const kind = arg === "pin" || arg === "email" ? arg : "text";
+      void platform
+        .prompt({ title: "Kids", message: "Enter PIN", ok: "OK", cancel: "Cancel", kind })
+        .then(r => console.log(`prompt answered: ${r === null ? "cancelled" : `${r.length} characters`}`));
+    }
     else if (what === "edit-profile") open(() => editProfileScreen(), { title: "Edit profile" });
     else if (what === "signin") goSignIn();
     else if (what === "connect") open(() => <Connect />, { clear: true });
