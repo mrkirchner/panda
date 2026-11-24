@@ -45,6 +45,7 @@ const Router = createRouter({
     { path: "/my-list", component: lazy(() => import("./pages/MyList")) },
     { path: "/profiles", component: lazy(() => import("./pages/Profiles")) },
     { path: "/profile", component: lazy(() => import("./pages/EditProfile")) },
+    { path: "/parental", component: lazy(() => import("./pages/ParentalControls")) },
     { path: "/about", component: lazy(() => import("./pages/About")) },
     { path: "/sign-in", component: lazy(() => import("./pages/SignIn")) },
     { path: "/connect", component: lazy(() => import("./pages/Connect")) },

@@ -252,6 +252,18 @@ export default function EditProfile() {
                 {hasPin() ? t("Change") : t("Set PIN")}
               </button>
             </div>
+            {/* The account's owner: each profile's age limit, behind the parental PIN. */}
+            <Show when={m().primary}>
+              <div class="form-section setting-row">
+                <div>
+                  <b>{t("Parental controls")}</b>
+                  <div class="hint">{t("Age limits for the other profiles.")}</div>
+                </div>
+                <button class="btn small" onClick={() => go("/parental")}>
+                  {t("Open")}
+                </button>
+              </div>
+            </Show>
             {/* The owner always signs in with their own account (the TV hides this for them too). */}
             <Show when={!m().primary}>
               <div class="form-section setting-row">
