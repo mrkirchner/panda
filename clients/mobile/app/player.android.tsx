@@ -42,7 +42,17 @@ import { SubtitleSource, initialTrack, rememberSubtitles, type Showing } from ".
 import { audioChoice, read, write } from "@tv/platform/settings";
 import type { PlayTarget } from "./platformTypes";
 import { nowPlaying } from "./nowPlaying.android";
-import { castButton, castLoad, castSeek, castSubtitles, followCasting, remote, stopCasting } from "./cast.android";
+import {
+  castButton,
+  castDevice,
+  castLoad,
+  castSeek,
+  castState,
+  castSubtitles,
+  followCasting,
+  remote,
+  stopCasting,
+} from "./cast.android";
 import { nowPlayingInfo, type NowPlayingSession } from "@tv/platform/types";
 
 const SAVE_EVERY_MS = 10_000;
@@ -139,7 +149,19 @@ class AndroidPlayer {
   };
   /** Casting: the Chromecast's stream, where it starts in the file, and the last position it
    * reported (the phone's own player is paused meanwhile). */
-  private cast: { pb: Playback; offset: number; at: number; tracks: Map<string, number> } | null = null;
+  private cast: {
+    pb: Playback;
+    offset: number;
+    at: number;
+    tracks: Map<string, number>;
+    /** The receiver hasn't reported this stream yet: `at` stands for the position meanwhile. */
+    loading: boolean;
+    url: string;
+  } | null = null;
+  /** A cast start under way (connect events can come twice). */
+  private castStarting = false;
+  /** Bumped by every stream handed to the Chromecast: only the latest is kept. */
+  private castGen = 0;
   private stopFollowingCast: (() => void) | null = null;
   /** The lock screen and notification's controls (nowPlaying.android.ts). */
   private media: NowPlayingSession | null = null;
@@ -211,7 +233,7 @@ class AndroidPlayer {
   }
 
   private async restart(at: number) {
-    if (this.pending !== null || this.closed) return;
+    if (this.pending !== null || this.closed || this.cast) return;
     const was = this.pb;
     this.pending = at;
     this.s.busy[1](true);
@@ -240,7 +262,9 @@ class AndroidPlayer {
   position(): number {
     if (this.cast) {
       const client = remote();
-      return client ? this.cast.offset + client.getApproximateStreamPosition() / 1000 : this.cast.at;
+      // Loading a new stream, or idle (finished, stopped): its position isn't this stream's.
+      if (!client || this.cast.loading || castState(client).idle) return this.cast.at;
+      return this.cast.offset + client.getApproximateStreamPosition() / 1000;
     }
     if (this.pending !== null) return this.pending;
     return this.offset + this.exo.getCurrentPosition() / 1000;
@@ -293,59 +317,134 @@ class AndroidPlayer {
     else this.exo.pause();
   }
 
-  /** Connected to a Chromecast: it plays from here (the phone pauses and lets its stream go). */
+  /** Connected to a Chromecast: it plays from here (the phone stops and lets its stream go). */
   private async startCasting(device: string) {
-    if (this.cast || this.closed) return;
+    if (this.cast || this.castStarting || this.closed) return;
+    this.castStarting = true;
     const at = this.position();
-    this.exo.pause();
+    // Stopped, not paused: a paused player keeps loading its stream, which is about to go.
+    this.exo.stop();
     this.s.casting[1](device);
     await this.castFrom(at);
-    if (this.cast && this.pb?.method === "hls") void api.stopSession(this.pb.session_id);
+    this.castStarting = false;
+    if (this.cast) {
+      if (this.pb?.method === "hls") void api.stopSession(this.pb.session_id);
+      return;
+    }
+    // It couldn't start (no stream, the share offline): back to the phone.
+    this.s.casting[1](null);
+    stopCasting();
+    if (!this.closed) void this.restart(at);
   }
 
   /** Give the Chromecast a stream from `at` (file time), replacing the one it has. */
   private async castFrom(at: number) {
     const client = remote();
     if (!client || this.closed) return;
+    const gen = ++this.castGen;
     this.s.busy[1](true);
     try {
       const pb = await this.request(at, CAST_PROFILE);
-      const was = this.cast?.pb;
-      const text = pb.subtitles.filter((s) => s.overlay === "text" && s.url);
-      const tracks = new Map(text.map((s, i) => [s.key, i + 1] as const));
+      // A newer one was asked for meanwhile (scrubbing twice), or the cast ended: not needed.
+      if (gen !== this.castGen || this.closed || !remote()) {
+        if (pb.method === "hls") void api.stopSession(pb.session_id);
+        return;
+      }
+      const offset = pb.method === "hls" ? pb.start_secs : 0;
+      const text = await this.castableSubtitles(pb, offset);
+      if (gen !== this.castGen) {
+        if (pb.method === "hls") void api.stopSession(pb.session_id);
+        return;
+      }
+      const tracks = new Map(text.map((s, i) => [s.track.key, i + 1] as const));
       const shown = this.subs ? (tracks.get(this.subs.track.key) ?? null) : null;
       const art = this.info ? (this.info.backdrop ?? this.info.poster) : null;
-      const labels = trackLabels(text);
+      const labels = trackLabels(text.map((s) => s.track));
+      const url = absolute(pb.url);
       castLoad(client, {
-        url: absolute(pb.url),
+        url,
         hls: pb.method === "hls",
         title: this.s.title[0]() || "Panda",
         artwork: imageUrl(art) ?? null,
         startSecs: pb.method === "hls" ? 0 : at,
-        subtitles: text.map((s, i) => ({ id: i + 1, url: absolute(s.url!), language: s.language, name: labels[i] })),
+        subtitles: text.map((s, i) => ({ id: i + 1, url: s.url, language: s.track.language, name: labels[i] })),
         selected: shown,
       });
-      this.cast = { pb, offset: pb.method === "hls" ? pb.start_secs : 0, at, tracks };
+      // The stream it had (whatever it is at this moment) goes.
+      const was = this.cast?.pb;
+      this.cast = { pb, offset, at, tracks, loading: true, url };
       if (was?.method === "hls") void api.stopSession(was.session_id);
     } catch (e) {
       this.toast(e instanceof Error ? e.message : String(e));
     } finally {
-      this.s.busy[1](false);
+      if (gen === this.castGen) this.s.busy[1](false);
     }
   }
 
-  /** Seeking on the Chromecast: within its stream (behind, or a little ahead), else a new one. */
+  /**
+   * The text subtitles a Chromecast can show, shifted to its stream (it starts at 0 where the
+   * stream starts in the file) and by each track's timing. A track inside the file is only
+   * offered once the server has it whole (`ready=1` answers at once): the receiver fetches a
+   * track once and wouldn't wait the minutes a whole-file pass takes.
+   */
+  private async castableSubtitles(pb: Playback, offset: number) {
+    const text = pb.subtitles.filter((s) => s.overlay === "text" && s.url);
+    const checked = await Promise.all(
+      text.map(async (track) => {
+        const base = absolute(track.url!);
+        const sep = base.includes("?") ? "&" : "?";
+        if (!track.external) {
+          const ready = await Promise.race([
+            fetch(`${base}${sep}ready=1`).then((r) => r.ok, () => false),
+            new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000)),
+          ]);
+          if (!ready) return null;
+        }
+        const shift = offset - savedTiming(pb.item_id, track);
+        return { track, url: shift ? `${base}${sep}shift=${shift.toFixed(3)}` : base };
+      }),
+    );
+    return checked.filter((c): c is { track: SubtitleTrack; url: string } => c !== null);
+  }
+
+  /** Seeking on the Chromecast: within its stream (any point of a file played as it is; behind,
+   * or a little ahead, in a stream being made), else a new stream from there. */
   private castSeekTo(target: number) {
     const client = remote();
     if (!client || !this.cast) return;
     const dur = this.duration();
     const to = Math.max(0, dur > 0 ? Math.min(target, dur - 1) : target);
-    if (to >= this.cast.offset && to - this.position() < CAST_SEEK_AHEAD) castSeek(client, to - this.cast.offset);
-    else void this.castFrom(to);
+    const direct = this.cast.pb.method === "direct_play";
+    if (direct || (to >= this.cast.offset && to - this.position() < CAST_SEEK_AHEAD)) {
+      castSeek(client, to - this.cast.offset);
+      this.cast.at = to;
+    } else void this.castFrom(to);
+  }
+
+  /** The Chromecast's state, four times a second: its position, playing, and the end. */
+  private followCast() {
+    const cast = this.cast;
+    const client = remote();
+    if (!cast || !client) return;
+    const state = castState(client);
+    if (cast.loading) {
+      if (state.contentId !== cast.url || state.idle) return;
+      cast.loading = false;
+    }
+    // Finished on the TV: saved at the end (marked watched), and the player closes.
+    if (state.finished) {
+      const end = this.duration();
+      if (end > 0) cast.at = end;
+      this.close();
+      return;
+    }
+    if (!state.idle) cast.at = this.position();
+    this.s.playing[1](this.isPlaying());
   }
 
   /** The Chromecast let go: the phone plays on from where it was. */
   private endCasting() {
+    this.castGen++;
     if (!this.cast) return;
     const { pb, at } = this.cast;
     this.cast = null;
@@ -396,7 +495,8 @@ class AndroidPlayer {
         if (st === STATE_ENDED && this.pending === null) this.close();
       },
       error: () => {
-        if (this.pending === null && !this.closed) this.recover();
+        // Casting: the phone's player is stopped on purpose (its stream is gone).
+        if (this.pending === null && !this.closed && !this.cast) this.recover();
       },
       videoSize: (w, h) => {
         this.videoSize = [w, h];
@@ -415,10 +515,7 @@ class AndroidPlayer {
       // Times, the timeline and subtitles follow playback; while the controls are hidden only the
       // subtitles do.
       setInterval(() => {
-        if (this.cast) {
-          this.cast.at = this.position();
-          this.s.playing[1](this.isPlaying());
-        }
+        this.followCast();
         if (this.s.controls[0]()) this.bump();
         this.showSubs();
       }, 250),
@@ -428,6 +525,9 @@ class AndroidPlayer {
       started: (device) => void this.startCasting(device),
       ended: () => this.endCasting(),
     });
+    // Already connected to a Chromecast (from another title): it plays there.
+    const connected = castDevice();
+    if (connected) void this.startCasting(connected);
     this.media = nowPlaying.start(this.mediaInfo(), {
       play: () => this.play(),
       pause: () => this.pause(),
@@ -574,6 +674,7 @@ class AndroidPlayer {
   // ---- When it struggles (the TV's rules) ----
 
   private watchStalls(waiting: boolean) {
+    if (this.cast) return;
     if (waiting === this.waiting) return;
     this.waiting = waiting;
     if (!waiting) {
@@ -661,7 +762,8 @@ class AndroidPlayer {
   }
 
   private showSubs() {
-    const showing = this.subs ? this.subs.at(this.position() - this.s.timing[0]()) : null;
+    // Casting: the TV shows them.
+    const showing = this.subs && !this.cast ? this.subs.at(this.position() - this.s.timing[0]()) : null;
     // A picture-in-picture window is too small for text at its size; image subtitles scale.
     this.s.showing[1](this.s.pip[0]() && showing?.kind === "text" ? null : showing);
   }

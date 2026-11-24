@@ -72,6 +72,24 @@ export function remote(): any {
   return session?.isConnected() ? session.getRemoteMediaClient() : null;
 }
 
+/** The connected Chromecast's name, if one is connected. */
+export function castDevice(): string | null {
+  const session = castContext()?.getSessionManager().getCurrentCastSession();
+  return session?.isConnected() ? String(session.getCastDevice()?.getFriendlyName() ?? "TV") : null;
+}
+
+/** What the receiver reports: the stream it has, idle or not, and whether it played to the end. */
+export function castState(client: any): { contentId: string | null; idle: boolean; finished: boolean } {
+  const MediaStatus = gms().MediaStatus;
+  const state = client.getPlayerState();
+  const idle = state === MediaStatus.PLAYER_STATE_IDLE || state === MediaStatus.PLAYER_STATE_UNKNOWN;
+  return {
+    contentId: client.getMediaInfo()?.getContentId() ?? null,
+    idle,
+    finished: idle && client.getIdleReason() === MediaStatus.IDLE_REASON_FINISHED,
+  };
+}
+
 /** Stop casting (the Cast session ends; the phone takes over). */
 export function stopCasting(): void {
   castContext()?.getSessionManager().endCurrentSession(true);

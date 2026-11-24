@@ -762,9 +762,23 @@ async fn stop_session(
 }
 
 /// `?from=<secs>`: the part of a subtitle track around there (see [`subtitle_vtt`]).
+/// `?shift=<secs>`: cues moved that much earlier (a Chromecast's stream begun mid-file, plus the
+/// viewer's timing). `?ready=1`: answer at once, the track if it's extracted, else 404 while it
+/// extracts (a receiver that fetches once can't wait minutes).
 #[derive(Deserialize)]
 pub(super) struct SubtitleQuery {
     from: Option<f64>,
+    shift: Option<f64>,
+    ready: Option<bool>,
+}
+
+/// The `WebVTT` response, shifted when asked.
+fn vtt_body(vtt: String, shift: Option<f64>) -> Response {
+    let vtt = match shift.filter(|s| s.is_finite() && *s != 0.0) {
+        Some(s) => panda_media::subtitles::shift_webvtt(&vtt, s),
+        None => vtt,
+    };
+    ([(header::CONTENT_TYPE, "text/vtt; charset=utf-8")], vtt).into_response()
 }
 
 /// Seconds of subtitles one windowed request returns.
@@ -797,7 +811,7 @@ async fn subtitle_vtt(
     if subtitles::find_text_track(&media, index).is_none() {
         return Err(ApiError::NotFound);
     }
-    let vtt_response = |v: String| ([(header::CONTENT_TYPE, "text/vtt; charset=utf-8")], v).into_response();
+    let vtt_response = |v: String| vtt_body(v, q.shift);
     let complete = |v: String| vtt_response(mark_complete(&v));
     // The file size is in the name: a replaced file (an upgrade) gets fresh subtitles.
     let dir = state.config.cache_dir().join("subtitles");
@@ -806,6 +820,10 @@ async fn subtitle_vtt(
         return Ok(complete(v));
     }
     let input = PathBuf::from(&item.path);
+    if q.ready == Some(true) {
+        spawn_full_extraction(&state, cache, &item.path, index);
+        return Err(ApiError::NotFound);
+    }
     let Some(from) = q.from else {
         let _permit = SUBTITLE_JOBS.acquire().await.map_err(|e| ApiError::Io(std::io::Error::other(e)))?;
         let vtt = cached_vtt(&cache, full_extraction(&state, &item.path, input, index)).await?;
@@ -888,6 +906,7 @@ async fn sidecar_vtt(
     State(state): State<AppState>,
     Extension(grant): Extension<MediaGrant>,
     Path((id, file)): Path<(i64, String)>,
+    Query(q): Query<SubtitleQuery>,
 ) -> ApiResult<Response> {
     let item = state.db.item(id).await?.ok_or(ApiError::NotFound)?;
     ensure_item_access(&state, grant.user_id, &item).await?;
@@ -914,12 +933,12 @@ async fn sidecar_vtt(
         .join("subtitles")
         .join(format!("{id}-f{}-{file_size}-{modified}.vtt", side.id()));
     if let Ok(v) = tokio::fs::read_to_string(&cache).await {
-        return Ok(([(header::CONTENT_TYPE, "text/vtt; charset=utf-8")], v).into_response());
+        return Ok(vtt_body(v, q.shift));
     }
     // Conversions share the extraction slots; one that waited may find the cache made meanwhile.
     let _permit = SUBTITLE_JOBS.acquire().await.map_err(|e| ApiError::Io(std::io::Error::other(e)))?;
     if let Ok(v) = tokio::fs::read_to_string(&cache).await {
-        return Ok(([(header::CONTENT_TYPE, "text/vtt; charset=utf-8")], v).into_response());
+        return Ok(vtt_body(v, q.shift));
     }
     let bytes = {
         let path = path.clone();
@@ -934,7 +953,7 @@ async fn sidecar_vtt(
         .map_err(|_| ApiError::Io(std::io::Error::other("subtitle conversion timed out")))??)
     })
     .await?;
-    Ok(([(header::CONTENT_TYPE, "text/vtt; charset=utf-8")], vtt).into_response())
+    Ok(vtt_body(vtt, q.shift))
 }
 
 /// A blocking file call on the library's storage: `Offline` if it doesn't answer in time,

@@ -958,6 +958,10 @@ async fn subtitle_files_need_a_signature_and_are_named_by_id_only() {
     let mut player = Client::new(&server.app);
     player.origin = None;
     assert_eq!(player.get(&url).await.status, StatusCode::OK);
+    // Moved for a Chromecast's stream (`shift`): the same signed address, cues 2 s later here.
+    let shifted = player.get(&format!("{url}&shift=-2")).await;
+    assert_eq!(shifted.status, StatusCode::OK);
+    assert!(shifted.text().contains("00:00:02.000 --> 00:00:03.000"), "{}", shifted.text());
     // Unsigned, or the signature moved to another item: refused.
     let bare = url.split('?').next().unwrap().to_string();
     assert_eq!(player.get(&bare).await.status, StatusCode::UNAUTHORIZED);

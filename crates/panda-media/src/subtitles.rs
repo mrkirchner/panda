@@ -101,3 +101,76 @@ mod tests {
         assert!(a.ends_with("-i /m/a.mkv -map 0:3 -c:s webvtt -f webvtt -"));
     }
 }
+
+/// `vtt` with every cue moved `secs` earlier (later when negative): for a player whose clock
+/// doesn't start at the file's start (a stream begun mid-file) or whose viewer set a timing.
+/// Cues that would end before 0 are dropped; ones that start before 0 start at 0.
+#[must_use]
+pub fn shift_webvtt(vtt: &str, secs: f64) -> String {
+    use std::fmt::Write as _;
+    if secs == 0.0 {
+        return vtt.to_string();
+    }
+    let mut out = String::with_capacity(vtt.len());
+    let mut skipping = false;
+    for line in vtt.split_inclusive('\n') {
+        let text = line.trim_end_matches(['\r', '\n']);
+        if let Some((start, rest)) = text.split_once(" --> ") {
+            let (end, settings) = rest.split_once(' ').map_or((rest, ""), |(e, s)| (e, s));
+            if let (Some(a), Some(b)) = (parse_vtt_time(start), parse_vtt_time(end)) {
+                let (a, b) = (a - secs, b - secs);
+                skipping = b <= 0.0;
+                if skipping {
+                    // The cue's id line (if any) was already written; it's harmless on its own.
+                    continue;
+                }
+                let tail = if settings.is_empty() { String::new() } else { format!(" {settings}") };
+                let _ = writeln!(out, "{} --> {}{tail}", format_vtt_time(a.max(0.0)), format_vtt_time(b));
+                continue;
+            }
+        }
+        if skipping {
+            // The dropped cue's text runs to the next blank line.
+            if text.is_empty() {
+                skipping = false;
+                out.push_str(line);
+            }
+            continue;
+        }
+        out.push_str(line);
+    }
+    out
+}
+
+/// "01:02:03.456" or "02:03.456" -> seconds.
+fn parse_vtt_time(s: &str) -> Option<f64> {
+    let mut parts: Vec<&str> = s.trim().split(':').collect();
+    let secs: f64 = parts.pop()?.parse().ok()?;
+    let mins: f64 = parts.pop().map_or(Ok(0.0), str::parse).ok()?;
+    let hours: f64 = parts.pop().map_or(Ok(0.0), str::parse).ok()?;
+    Some(hours * 3600.0 + mins * 60.0 + secs)
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn format_vtt_time(secs: f64) -> String {
+    let ms = (secs * 1000.0).round() as u64;
+    format!("{:02}:{:02}:{:02}.{:03}", ms / 3_600_000, ms / 60_000 % 60, ms / 1000 % 60, ms % 1000)
+}
+
+#[cfg(test)]
+mod shift_tests {
+    use super::*;
+
+    #[test]
+    fn cues_move_and_ones_before_the_start_go() {
+        let vtt = "WEBVTT\n\n1\n00:00:10.000 --> 00:00:12.000\nGone\n\n2\n00:40:01.500 --> 00:40:03.000 line:90%\nHere\n\n00:39:59.000 --> 00:40:02.000\nStraddles\n";
+        let out = shift_webvtt(vtt, 2400.0);
+        assert!(!out.contains("Gone"), "{out}");
+        assert!(out.contains("00:00:01.500 --> 00:00:03.000 line:90%\nHere"), "{out}");
+        assert!(out.contains("00:00:00.000 --> 00:00:02.000\nStraddles"), "{out}");
+        assert!(out.starts_with("WEBVTT\n"));
+        // A negative shift (a viewer's later timing) moves cues later.
+        assert!(shift_webvtt("00:01.000 --> 00:02.000\nx\n", -1.5).contains("00:00:02.500 --> 00:00:03.500"));
+        assert_eq!(shift_webvtt(vtt, 0.0), vtt);
+    }
+}
