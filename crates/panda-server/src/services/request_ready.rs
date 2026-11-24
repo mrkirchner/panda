@@ -119,13 +119,14 @@ async fn email_arrivals(state: &AppState) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Where to write about `uid`'s request, and their name: their own email, else the owner's.
+/// Where to write about `uid`'s request, and who asked as the email says it: "you" when it
+/// goes to them, their name when it goes to their account's owner.
 async fn recipient(state: &AppState, uid: i64) -> anyhow::Result<Option<(String, String)>> {
     let Some(user) = state.db.user(uid).await? else { return Ok(None) };
-    let name = user.display_name.clone().unwrap_or_else(|| user.username.clone());
     if let Some(email) = user.email.clone().filter(|e| !e.is_empty()) {
-        return Ok(Some((email, name)));
+        return Ok(Some((email, "you".into())));
     }
+    let name = user.display_name.clone().unwrap_or_else(|| user.username.clone());
     let owner = state.db.user(user.account_id).await?;
     Ok(owner.and_then(|o| o.email.filter(|e| !e.is_empty())).map(|e| (e, name)))
 }
@@ -168,5 +169,7 @@ mod tests {
         let (subject, body) = message(&r, "Kids");
         assert_eq!(subject, "Dune is ready to watch");
         assert!(body.contains("The movie Kids asked for, Dune (2021), is in Panda now."), "{body}");
+        let (_, body) = message(&r, "you");
+        assert!(body.contains("The movie you asked for, Dune (2021)"), "{body}");
     }
 }
