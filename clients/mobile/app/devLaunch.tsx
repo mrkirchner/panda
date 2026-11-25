@@ -2,7 +2,7 @@
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
 //              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
-//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile |
+//              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile | parental |
 //              prompt:pin|email|text (the one-line question, platform.prompt) |
 //              check-arrivals (Android: a background "ready to watch" check in 20 s)
 //   -pandaSearch <query>    Search's starting query (open it with tab:3)
@@ -18,6 +18,7 @@ import { ListView, ScrollView, type View } from "@nativescript/core";
 import { openAll, openGenre, openPerson, openPreview, openSeries, openTitle } from "./screens/links";
 import { Connect } from "./screens/Connect";
 import { editProfileScreen } from "./screens/EditProfile";
+import { openParentalControls } from "./screens/Parental";
 import { platform } from "./platform";
 
 const { devSeek, play } = platform.player;
@@ -116,6 +117,7 @@ export function devLaunch() {
         .then(r => console.log(`prompt answered: ${r === null ? "cancelled" : `${r.length} characters`}`));
     }
     else if (what === "edit-profile") open(() => editProfileScreen(), { title: "Edit profile" });
+    else if (what === "parental") void openParentalControls();
     else if (what === "signin") goSignIn();
     else if (what === "connect") open(() => <Connect />, { clear: true });
     else if (what === "play-title") play({ kind: "title", id: arg }).catch(e => console.log(`play failed: ${String(e)}`));
