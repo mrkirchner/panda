@@ -1,7 +1,7 @@
 // Debug builds only: open a screen at launch, for checking screens in the simulator without
 // tapping (scripts/run-sim.sh passes launch arguments through):
 //   -pandaOpen title:<id> | series:<name> | genre:<name> | all:movies|shows | tab:<0-3> |
-//              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>]
+//              profiles | signin | connect | play-title:<id> | play-item:<id>[@<secs>] |
 //              person:<tmdb id> | preview:movie|series:<tmdb id> | edit-profile | parental |
 //              prompt:pin|email|text (the one-line question, platform.prompt) |
 //              check-arrivals (Android: a background "ready to watch" check in 20 s)
