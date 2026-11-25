@@ -123,6 +123,7 @@ pub(crate) fn is_https(state: &AppState, headers: &HeaderMap) -> bool {
 /// else it's refused before the password is even looked at. Port-forwarding Panda's plain HTTP
 /// to the internet would otherwise send passwords and session tokens in the clear.
 pub(crate) fn require_safe_transport(state: &AppState, ip: ClientIp, headers: &HeaderMap) -> ApiResult<()> {
+    // `secure_remote` (every request) refuses these already; kept as a second lock on passwords.
     if ip.is_local() || is_https(state, headers) {
         Ok(())
     } else {
@@ -137,14 +138,25 @@ pub(crate) fn require_safe_transport(state: &AppState, ip: ClientIp, headers: &H
 /// Client IP for rate limiting. `X-Forwarded-For` is only honoured when `trust_proxy` is set,
 /// otherwise anyone could spoof it to dodge limits; even then only its last (proxy-added) entry.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct ClientIp(pub Option<IpAddr>);
+pub(crate) struct ClientIp {
+    pub ip: Option<IpAddr>,
+    /// The server's own address the connection reached: a client on the same IPv6 network
+    /// (its first 64 bits) is at home, whatever its address range.
+    pub server: Option<IpAddr>,
+}
 
 impl ClientIp {
     /// On the home network or a private overlay (Tailscale): loopback, private and link-local
     /// ranges, carrier-grade NAT (100.64.0.0/10, Tailscale's), IPv6 unique-local. Unknown
     /// addresses (no socket info) count as local.
     pub(crate) fn is_local(self) -> bool {
-        match self.0 {
+        if let (Some(IpAddr::V6(c)), Some(IpAddr::V6(s))) = (self.ip, self.server)
+            && c.to_ipv4_mapped().is_none()
+            && c.segments()[..4] == s.segments()[..4]
+        {
+            return true;
+        }
+        match self.ip {
             None => true,
             Some(IpAddr::V4(v4)) => {
                 let [a, b, ..] = v4.octets();
@@ -155,7 +167,7 @@ impl ClientIp {
             }
             Some(IpAddr::V6(v6)) => {
                 if let Some(v4) = v6.to_ipv4_mapped() {
-                    return Self(Some(IpAddr::V4(v4))).is_local();
+                    return Self { ip: Some(IpAddr::V4(v4)), server: None }.is_local();
                 }
                 let first = v6.segments()[0];
                 v6.is_loopback() || (first & 0xfe00) == 0xfc00 || (first & 0xffc0) == 0xfe80
@@ -164,7 +176,7 @@ impl ClientIp {
     }
 
     pub(crate) fn key(self, prefix: &str) -> String {
-        format!("{prefix}:{}", self.0.map_or_else(|| "unknown".to_string(), |ip| ip.to_string()))
+        format!("{prefix}:{}", self.ip.map_or_else(|| "unknown".to_string(), |ip| ip.to_string()))
     }
 }
 
@@ -182,9 +194,36 @@ impl FromRequestParts<AppState> for ClientIp {
                 .and_then(|v| v.rsplit(',').next())
                 .and_then(|v| v.trim().parse().ok())
         {
-            return Ok(Self(Some(ip)));
+            return Ok(Self { ip: Some(ip), server: None });
         }
-        Ok(Self(parts.extensions.get::<ConnectInfo<SocketAddr>>().map(|c| c.0.ip())))
+        Ok(Self::from_connection(&parts.extensions))
+    }
+}
+
+/// Both ends of a connection (what `serve` records for each one): the client's address for
+/// rate limits and the home-network check, the server's for telling its IPv6 network apart.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Peer {
+    pub remote: SocketAddr,
+    pub local: Option<SocketAddr>,
+}
+
+impl axum::extract::connect_info::Connected<axum::serve::IncomingStream<'_, tokio::net::TcpListener>>
+    for Peer
+{
+    fn connect_info(stream: axum::serve::IncomingStream<'_, tokio::net::TcpListener>) -> Self {
+        Self { remote: *stream.remote_addr(), local: stream.io().local_addr().ok() }
+    }
+}
+
+impl ClientIp {
+    /// From the connection itself (no proxy headers).
+    fn from_connection(ext: &axum::http::Extensions) -> Self {
+        if let Some(ConnectInfo(p)) = ext.get::<ConnectInfo<Peer>>() {
+            return Self { ip: Some(p.remote.ip()), server: p.local.map(|l| l.ip()) };
+        }
+        // Tests (and anything serving with a plain address) record only the client.
+        Self { ip: ext.get::<ConnectInfo<SocketAddr>>().map(|c| c.0.ip()), server: None }
     }
 }
 
@@ -303,7 +342,7 @@ mod network_tests {
     use super::ClientIp;
 
     fn ip(s: &str) -> ClientIp {
-        ClientIp(Some(s.parse().unwrap()))
+        ClientIp { ip: Some(s.parse().unwrap()), server: None }
     }
 
     #[test]
@@ -324,6 +363,12 @@ mod network_tests {
         for remote in ["8.8.8.8", "100.128.0.1", "172.32.0.1", "2001:4860:4860::8888", "::ffff:8.8.8.8"] {
             assert!(!ip(remote).is_local(), "{remote}");
         }
-        assert!(ClientIp(None).is_local(), "no socket info: can't tell, so not refused");
+        assert!(ClientIp { ip: None, server: None }.is_local(), "no socket info: can't tell, so not refused");
+        // A home device on a public IPv6 range, on the server's own network: at home.
+        let at =
+            |c: &str, s: &str| ClientIp { ip: Some(c.parse().unwrap()), server: Some(s.parse().unwrap()) };
+        assert!(at("2601:600:8a7f:1d0::1a", "2601:600:8a7f:1d0::5").is_local());
+        assert!(!at("2601:600:8a7f:1d1::1a", "2601:600:8a7f:1d0::5").is_local(), "another network");
+        assert!(!at("8.8.8.8", "192.168.1.5").is_local());
     }
 }

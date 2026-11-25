@@ -55,7 +55,8 @@ pub async fn server_behind_proxy() -> TestServer {
     server_full("trust_proxy = true", "").await
 }
 
-async fn server_full(server_extra: &str, extra: &str) -> TestServer {
+/// A server with extra `[server]` settings and extra TOML sections.
+pub async fn server_full(server_extra: &str, extra: &str) -> TestServer {
     let dir = tempfile::tempdir().unwrap();
     let movies = dir.path().join("movies");
     let srt = dir.path().join("subs.srt");

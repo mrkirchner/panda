@@ -110,6 +110,10 @@ pub struct ServerConfig {
     /// Announce this server on the local network (mDNS `_panda._tcp`), so TV apps find it
     /// without typing an address. Default on; never when bound to loopback only.
     pub advertise: bool,
+    /// Answer plain-HTTP requests from outside the home network. Off: a port forward without
+    /// HTTPS is refused rather than sending session tokens and streams in the clear. Only for a
+    /// network Panda can't tell is private (a VPN with public-range addresses).
+    pub allow_insecure_remote: bool,
 }
 
 impl Default for ServerConfig {
@@ -126,6 +130,7 @@ impl Default for ServerConfig {
             secure_cookies: None,
             web_dir: None,
             advertise: true,
+            allow_insecure_remote: false,
         }
     }
 }

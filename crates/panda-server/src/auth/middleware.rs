@@ -19,6 +19,29 @@ pub(crate) struct MediaGrant {
     pub token_gen: i64,
 }
 
+/// Outside the home network, only HTTPS (through a trusted proxy): a plain-HTTP port forward
+/// is refused outright, before anything is read, instead of carrying session tokens, signed
+/// links and streams in the clear. The health check stays open (it says nothing). Off with
+/// `[server] allow_insecure_remote`.
+pub(crate) async fn secure_remote(State(state): State<AppState>, req: Request, next: Next) -> Response {
+    use axum::extract::FromRequestParts as _;
+    use axum::response::IntoResponse as _;
+    if state.config.server.allow_insecure_remote || req.uri().path() == "/health" {
+        return next.run(req).await;
+    }
+    let (mut parts, body) = req.into_parts();
+    let Ok(ip) = super::ClientIp::from_request_parts(&mut parts, &state).await;
+    if ip.is_local() || super::is_https(&state, &parts.headers) {
+        return next.run(Request::from_parts(parts, body)).await;
+    }
+    (
+        axum::http::StatusCode::FORBIDDEN,
+        "Panda only answers from outside your home network over HTTPS: put it behind an HTTPS \
+         reverse proxy (with trust_proxy = true) or use a VPN such as Tailscale.\n",
+    )
+        .into_response()
+}
+
 pub(crate) async fn require_user(
     State(state): State<AppState>,
     mut req: Request,

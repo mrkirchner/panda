@@ -38,13 +38,10 @@ pub async fn serve(state: AppState) -> anyhow::Result<()> {
         .with_context(|| format!("binding {}", state.config.server.bind))?;
     tracing::info!("listening on http://{}", listener.local_addr()?);
 
-    // Connect info gives rate limiting the client's IP.
-    axum::serve(
-        listener,
-        routes::router(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
-    )
-    .with_graceful_shutdown(shutdown_signal())
-    .await?;
+    // Connect info gives rate limiting the client's IP, and the home-network check both ends.
+    axum::serve(listener, routes::router(state).into_make_service_with_connect_info::<auth::Peer>())
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
     Ok(())
 }
 

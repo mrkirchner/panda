@@ -155,7 +155,7 @@ async fn passwords_never_cross_the_internet_unencrypted() {
     remote.peer = Some("203.0.113.9:50000".parse().unwrap());
     let res =
         remote.post("/api/auth/login", json!({ "username": "admin", "password": ADMIN_PASSWORD })).await;
-    assert_eq!(res.status, StatusCode::UNPROCESSABLE_ENTITY, "{}", res.text());
+    assert_eq!(res.status, StatusCode::FORBIDDEN, "{}", res.text());
     assert!(res.text().contains("HTTPS"), "{}", res.text());
     let tv = remote
         .post(
@@ -163,7 +163,7 @@ async fn passwords_never_cross_the_internet_unencrypted() {
             json!({ "username": "admin", "password": ADMIN_PASSWORD, "device_name": "TV" }),
         )
         .await;
-    assert_eq!(tv.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(tv.status, StatusCode::FORBIDDEN);
     // Over Tailscale it's fine.
     let mut tailnet = Client::new(&server.app);
     tailnet.peer = Some("100.101.102.103:50000".parse().unwrap());
@@ -1829,4 +1829,66 @@ async fn age_limits_are_the_owners_with_a_parental_pin_and_hide_what_they_should
         StatusCode::OK,
         "no limit, no PIN"
     );
+}
+
+#[tokio::test]
+async fn a_plain_http_port_forward_answers_nothing_but_the_health_check() {
+    if !ffmpeg_available() {
+        return;
+    }
+    let server = server().await;
+    let mut admin = admin(&server).await;
+    let item = item_id(&admin.get("/api/items").await.json(), "Test Movie");
+    let play = admin.post(&format!("/api/items/{item}/playback"), json!({})).await.json();
+    let stream = play["url"].as_str().unwrap().to_string();
+    // A phone paired at home, now on café Wi-Fi with Panda's plain HTTP port forwarded: even
+    // with a valid session or a signed link, nothing is answered (it would travel in the clear).
+    let mut away = admin.clone();
+    away.peer = Some("203.0.113.9:50000".parse().unwrap());
+    for path in [
+        "/api/home",
+        "/api/auth/me",
+        "/api/info",
+        "/api/admin/settings",
+        "/watch/",
+        "/tv/",
+        "/",
+        stream.as_str(),
+    ] {
+        let r = away.get(path).await;
+        assert_eq!(r.status, StatusCode::FORBIDDEN, "{path}: {}", r.text());
+    }
+    assert_eq!(away.post("/webhook/radarr?token=hook-secret", json!({})).await.status, StatusCode::FORBIDDEN);
+    assert_eq!(away.get("/health").await.status, StatusCode::OK, "says nothing");
+    // At home, and over Tailscale, as before.
+    for peer in ["192.168.1.20:50000", "100.101.102.103:50000"] {
+        let mut home = admin.clone();
+        home.peer = Some(peer.parse().unwrap());
+        assert_eq!(home.get("/api/auth/me").await.status, StatusCode::OK, "{peer}");
+    }
+}
+
+#[tokio::test]
+async fn behind_a_trusted_https_proxy_the_internet_is_answered() {
+    let server = server_behind_proxy().await;
+    let proxied_admin = admin(&server).await;
+    let mut away = proxied_admin.clone();
+    away.peer = Some("127.0.0.1:40000".parse().unwrap());
+    let via = |proto: &str| {
+        vec![
+            ("x-forwarded-for".to_string(), "203.0.113.9".to_string()),
+            ("x-forwarded-proto".to_string(), proto.to_string()),
+        ]
+    };
+    away.headers = via("https");
+    assert_eq!(away.get("/api/auth/me").await.status, StatusCode::OK);
+    away.headers = via("http");
+    assert_eq!(away.get("/api/auth/me").await.status, StatusCode::FORBIDDEN, "the proxy took plain HTTP");
+
+    // Opted out on purpose (a VPN Panda can't tell is private): answered.
+    let open = server_full("allow_insecure_remote = true", "").await;
+    let open_admin = admin(&open).await;
+    let mut away = open_admin.clone();
+    away.peer = Some("203.0.113.9:50000".parse().unwrap());
+    assert_eq!(away.get("/api/auth/me").await.status, StatusCode::OK);
 }

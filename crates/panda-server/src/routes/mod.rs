@@ -110,6 +110,9 @@ pub fn router(state: AppState) -> Router {
         // TV apps run from other origins (file://, app://, dev servers) and authenticate with
         // bearer tokens, so CORS stays open, but *without* credentials: browsers never attach
         // the session cookie to cross-origin requests.
+        // Outside the home network, HTTPS only (inside CORS, so a refusal still carries its
+        // headers and a browser shows the message).
+        .layer(from_fn_with_state(state.clone(), crate::auth::middleware::secure_remote))
         .layer(CorsLayer::permissive())
         .layer(security_header(header::X_CONTENT_TYPE_OPTIONS, "nosniff"))
         // Signed media URLs must never leak to other sites via Referer.

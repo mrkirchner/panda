@@ -21,6 +21,11 @@
 - **Never store or log a plaintext password or secret.** Passwords: Argon2id via `panda-auth`.
   Tokens: store `token::digest()` only. Secrets Panda must reuse: `SecretBox` (encrypted at
   rest, setting key as context). The admin API never returns a secret, only "is it set".
+- Outside the home network the server answers only HTTPS (`auth::middleware::secure_remote`, the
+  whole router but `/health`): home = private/link-local ranges, Tailscale's 100.64/10, IPv6 ULA,
+  or the server's own IPv6 /64 (`auth::Peer` records both ends of each connection); HTTPS =
+  `X-Forwarded-Proto` from a trusted proxy. A plain-HTTP port forward is refused outright (no
+  tokens or streams in the clear); `[server] allow_insecure_remote` opts out.
 - Every new route goes in the right group in `routes/mod.rs` (public / user / media / admin).
   Media URLs handed to players must be signed (`auth::sign_media`, `with_token`).
 - Add a test to `crates/panda-server/tests/security.rs` for every new auth-relevant behavior.
